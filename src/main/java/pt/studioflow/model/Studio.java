@@ -1,0 +1,253 @@
+package pt.studioflow.model;
+
+import jakarta.persistence.*;
+
+/**
+ * Entidade que representa um estúdio (tenant).
+ * Cada estúdio tem os seus próprios dados, configurações e utilizadores.
+ */
+@Entity
+@Table(name = "studios")
+public class Studio {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    /** Nome completo do estúdio (ex: "CoreoFlow") */
+    @Column(nullable = false)
+    private String nome;
+
+    /**
+     * Slug único usado para identificar o estúdio na URL e no login.
+     * Ex: "obidosdance", "lisboadance", "portofit"
+     */
+    @Column(nullable = false, unique = true)
+    private String slug;
+
+    /** Email de contacto principal do estúdio */
+    @Column
+    private String emailContacto;
+
+    /** Cor primária da identidade visual (hex, ex: #FF5D13) */
+    @Column(name = "cor_primaria")
+    private String corPrimaria = "#4A90E2";
+
+    /** Cor secundária da identidade visual */
+    @Column(name = "cor_secundaria")
+    private String corSecundaria = "#2D3436";
+
+    /** Logotipo (nome do ficheiro em /images/ ou URL externa) */
+    @Column(name = "logo_path")
+    private String logoPath;
+
+    /** Se o estúdio está ativo na plataforma */
+    @Column(nullable = false)
+    private Boolean ativo = true;
+
+    /** Plano de subscrição do estúdio. Nulo = sem plano atribuído. */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "plano_id")
+    private PlanoSubscricao plano;
+
+    /**
+     * Módulos ativos — lista separada por vírgulas dos valores de StudioModulo.
+     * Nulo ou vazio = todos os módulos ativos (retrocompatibilidade).
+     */
+    @Column(name = "modulos_ativos", columnDefinition = "TEXT")
+    private String modulosAtivos;
+
+    /**
+     * Campos do formulário de aluno ativos — lista separada por vírgulas dos valores de CampoAluno.
+     * Nulo ou vazio = todos os campos ativos (retrocompatibilidade).
+     */
+    @Column(name = "campos_aluno", columnDefinition = "TEXT")
+    private String camposAluno;
+
+    /**
+     * Faturação automática Vendus ao marcar mensalidade como Faturado.
+     * Requer vendusApiKey configurado.
+     */
+    @Column(name = "faturacao_automatica")
+    private Boolean faturacaoAutomatica = false;
+
+    /**
+     * Tipo de remuneração dos professores: "HORA" ou "PERCENTAGEM".
+     */
+    @Column(name = "tipo_remuneracao_prof")
+    private String tipoRemuneracaoProf = "HORA";
+
+    /**
+     * Valor de referência: €/hora se HORA, ou % se PERCENTAGEM.
+     */
+    @Column(name = "valor_remuneracao_prof")
+    private Double valorRemuneracaoProf = 0.0;
+
+    // =====================================================
+    // CONFIGURAÇÕES DE MENSALIDADES (por estúdio)
+    // =====================================================
+
+    @Column(name = "mensalidade_crianca_1x")
+    private Double mensalidadeCrianca1x = 28.0;
+
+    @Column(name = "mensalidade_crianca_2x")
+    private Double mensalidadeCrianca2x = 33.0;
+
+    @Column(name = "mensalidade_adulto_1x")
+    private Double mensalidadeAdulto1x = 25.0;
+
+    @Column(name = "mensalidade_adulto_2x")
+    private Double mensalidadeAdulto2x = 30.0;
+
+    @Column(name = "mensalidade_nao_socio_adicional")
+    private Double mensalidadeNaoSocioAdicional = 10.0;
+
+    // =====================================================
+    // CONFIGURAÇÕES DE DESCONTOS (por estúdio)
+    // =====================================================
+
+    @Column(name = "desconto_familiares_euros")
+    private Double descontoFamiliaresEuros = 5.0;
+
+    @Column(name = "desconto_direcao_percentagem")
+    private Double descontoDirecaoPercentagem = 50.0;
+
+    @Column(name = "desconto_mais_modalidades_percentagem")
+    private Double descontoMaisModalidadesPercentagem = 25.0;
+
+    @Column(name = "desconto_mais65_percentagem")
+    private Double descontoMais65Percentagem = 10.0;
+
+    // =====================================================
+    // CONFIGURAÇÕES FINANCEIRAS (por estúdio)
+    // =====================================================
+
+    /** Email de quem cria transferências */
+    @Column(name = "email_criador_transferencias")
+    private String emailCriadorTransferencias;
+
+    /** Email do primeiro assinante de transferências */
+    @Column(name = "email_assinante1")
+    private String emailAssinante1;
+
+    /** Email do segundo assinante de transferências */
+    @Column(name = "email_assinante2")
+    private String emailAssinante2;
+
+    // =====================================================
+    // INTEGRAÇÕES (por estúdio)
+    // =====================================================
+
+    /** Chave API Vendus para faturação */
+    @Column(name = "vendus_api_key")
+    private String vendusApiKey;
+
+    // =====================================================
+    // GETTERS & SETTERS
+    // =====================================================
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
+
+    public String getSlug() { return slug; }
+    public void setSlug(String slug) { this.slug = slug; }
+
+    public String getEmailContacto() { return emailContacto; }
+    public void setEmailContacto(String emailContacto) { this.emailContacto = emailContacto; }
+
+    public String getCorPrimaria() { return corPrimaria; }
+    public void setCorPrimaria(String corPrimaria) { this.corPrimaria = corPrimaria; }
+
+    public String getCorSecundaria() { return corSecundaria; }
+    public void setCorSecundaria(String corSecundaria) { this.corSecundaria = corSecundaria; }
+
+    public String getLogoPath() { return logoPath; }
+    public void setLogoPath(String logoPath) { this.logoPath = logoPath; }
+
+    public boolean isAtivo() { return Boolean.TRUE.equals(ativo); }
+    public void setAtivo(boolean ativo) { this.ativo = ativo; }
+
+    public Double getMensalidadeCrianca1x() { return mensalidadeCrianca1x; }
+    public void setMensalidadeCrianca1x(Double v) { this.mensalidadeCrianca1x = v; }
+
+    public Double getMensalidadeCrianca2x() { return mensalidadeCrianca2x; }
+    public void setMensalidadeCrianca2x(Double v) { this.mensalidadeCrianca2x = v; }
+
+    public Double getMensalidadeAdulto1x() { return mensalidadeAdulto1x; }
+    public void setMensalidadeAdulto1x(Double v) { this.mensalidadeAdulto1x = v; }
+
+    public Double getMensalidadeAdulto2x() { return mensalidadeAdulto2x; }
+    public void setMensalidadeAdulto2x(Double v) { this.mensalidadeAdulto2x = v; }
+
+    public Double getMensalidadeNaoSocioAdicional() { return mensalidadeNaoSocioAdicional; }
+    public void setMensalidadeNaoSocioAdicional(Double v) { this.mensalidadeNaoSocioAdicional = v; }
+
+    public Double getDescontoFamiliaresEuros() { return descontoFamiliaresEuros; }
+    public void setDescontoFamiliaresEuros(Double v) { this.descontoFamiliaresEuros = v; }
+
+    public Double getDescontoDirecaoPercentagem() { return descontoDirecaoPercentagem; }
+    public void setDescontoDirecaoPercentagem(Double v) { this.descontoDirecaoPercentagem = v; }
+
+    public Double getDescontoMaisModalidadesPercentagem() { return descontoMaisModalidadesPercentagem; }
+    public void setDescontoMaisModalidadesPercentagem(Double v) { this.descontoMaisModalidadesPercentagem = v; }
+
+    public Double getDescontoMais65Percentagem() { return descontoMais65Percentagem; }
+    public void setDescontoMais65Percentagem(Double v) { this.descontoMais65Percentagem = v; }
+
+    public String getEmailCriadorTransferencias() { return emailCriadorTransferencias; }
+    public void setEmailCriadorTransferencias(String v) { this.emailCriadorTransferencias = v; }
+
+    public String getEmailAssinante1() { return emailAssinante1; }
+    public void setEmailAssinante1(String emailAssinante1) { this.emailAssinante1 = emailAssinante1; }
+
+    public String getEmailAssinante2() { return emailAssinante2; }
+    public void setEmailAssinante2(String emailAssinante2) { this.emailAssinante2 = emailAssinante2; }
+
+    public String getVendusApiKey() { return vendusApiKey; }
+    public void setVendusApiKey(String vendusApiKey) { this.vendusApiKey = vendusApiKey; }
+
+    public PlanoSubscricao getPlano() { return plano; }
+    public void setPlano(PlanoSubscricao plano) { this.plano = plano; }
+
+    public String getModulosAtivos() { return modulosAtivos; }
+    public void setModulosAtivos(String modulosAtivos) { this.modulosAtivos = modulosAtivos; }
+
+    public String getCamposAluno() { return camposAluno; }
+    public void setCamposAluno(String camposAluno) { this.camposAluno = camposAluno; }
+
+    public boolean isFaturacaoAutomatica() { return Boolean.TRUE.equals(faturacaoAutomatica); }
+    public void setFaturacaoAutomatica(boolean faturacaoAutomatica) { this.faturacaoAutomatica = faturacaoAutomatica; }
+
+    public String getTipoRemuneracaoProf() { return tipoRemuneracaoProf; }
+    public void setTipoRemuneracaoProf(String tipoRemuneracaoProf) { this.tipoRemuneracaoProf = tipoRemuneracaoProf; }
+
+    public Double getValorRemuneracaoProf() { return valorRemuneracaoProf; }
+    public void setValorRemuneracaoProf(Double valorRemuneracaoProf) { this.valorRemuneracaoProf = valorRemuneracaoProf; }
+
+    /** Verifica se um campo do aluno está ativo. Nulo/vazio = todos ativos. */
+    public boolean hasCampo(CampoAluno campo) {
+        if (camposAluno == null || camposAluno.isBlank()) return true;
+        for (String c : camposAluno.split(",")) {
+            if (c.trim().equals(campo.name())) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Verifica se um módulo está ativo para este estúdio.
+     * Se modulosAtivos for nulo/vazio, todos os módulos estão ativos (retrocompatibilidade).
+     */
+    public boolean hasModulo(StudioModulo modulo) {
+        if (modulosAtivos == null || modulosAtivos.isBlank()) return true;
+        for (String m : modulosAtivos.split(",")) {
+            if (m.trim().equals(modulo.name())) return true;
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() { return nome + " (" + slug + ")"; }
+}
