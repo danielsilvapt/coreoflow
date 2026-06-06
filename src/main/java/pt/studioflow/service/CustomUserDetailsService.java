@@ -56,12 +56,10 @@ public class CustomUserDetailsService implements UserDetailsService {
             user = userRepository.findByUsernameAndStudio(username, studio)
                     .orElseThrow(() -> new UsernameNotFoundException("Utilizador não encontrado: " + username));
         } else {
-            // Login direto: tenta SUPERADMIN (studio IS NULL) primeiro, depois fallback
+            // Sem slug: apenas SUPERADMIN (studio IS NULL) é permitido
             user = userRepository.findSuperAdminByUsername(usernameInput)
-                    .orElseGet(() ->
-                        userRepository.findByUsername(usernameInput)
-                                .orElseThrow(() -> new UsernameNotFoundException("Utilizador não encontrado: " + usernameInput))
-                    );
+                    .orElseThrow(() -> new UsernameNotFoundException(
+                            "Formato inválido. Utilize 'estudio:utilizador' para aceder ao seu estúdio."));
         }
 
         return new MultiPasswordUserDetails(user);
