@@ -212,4 +212,12 @@ public class TurmaView extends VerticalLayout {
         dialog.open();
     }
 
-    private List<Turma> getTurma
+    private List<Turma> getTurmasDoStudio() {
+        Studio studio = TenantContext.getCurrentStudio();
+        return studio != null ? turmaRepository.findAllByStudio(studio) : turmaRepository.findAll();
+    }
+
+    public void updateList() {
+        grid.setItems(getTurmasDoStudio());
+    }
+}

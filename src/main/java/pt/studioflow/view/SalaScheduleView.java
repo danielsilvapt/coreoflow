@@ -1113,4 +1113,38 @@ public class SalaScheduleView extends VerticalLayout {
             } else {
                 @SuppressWarnings("unchecked")
                 ComboBox<Professor> cb = (ComboBox<Professor>) layout.getComponentAt(0);
-        
+                m.setProfessor(cb.getValue() != null ? cb.getValue().getNome() : "");
+            }
+
+            m.setTipo(tipo.getValue());
+            m.setHoraInicio(inicio.getValue());
+            m.setHoraFim(fim.getValue());
+            m.setObservacoes(obs.getValue());
+            m.setStatus(isAdmin ? "APROVADO" : "PENDENTE");
+
+            if (comboTurma.isVisible())
+                m.setTurma(comboTurma.getValue());
+            if (comboAlunos.isVisible())
+                m.setAlunos(new ArrayList<>(comboAlunos.getValue()));
+
+            marcacaoRepository.save(m);
+            dialog.close();
+            atualizarTudo();
+
+            emailService.notificarAdminNovoPedido(
+                    m.getProfessor(), m.getTipo(), m.getTurma() != null ? m.getTurma().getDescricao() : "",
+                    m.getSala().getNome(), m.getData().toString(),
+                    m.getHoraInicio().toString(), m.getHoraFim().toString(),
+                    m.getObservacoes() != null ? m.getObservacoes() : "");
+
+            Notification.show("Agendamento processado com sucesso!");
+        });
+        guardar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button cancelar = new Button("Cancelar", e -> dialog.close());
+        cancelar.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+        dialog.getFooter().add(cancelar, guardar);
+        dialog.open();
+    }
+}

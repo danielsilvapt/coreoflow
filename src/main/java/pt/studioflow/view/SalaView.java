@@ -146,4 +146,7 @@ public class SalaView extends VerticalLayout {
 
     // ---------- ATUALIZAR GRID ----------
     private void atualizarGrid() {
-        pt.studioflow.model.Studio s = pt.studioflow.conf
+        pt.studioflow.model.Studio s = pt.studioflow.config.TenantContext.getCurrentStudio();
+        grid.setItems(s != null ? salaRepository.findAllByStudio(s) : salaRepository.findAll());
+    }
+}

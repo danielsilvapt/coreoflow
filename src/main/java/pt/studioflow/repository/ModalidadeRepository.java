@@ -14,4 +14,7 @@ public interface ModalidadeRepository extends JpaRepository<Modalidade, Long> {
     // ===================== MULTI-TENANT =====================
     java.util.List<Modalidade> findAllByStudio(Studio studio);
 
+    default java.util.List<Modalidade> findByStudio(Studio studio) {
+        return findAllByStudio(studio);
+    }
 }

@@ -219,6 +219,15 @@ public class ModalidadeForm extends FormLayout {
         formDialog.open();
     }
 
+    private void emptyFields() {
+        codigo.clear();
+        descricao.clear();
+        ativo.setValue(false);
+        comboProf.clear();
+        fotoByteArray = null;
+        imagePreview.setSrc("");
+    }
+
     private void obtemDadosModalidade(Modalidade modalidade) {
 
         codigo.setValue(modalidade.getCodigo());

@@ -341,4 +341,8 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         grid.setItems(lista);
 
         long pendentes = lista.stream().filter(a -> a.getStatus() == AlunoStatus.PENDENTE).count();
-        long experimentais = lista.stream().filter(a -> a.getStatus() == AlunoStatus.EXP
+        long experimentais = lista.stream().filter(a -> a.getStatus() == AlunoStatus.EXPERIMENTAL).count();
+        totalPendentesLabel.setText(String.valueOf(pendentes));
+        totalExperimentaisLabel.setText(String.valueOf(experimentais));
+    }
+}

@@ -744,13 +744,27 @@ public class DashboardView extends Div {
                 return v == 0 ? 0 : (double) (pr * 100.0) / v;
         }
 
+        private com.vaadin.flow.component.Component criarLinhaAgenda(String hora, String descricao, String cor) {
+                com.vaadin.flow.component.html.Span spanHora = new com.vaadin.flow.component.html.Span(hora);
+                spanHora.getStyle().set("font-weight", "700").set("color", cor).set("min-width", "50px");
+                com.vaadin.flow.component.html.Span spanDesc = new com.vaadin.flow.component.html.Span(descricao);
+                spanDesc.getStyle().set("flex-grow", "1");
+                HorizontalLayout linha = new HorizontalLayout(spanHora, spanDesc);
+                linha.setWidthFull();
+                linha.setAlignItems(FlexComponent.Alignment.CENTER);
+                linha.getStyle().set("padding", "4px 8px").set("border-left", "4px solid " + cor)
+                                .set("border-radius", "4px").set("background", cor + "18");
+                return linha;
+        }
+
         private String extrairNomesCurtos(List<Aluno> a) {
                 if (a == null)
                         return "";
                 return a.stream().map(al -> {
                         String n = al.getNomeCompleto();
                         if (n == null || n.isBlank())
-                                return n.split(" ")[0];
+                                return "";
+                        return n.split(" ")[0];
                         }).collect(java.util.stream.Collectors.joining(", "));
         }
 }

@@ -38,4 +38,9 @@ public interface MarcacaoSalaRepository extends JpaRepository<MarcacaoSala, Long
     List<MarcacaoSala> findByStudioAndStatus(Studio studio, String status);
 
     java.util.List<MarcacaoSala> findAllByStudio(Studio studio);
+
+    List<MarcacaoSala> findByStudioAndDataBetween(Studio studio, LocalDate inicio, LocalDate fim);
+
+    @Query("SELECT DISTINCT m FROM MarcacaoSala m LEFT JOIN FETCH m.alunos WHERE m.studio = :studio AND m.data = :data")
+    List<MarcacaoSala> findAllWithAlunosByDataAndStudio(@Param("studio") Studio studio, @Param("data") LocalDate data);
 }

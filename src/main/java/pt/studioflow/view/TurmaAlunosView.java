@@ -270,4 +270,9 @@ public class TurmaAlunosView extends VerticalLayout {
 
     private void removerAluno(Aluno aluno) {
         Turma turma = turmaCombo.getValue();
-        if (turma
+        if (turma == null) return;
+        alunoTurmaService.remover(aluno, turma);
+        atualizarGrids();
+        Notification.show("Aluno removido!").addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+    }
+}

@@ -167,4 +167,15 @@ public class TurmaForm extends Dialog {
             }
 
             if (turmaAtual.getStudio() == null) {
-                turmaAtual.setStudio(p
+                turmaAtual.setStudio(TenantContext.getCurrentStudio());
+            }
+            turmaRepository.save(turmaAtual);
+            turmaView.updateList();
+            close();
+        }
+    }
+
+    public void eliminarTurma(Turma turma) {
+        turmaRepository.delete(turma);
+    }
+}

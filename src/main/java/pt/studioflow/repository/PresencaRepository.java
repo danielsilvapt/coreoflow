@@ -32,4 +32,16 @@ public interface PresencaRepository extends JpaRepository<Presenca, Long> {
      */
     boolean existsByAlunoAndPresenteAndDataBetween(
             Aluno aluno, boolean presente, LocalDate dataInicio, LocalDate dataFim);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @jakarta.transaction.Transactional
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Presenca p WHERE p.aluno = :aluno")
+    void deleteByAluno(@Param("aluno") Aluno aluno);
+
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Presenca p WHERE p.aluno.studio = :studio")
+    List<Presenca> findAllByAlunoStudio(@Param("studio") Studio studio);
+
+    default boolean existsByAlunoAndDataBetweenAndPresenteTrue(Aluno aluno, LocalDate inicio, LocalDate fim) {
+        return existsByAlunoAndPresenteAndDataBetween(aluno, true, inicio, fim);
+    }
 }

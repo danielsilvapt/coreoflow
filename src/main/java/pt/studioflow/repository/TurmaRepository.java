@@ -87,4 +87,8 @@ public interface TurmaRepository extends JpaRepository<Turma, Long> {
     List<Turma> findByProfessorAndStudio(Professor professor, Studio studio);
 
     List<Turma> findByStudioAndAtivo(Studio studio, boolean ativo);
+
+    default List<Turma> findByStudioAndAtivoTrue(Studio studio) {
+        return findByStudioAndAtivo(studio, true);
+    }
 }

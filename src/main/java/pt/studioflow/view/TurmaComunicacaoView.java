@@ -319,4 +319,15 @@ public class TurmaComunicacaoView extends VerticalLayout {
                 dialog.close();
                 Notification.show("E-mail enviado com sucesso para " + (emails.size() - 3) + " alunos!")
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (Excepti
+            } catch (Exception ex) {
+                Notification.show("Erro ao enviar e-mail: " + ex.getMessage())
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        enviar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        content.add(assunto, mensagem);
+        dialog.add(content);
+        dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), enviar);
+        dialog.open();
+    }
+}

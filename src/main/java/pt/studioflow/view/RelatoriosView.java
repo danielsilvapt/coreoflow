@@ -622,4 +622,28 @@ public class RelatoriosView extends VerticalLayout {
                                                 else if (r.getProfessor().equalsIgnoreCase("Leonor Ribeiro"))
                                                         vh = 20.0;
                                         }
-                                        pag.put(r.getProfessor(), pag.getOrDefau
+                                        pag.put(r.getProfessor(), pag.getOrDefault(r.getProfessor(), 0.0) + h * vh);
+                                        alu.merge(r.getProfessor(), 1, Integer::sum);
+                                });
+                List<Map<String, Object>> result = new ArrayList<>();
+                pag.forEach((prof, val) -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("prof", prof);
+                        map.put("total", val);
+                        map.put("aulas", alu.getOrDefault(prof, 0));
+                        result.add(map);
+                });
+                return result;
+        }
+
+        private String formatarNome(String nome) {
+                if (nome == null || nome.isBlank()) return "";
+                String[] partes = nome.trim().split("\\s+");
+                return partes.length <= 1 ? partes[0] : partes[0] + " " + partes[partes.length - 1];
+        }
+
+        private String calcularIdade(java.time.LocalDate nascimento) {
+                if (nascimento == null) return "-";
+                return String.valueOf(java.time.Period.between(nascimento, java.time.LocalDate.now()).getYears());
+        }
+}

@@ -553,6 +553,15 @@ public class MensalidadeView extends VerticalLayout {
         dialog.open();
     }
 
+    private EstadoMensalidade proximoEstado(Mensalidade m) {
+        return switch (m.getEstado()) {
+            case POR_EMITIR -> EstadoMensalidade.FATURADO;
+            case FATURADO -> EstadoMensalidade.PAGO;
+            case PAGO -> EstadoMensalidade.POR_EMITIR;
+            case EM_DIVIDA -> EstadoMensalidade.PAGO;
+        };
+    }
+
     private EstadoMensalidade calcularEstadoEfetivo(Mensalidade m) {
         if (m.getEstado() == EstadoMensalidade.FATURADO) {
             LocalDate dataLimite = LocalDate.of(m.getAno(), m.getMes(), 10);

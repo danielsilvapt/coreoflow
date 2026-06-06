@@ -527,4 +527,23 @@ public class RegistoHorasView extends VerticalLayout {
         turmaComboDialog.setEnabled(false);
         List<Professor> ps = getProfessoresDoStudio();
         profComboDialog.setItems(ps);
-        ps.stream().filter(x -> normalizar(x.getNome()).contains(normalizar(getFirstNameFromDatabase()))).
+        ps.stream().filter(x -> normalizar(x.getNome()).contains(normalizar(getFirstNameFromDatabase()))).findFirst()
+                .ifPresent(profComboDialog::setValue);
+    }
+
+    private void prepararEdicao(RegistoHoras r) {
+        registoSendoEditado = r;
+        dataPicker.setValue(r.getInicio().toLocalDate());
+        inicioPicker.setValue(r.getInicio().toLocalTime());
+        fimPicker.setValue(r.getFim().toLocalTime());
+        observacoesArea.setValue(r.getObservacoes() != null ? r.getObservacoes() : "");
+        tipoComboDialog.setValue(r.getTipoAtividade());
+        List<Professor> ps = getProfessoresDoStudio();
+        profComboDialog.setItems(ps);
+        ps.stream().filter(x -> normalizar(x.getNome()).equals(normalizar(r.getProfessor()))).findFirst()
+                .ifPresent(profComboDialog::setValue);
+        carregarTurmasDialog(profComboDialog.getValue());
+        turmaComboDialog.setValue(r.getTurma());
+        registoDialog.open();
+    }
+}

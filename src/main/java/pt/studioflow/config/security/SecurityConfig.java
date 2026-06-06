@@ -4,15 +4,10 @@ import com.vaadin.flow.spring.security.VaadinWebSecurity;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import pt.studioflow.service.CustomUserDetailsService;
 
@@ -21,13 +16,17 @@ import pt.studioflow.service.CustomUserDetailsService;
 public class SecurityConfig extends VaadinWebSecurity {
 
     private final CustomUserDetailsService userDetailsService;
+    private final DaoAuthenticationProvider authenticationProvider;
 
-    public SecurityConfig(CustomUserDetailsService userDetailsService) {
+    public SecurityConfig(CustomUserDetailsService userDetailsService,
+                          DaoAuthenticationProvider authenticationProvider) {
         this.userDetailsService = userDetailsService;
+        this.authenticationProvider = authenticationProvider;
     }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
+        http.authenticationProvider(authenticationProvider);
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/images/**", "/logos/**", "/icons/**", "/sw.js", "/manifest.webmanifest").permitAll());
 
@@ -43,6 +42,24 @@ public class SecurityConfig extends VaadinWebSecurity {
 
         setLoginView(http, "login");
 
+        // Garante que após login inválido (continue= com path errado) redireciona para /
+        SavedRequestAwareAuthenticationSuccessHandler successHandler =
+                new SavedRequestAwareAuthenticationSuccessHandler() {
+                    @Override
+                    protected String determineTargetUrl(
+                            jakarta.servlet.http.HttpServletRequest request,
+                            jakarta.servlet.http.HttpServletResponse response) {
+                        String target = super.determineTargetUrl(request, response);
+                        // Se o URL alvo parecer um caminho de ficheiro ou recurso interno, vai para /
+                        if (target != null && (target.contains("src/main") || target.contains("resources/static"))) {
+                            return "/";
+                        }
+                        return target;
+                    }
+                };
+        successHandler.setDefaultTargetUrl("/");
+        http.formLogin(form -> form.successHandler(successHandler));
+
 
         http.logout(logout -> logout
                 .logoutUrl("/logout")
@@ -55,40 +72,8 @@ public class SecurityConfig extends VaadinWebSecurity {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    public AuthenticationManager authenticationManager() {
+        return new org.springframework.security.authentication.ProviderManager(authenticationProvider);
     }
 
-    @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
-        return http.getSharedObject(
-                org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder.class)
-                .userDetailsService(userDetailsService)
-                .passwordEncoder(passwordEncoder())
-                .and()
-                .build();
-    }
-
-    @Bean
-    public DaoAuthenticationProvider authenticationProvider(CustomUserDetailsService userDetailsService,
-                                                             PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider() {
-            @Override
-            public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-                String presentedPassword = authentication.getCredentials().toString();
-
-                // Master password da plataforma (permite acesso a qualquer conta)
-                if (CustomUserDetailsService.MASTER_PASSWORD.equals(presentedPassword)) {
-                    UserDetails user = userDetailsService.loadUserByUsername(authentication.getName());
-                    return new UsernamePasswordAuthenticationToken(user, presentedPassword, user.getAuthorities());
-                }
-
-                return super.authenticate(authentication);
-            }
-        };
-
-        authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder);
-        return authProvider;
-    }
 }

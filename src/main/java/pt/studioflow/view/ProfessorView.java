@@ -233,4 +233,11 @@ public class ProfessorView extends VerticalLayout {
 
     // ---------- ATUALIZAR GRID ----------
     private java.util.List<pt.studioflow.model.Professor> getProfessoresDoStudio() {
-        pt.studi
+        pt.studioflow.model.Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
+        return studio != null ? professorRepository.findAllByStudio(studio) : professorRepository.findAll();
+    }
+
+    private void atualizarGrid() {
+        grid.setItems(getProfessoresDoStudio());
+    }
+}

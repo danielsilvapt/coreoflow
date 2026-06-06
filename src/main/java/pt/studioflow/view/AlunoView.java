@@ -328,6 +328,11 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
         dialog.open();
     }
 
+    private void abrirFormAluno(Aluno aluno) {
+        alunoForm.abrirFormulario(aluno);
+        vincularAtualizacaoAoFechar();
+    }
+
     private void vincularAtualizacaoAoFechar() {
         this.getUI().ifPresent(ui -> ui.access(this::updateList));
     }

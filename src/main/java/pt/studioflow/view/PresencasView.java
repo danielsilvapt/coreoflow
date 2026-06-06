@@ -418,4 +418,12 @@ public class PresencasView extends VerticalLayout {
             this.aluno = aluno;
         }
 
-        public 
+        public Aluno getAluno() {
+            return aluno;
+        }
+
+        public Map<LocalDate, Boolean> getPresencas() {
+            return presencas;
+        }
+    }
+}
