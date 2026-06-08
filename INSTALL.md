@@ -1,6 +1,6 @@
-# Cadenzio — Instalação em Servidor Hetzner
+# coreoflow — Instalação em Servidor Hetzner
 
-Guia de instalação da plataforma Cadenzio num servidor Hetzner com Ubuntu 22.04 LTS.
+Guia de instalação da plataforma coreoflow num servidor Hetzner com Ubuntu 22.04 LTS.
 
 ---
 
@@ -46,9 +46,9 @@ mysql_secure_installation
 ```sql
 mysql -u root -p
 
-CREATE DATABASE cadenzio CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'cadenzio_app'@'localhost' IDENTIFIED BY 'PASSWORD_FORTE_AQUI';
-GRANT ALL PRIVILEGES ON cadenzio.* TO 'cadenzio_app'@'localhost';
+CREATE DATABASE coreoflow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'coreoflow_app'@'localhost' IDENTIFIED BY 'NKgi406DS25!#*';
+GRANT ALL PRIVILEGES ON coreoflow.* TO 'coreoflow_app'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
 ```
@@ -58,7 +58,7 @@ EXIT;
 ## 4. Criar utilizador do sistema
 
 ```bash
-useradd -m -s /bin/bash cadenzio
+useradd -m -s /bin/bash coreoflow
 ```
 
 ---
@@ -70,13 +70,13 @@ useradd -m -s /bin/bash cadenzio
 ./mvnw clean package -Pproduction -DskipTests
 
 # O JAR gerado fica em:
-# target/cadenzio-0.0.1-SNAPSHOT.jar
+# target/coreoflow-0.0.1-SNAPSHOT.jar
 ```
 
 Copia o JAR para o servidor:
 
 ```bash
-scp target/cadenzio-0.0.1-SNAPSHOT.jar root@IP_DO_SERVIDOR:/opt/cadenzio/cadenzio.jar
+scp target/coreoflow-0.0.1-SNAPSHOT.jar root@IP_DO_SERVIDOR:/opt/coreoflow/coreoflow.jar
 ```
 
 ---
@@ -84,26 +84,31 @@ scp target/cadenzio-0.0.1-SNAPSHOT.jar root@IP_DO_SERVIDOR:/opt/cadenzio/cadenzi
 ## 6. Criar pasta da aplicação
 
 ```bash
-mkdir -p /opt/cadenzio/uploads/logos
-chown -R cadenzio:cadenzio /opt/cadenzio
+mkdir -p /opt/coreoflow/uploads/logos
+chown -R coreoflow:coreoflow /opt/coreoflow
 ```
+
+
+
+
+
 
 ---
 
 ## 7. Configurar o ficheiro de propriedades
 
-Cria o ficheiro de configuração em `/opt/cadenzio/application.properties`:
+Cria o ficheiro de configuração em `/opt/coreoflow/application.properties`:
 
 ```bash
-nano /opt/cadenzio/application.properties
+nano /opt/coreoflow/application.properties
 ```
 
 Conteúdo:
 
 ```properties
 # BASE DE DADOS
-spring.datasource.url=jdbc:mysql://127.0.0.1:3306/cadenzio?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
-spring.datasource.username=cadenzio_app
+spring.datasource.url=jdbc:mysql://127.0.0.1:3306/coreoflow?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+spring.datasource.username=coreoflow_app
 spring.datasource.password=PASSWORD_FORTE_AQUI
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 
@@ -113,15 +118,15 @@ spring.jpa.hibernate.ddl-auto=update
 # EMAIL (SMTP)
 spring.mail.host=smtp.gmail.com
 spring.mail.port=587
-spring.mail.username=noreply@cadenzio.pt
+spring.mail.username=noreply@coreoflow.pt
 spring.mail.password=APP_PASSWORD_GMAIL
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
-app.suporte.email=suporte@cadenzio.pt
+app.suporte.email=suporte@coreoflow.pt
 
 # LOGOS
-app.logos.dir=/opt/cadenzio/uploads/logos
-spring.web.resources.static-locations=classpath:/META-INF/resources/,classpath:/resources/,classpath:/static/,classpath:/public/,file:/opt/cadenzio/uploads/
+app.logos.dir=/opt/coreoflow/uploads/logos
+spring.web.resources.static-locations=classpath:/META-INF/resources/,classpath:/resources/,classpath:/static/,classpath:/public/,file:/opt/coreoflow/uploads/
 
 # SERVIDOR
 server.port=8080
@@ -132,27 +137,27 @@ server.port=8080
 ## 8. Criar serviço systemd
 
 ```bash
-nano /etc/systemd/system/cadenzio.service
+nano /etc/systemd/system/coreoflow.service
 ```
 
 Conteúdo:
 
 ```ini
 [Unit]
-Description=Cadenzio
+Description=coreoflow
 After=network.target mysql.service
 
 [Service]
-User=cadenzio
-WorkingDirectory=/opt/cadenzio
-ExecStart=/usr/bin/java -jar /opt/cadenzio/cadenzio.jar \
-  --spring.config.location=file:/opt/cadenzio/application.properties
+User=coreoflow
+WorkingDirectory=/opt/coreoflow
+ExecStart=/usr/bin/java -jar /opt/coreoflow/coreoflow.jar \
+  --spring.config.location=file:/opt/coreoflow/application.properties
 SuccessExitStatus=143
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=cadenzio
+SyslogIdentifier=coreoflow
 
 [Install]
 WantedBy=multi-user.target
@@ -162,14 +167,14 @@ Ativar e arrancar:
 
 ```bash
 systemctl daemon-reload
-systemctl enable cadenzio
-systemctl start cadenzio
+systemctl enable coreoflow
+systemctl start coreoflow
 
 # Verificar estado
-systemctl status cadenzio
+systemctl status coreoflow
 
 # Ver logs em tempo real
-journalctl -u cadenzio -f
+journalctl -u coreoflow -f
 ```
 
 ---
@@ -183,15 +188,15 @@ apt install -y nginx
 Criar configuração:
 
 ```bash
-nano /etc/nginx/sites-available/cadenzio
+nano /etc/nginx/sites-available/coreoflow
 ```
 
-Conteúdo (substitui `app.cadenzio.pt` pelo teu domínio):
+Conteúdo (substitui `app.coreoflow.pt` pelo teu domínio):
 
 ```nginx
 server {
     listen 80;
-    server_name app.cadenzio.pt;
+    server_name app.coreoflow.pt;
 
     client_max_body_size 20M;
 
@@ -213,7 +218,7 @@ server {
 Ativar:
 
 ```bash
-ln -s /etc/nginx/sites-available/cadenzio /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/coreoflow /etc/nginx/sites-enabled/
 nginx -t
 systemctl reload nginx
 ```
@@ -224,7 +229,7 @@ systemctl reload nginx
 
 ```bash
 apt install -y certbot python3-certbot-nginx
-certbot --nginx -d app.cadenzio.pt
+certbot --nginx -d app.coreoflow.pt
 
 # Renovação automática (já configurada pelo certbot)
 certbot renew --dry-run
@@ -263,7 +268,7 @@ Na tua máquina local:
 
 ```bash
 # Gerar chave (se ainda não tens)
-ssh-keygen -t rsa -b 4096 -C "github-actions-cadenzio"
+ssh-keygen -t rsa -b 4096 -C "github-actions-coreoflow"
 
 # Copiar chave pública para o servidor
 ssh-copy-id -i ~/.ssh/id_rsa.pub root@IP_DO_SERVIDOR
@@ -293,8 +298,8 @@ O deploy só dispara no branch `production`. Nunca faças push direto para esse 
 ## Estrutura de pastas no servidor
 
 ```
-/opt/cadenzio/
-├── cadenzio.jar          ← JAR da aplicação
+/opt/coreoflow/
+├── coreoflow.jar          ← JAR da aplicação
 ├── application.properties  ← Configuração (não versionar!)
 └── uploads/
     └── logos/              ← Logótipos dos estúdios
@@ -306,12 +311,12 @@ O deploy só dispara no branch `production`. Nunca faças push direto para esse 
 
 **Ver logs da aplicação:**
 ```bash
-journalctl -u cadenzio -n 100 --no-pager
+journalctl -u coreoflow -n 100 --no-pager
 ```
 
 **Reiniciar serviço:**
 ```bash
-systemctl restart cadenzio
+systemctl restart coreoflow
 ```
 
 **Verificar porta:**
@@ -321,5 +326,5 @@ ss -tlnp | grep 8080
 
 **Testar ligação à BD:**
 ```bash
-mysql -u cadenzio_app -p cadenzio
+mysql -u coreoflow_app -p coreoflow
 ```
