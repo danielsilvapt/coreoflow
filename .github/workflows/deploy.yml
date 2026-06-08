@@ -18,7 +18,7 @@ jobs:
           cache: 'maven'
 
       - name: Build with Maven
-        run: mvn clean package -DskipTests
+        run: mvn clean package -Pproduction -DskipTests
 
       - name: Copy JAR to Oracle via SCP
         uses: appleboy/scp-action@v0.1.7
