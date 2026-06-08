@@ -88,8 +88,8 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         loginCard.setMaxWidth("95vw");
 
         Image logo = new Image("/images/logo-coreoflow.png", "CoreoFlow");
-        logo.setWidth("240px");
-        logo.getStyle().set("margin-bottom", "15px");
+        logo.setWidth("300px");
+        logo.getStyle().set("margin-bottom", "5px");
 
         H1 title = new H1("CoreoFlow");
         title.getStyle()
@@ -103,7 +103,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         subtitle.getStyle()
                 .set("color", "rgba(255,255,255,0.7)")
                 .set("font-size", "11px")
-                .set("margin-bottom", "25px")
+                .set("margin-bottom", "15px")
                 .set("text-transform", "uppercase")
                 .set("letter-spacing", "5px");
 
