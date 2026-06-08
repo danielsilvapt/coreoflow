@@ -27,7 +27,7 @@ jobs:
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.REMOTE_KEY }}
           source: "target/*.jar"
-          target: "/home/ubuntu/"
+          target: "/opt/coreoflow/"
           strip_components: 1
 
       - name: Restart Systemd Service via SSH
@@ -37,6 +37,6 @@ jobs:
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.REMOTE_KEY }}
           script: |
-            sudo systemctl restart gestao-obidos-dance
+            sudo systemctl restart coreoflow
             sleep 5
-            sudo systemctl status gestao-obidos-dance
+            sudo systemctl status coreoflow
