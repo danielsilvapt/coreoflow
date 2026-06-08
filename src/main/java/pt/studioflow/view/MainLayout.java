@@ -126,13 +126,13 @@ public class MainLayout extends AppLayout {
                 String logoSrc;
                 String studioNome;
                 if (saForLogo || currentStudio == null) {
-                        logoSrc = "images/logo-coreoflow.png";
+                        logoSrc = "images/logo2-coreoflow.png";
                         studioNome = "CoreoFlow";
                 } else if (currentStudio.getLogoPath() != null && !currentStudio.getLogoPath().isBlank()) {
                         logoSrc = normalizarLogoPath(currentStudio.getLogoPath());
                         studioNome = currentStudio.getNome();
                 } else {
-                        logoSrc = "images/logo-coreoflow.png";
+                        logoSrc = "images/logo2-coreoflow.png";
                         studioNome = currentStudio.getNome();
                 }
 
