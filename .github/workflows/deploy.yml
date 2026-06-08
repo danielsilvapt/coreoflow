@@ -40,3 +40,4 @@ jobs:
             sudo systemctl restart coreoflow
             sleep 5
             sudo systemctl status coreoflow
+
