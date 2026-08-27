@@ -91,8 +91,6 @@ chown -R coreoflow:coreoflow /opt/coreoflow
 
 
 
-
-
 ---
 
 ## 7. Configurar o ficheiro de propriedades

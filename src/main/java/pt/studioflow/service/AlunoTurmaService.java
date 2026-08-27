@@ -5,11 +5,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.AlunoTurma;
+import pt.studioflow.model.EstadoMensalidade;
 import pt.studioflow.model.ListaEspera;
+import pt.studioflow.model.Mensalidade;
 import pt.studioflow.model.Turma;
 import pt.studioflow.repository.AlunoTurmaRepository;
 import pt.studioflow.repository.ListaEsperaRepository;
+import pt.studioflow.repository.MensalidadeRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -17,11 +21,14 @@ public class AlunoTurmaService {
 
     private final AlunoTurmaRepository repository;
     private final ListaEsperaRepository listaEsperaRepository;
+    private final MensalidadeRepository mensalidadeRepository;
 
     public AlunoTurmaService(AlunoTurmaRepository repository,
-                              ListaEsperaRepository listaEsperaRepository) {
+                              ListaEsperaRepository listaEsperaRepository,
+                              MensalidadeRepository mensalidadeRepository) {
         this.repository = repository;
         this.listaEsperaRepository = listaEsperaRepository;
+        this.mensalidadeRepository = mensalidadeRepository;
     }
 
     @Transactional
@@ -35,8 +42,26 @@ public class AlunoTurmaService {
 
     @Transactional
     public void remover(Aluno aluno, Turma turma) {
+        apagarMensalidadesFuturasPorEmitir(aluno, turma);
         repository.deleteByAlunoAndTurma(aluno, turma);
         notificarProximoNaEspera(turma);
+    }
+
+    /**
+     * Apaga mensalidades ainda não emitidas dos meses seguintes ao atual para esta
+     * turma. O mês corrente fica intacto (pode já estar faturado) e mensalidades já
+     * faturadas/pagas nunca são apagadas, para preservar o histórico financeiro.
+     */
+    private void apagarMensalidadesFuturasPorEmitir(Aluno aluno, Turma turma) {
+        LocalDate hoje = LocalDate.now();
+        List<Mensalidade> futuras = mensalidadeRepository
+                .findMensalidadesFuturas(aluno, turma, hoje.getYear(), hoje.getMonth());
+        List<Mensalidade> porEmitir = futuras.stream()
+                .filter(m -> m.getEstado() == EstadoMensalidade.POR_EMITIR)
+                .toList();
+        if (!porEmitir.isEmpty()) {
+            mensalidadeRepository.deleteAll(porEmitir);
+        }
     }
 
     /**

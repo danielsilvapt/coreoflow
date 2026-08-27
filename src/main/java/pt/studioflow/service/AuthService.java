@@ -79,12 +79,15 @@ public class AuthService {
         Optional<UserDetails> userDetails = authenticationContext.getAuthenticatedUser(UserDetails.class);
         if (userDetails.isEmpty()) return null;
 
-        String usernameInput = userDetails.get().getUsername();
         // O email do aluno está associado ao email do User
         Optional<User> user = getCurrentUser();
         if (user.isEmpty()) return null;
 
-        return alunoRepository.findByEmailWithTurmas(user.get().getEmail()).orElse(null);
+        Studio studio = TenantContext.getCurrentStudio();
+        if (studio == null) return null;
+
+        return alunoRepository.findByEmailAndStudioWithTurmas(user.get().getEmail(), studio)
+                .stream().findFirst().orElse(null);
     }
 
     public boolean isAuthenticated() {

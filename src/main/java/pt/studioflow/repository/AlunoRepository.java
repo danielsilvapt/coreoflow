@@ -34,6 +34,9 @@ public interface AlunoRepository extends JpaRepository<Aluno, Long> {
 
     List<Aluno> findByAtivoAndStudio(int ativo, Studio studio);
 
+    @Query("SELECT DISTINCT a FROM Aluno a LEFT JOIN FETCH a.turmas WHERE a.email = :email AND a.studio = :studio")
+    List<Aluno> findByEmailAndStudioWithTurmas(@Param("email") String email, @Param("studio") Studio studio);
+
     // ===================== LEGADO (sem filtro de studio) =====================
 
     List<Aluno> findByTurmas(Turma turma);

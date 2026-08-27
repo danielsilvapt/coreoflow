@@ -112,6 +112,10 @@ public class Aluno {
     @Column(name = "carimbo_data_hora")
     private LocalDate carimboDataHora;
 
+    /** true se o pedido PENDENTE atual é uma renovação de matrícula (não uma nova inscrição). */
+    @Column(name = "pedido_renovacao")
+    private boolean pedidoRenovacao = false;
+
     @Lob
     @Column(name = "foto", columnDefinition = "LONGBLOB")
     private byte[] foto; // Foto do aluno em Base64 (armazenada como bytes)
@@ -178,7 +182,7 @@ public class Aluno {
     }
 
     public void setEmail(String email) {
-        this.email = email;
+        this.email = email != null ? email.trim() : null;
     }
 
     public String getMorada() {
@@ -353,4 +357,7 @@ public class Aluno {
 
     public Studio getStudio() { return studio; }
     public void setStudio(Studio studio) { this.studio = studio; }
+
+    public boolean isPedidoRenovacao() { return pedidoRenovacao; }
+    public void setPedidoRenovacao(boolean pedidoRenovacao) { this.pedidoRenovacao = pedidoRenovacao; }
 }

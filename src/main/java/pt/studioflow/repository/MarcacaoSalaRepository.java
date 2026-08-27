@@ -5,13 +5,16 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import jakarta.transaction.Transactional;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.MarcacaoSala;
 import pt.studioflow.model.Professor;
 import pt.studioflow.model.Sala;
+import pt.studioflow.model.Turma;
 
 public interface MarcacaoSalaRepository extends JpaRepository<MarcacaoSala, Long> {
         List<MarcacaoSala> findBySalaAndDataBetween(
@@ -43,4 +46,9 @@ public interface MarcacaoSalaRepository extends JpaRepository<MarcacaoSala, Long
 
     @Query("SELECT DISTINCT m FROM MarcacaoSala m LEFT JOIN FETCH m.alunos WHERE m.studio = :studio AND m.data = :data")
     List<MarcacaoSala> findAllWithAlunosByDataAndStudio(@Param("studio") Studio studio, @Param("data") LocalDate data);
+
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE MarcacaoSala m SET m.turma = null WHERE m.turma = :turma")
+    void desvincularTurma(@Param("turma") Turma turma);
 }

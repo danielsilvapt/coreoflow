@@ -33,6 +33,7 @@ import pt.studioflow.repository.ModalidadeRepository;
 import pt.studioflow.repository.ProfessorRepository;
 import pt.studioflow.repository.SalaRepository;
 import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.service.TurmaService;
 
 @Route(value = "turma", layout = MainLayout.class)
 @PageTitle("Turmas | CoreoFlow")
@@ -44,20 +45,22 @@ public class TurmaView extends VerticalLayout {
     private final ProfessorRepository professorRepository;
     private final ModalidadeRepository modalidadeRepository;
     private final AlunoTurmaRepository alunoTurmaRepository;
+    private final TurmaService turmaService;
 
     public final Grid<Turma> grid = new Grid<>(Turma.class, false);
     private final TurmaForm turmaForm;
 
     public TurmaView(TurmaRepository turmaRepository, ModalidadeRepository modalidadeRepository,
             SalaRepository salaRepository, ProfessorRepository professorRepository,
-            AlunoTurmaRepository alunoTurmaRepository) {
+            AlunoTurmaRepository alunoTurmaRepository, TurmaService turmaService) {
         this.turmaRepository = turmaRepository;
         this.modalidadeRepository = modalidadeRepository;
         this.salaRepository = salaRepository;
         this.professorRepository = professorRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
+        this.turmaService = turmaService;
         this.turmaForm = new TurmaForm(turmaRepository, modalidadeRepository, this, salaRepository,
-                professorRepository);
+                professorRepository, turmaService);
 
         setSizeFull();
         setPadding(false);

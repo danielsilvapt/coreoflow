@@ -137,18 +137,15 @@ public class ValidacaoInscricoesView extends VerticalLayout {
             return badge;
         }).setHeader("TIPO").setAutoWidth(true);
 
-        grid.addColumn(aluno -> {
-            if (aluno.getTurmas() != null && !aluno.getTurmas().isEmpty()) {
-                return aluno.getTurmas().stream()
-                        .map(at -> at.getTurma().getDescricao())
-                        .collect(Collectors.joining(", "));
-            }
-            String morada = aluno.getMorada();
-            if (morada != null && morada.contains("[")) {
-                return morada.substring(morada.indexOf("[") + 1, morada.indexOf("]"));
-            }
-            return "Não definida";
-        }).setHeader("INTERESSES / TURMA").setAutoWidth(true);
+        grid.addComponentColumn(aluno -> {
+            Span badge = new Span(aluno.isPedidoRenovacao() ? "RENOVAÇÃO" : "NOVA INSCRIÇÃO");
+            badge.getElement().getThemeList().add("badge pill " + (aluno.isPedidoRenovacao() ? "contrast" : "primary"));
+            return badge;
+        }).setHeader("PEDIDO").setAutoWidth(true);
+
+        grid.addColumn(Aluno::getCarimboDataHora).setHeader("DATA DO PEDIDO").setAutoWidth(true).setSortable(true);
+
+        grid.addComponentColumn(this::criarCelulaTurmas).setHeader("INTERESSES / TURMA").setAutoWidth(true);
 
         grid.addComponentColumn(aluno -> {
             Button btnVer = new Button("Rever Dados", VaadinIcon.EYE.create());
@@ -191,8 +188,10 @@ public class ValidacaoInscricoesView extends VerticalLayout {
 
         if (aluno.getTurmas() != null && !aluno.getTurmas().isEmpty()) {
             content.add(new Hr(), new H3("Turma Vinculada"));
-            content.add(new Span(aluno.getTurmas().stream().map(at -> at.getTurma().getDescricao())
-                    .collect(Collectors.joining(", "))));
+            HorizontalLayout badges = new HorizontalLayout();
+            badges.setSpacing(true);
+            aluno.getTurmas().forEach(at -> badges.add(badgeTurma(at.getTurma())));
+            content.add(badges);
         } else if (moradaFull.contains("[")) {
             content.add(new Hr(), new H3("Preferências de Aula"));
             String interesses = moradaFull.substring(moradaFull.indexOf("[") + 1, moradaFull.indexOf("]"));
@@ -228,6 +227,32 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         dialog.open();
     }
 
+    private Component criarCelulaTurmas(Aluno aluno) {
+        if (aluno.getTurmas() != null && !aluno.getTurmas().isEmpty()) {
+            HorizontalLayout badges = new HorizontalLayout();
+            badges.setSpacing(true);
+            aluno.getTurmas().forEach(at -> badges.add(badgeTurma(at.getTurma())));
+            return badges;
+        }
+        String morada = aluno.getMorada();
+        if (morada != null && morada.contains("[")) {
+            return new Span(morada.substring(morada.indexOf("[") + 1, morada.indexOf("]")));
+        }
+        return new Span("Não definida");
+    }
+
+    private Span badgeTurma(Turma turma) {
+        Span badge = new Span(turma.getDescricao());
+        String cor = turma.getCor() != null && !turma.getCor().isBlank() ? turma.getCor() : "#95a5a6";
+        badge.getStyle()
+                .set("background", cor)
+                .set("color", "white")
+                .set("padding", "2px 10px")
+                .set("border-radius", "12px")
+                .set("font-size", "12px");
+        return badge;
+    }
+
     private TextField createField(String label, Object value) {
         TextField tf = new TextField(label);
         tf.setValue(value != null ? String.valueOf(value) : "N/D");
@@ -248,6 +273,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
 
         aluno.setStatus(AlunoStatus.ATIVO);
         aluno.setAtivo(true);
+        aluno.setPedidoRenovacao(false);
         repository.save(aluno);
 
         vincularTurmasEFinanceiro(aluno, notasComInteresses);
@@ -257,13 +283,16 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     }
 
     private void vincularTurmasEFinanceiro(Aluno aluno, String notas) {
-        // Cenário A: O aluno já veio com a associação explícita direta do formulário
+        // Cenário A: o aluno já tem turmas associadas (novas inscrições nunca têm;
+        // acontece em renovações, ou quando a turma já veio associada diretamente).
+        // Não faz "return": num pedido de renovação pode haver, no texto de
+        // interesses, turmas novas que o aluno ainda não tinha — o Cenário B abaixo
+        // trata dessas (é idempotente: só cria associação se ainda não existir).
         if (aluno.getTurmas() != null && !aluno.getTurmas().isEmpty()) {
             aluno.getTurmas().forEach(at -> {
                 mensalidadeService.gerarMensalidadesParaAluno(aluno, at.getTurma());
                 notificarProfessor(at.getTurma(), aluno); // Dispara notificação por e-mail
             });
-            return;
         }
 
         if (notas == null)

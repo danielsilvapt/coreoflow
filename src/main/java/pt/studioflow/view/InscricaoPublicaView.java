@@ -32,14 +32,18 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.info.BuildProperties;
+import pt.studioflow.config.MensalidadeConfig;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Aluno.AlunoStatus;
+import pt.studioflow.model.Idioma;
+import pt.studioflow.model.Modalidade;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.StudioRepository;
 import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.service.EmailService;
+import pt.studioflow.service.TranslationService;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -56,25 +60,32 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
     private final AlunoRepository alunoRepository;
     private final TurmaRepository turmaRepository;
     private final StudioRepository studioRepository;
+    private final MensalidadeConfig mensalidadeConfig;
+    private final TranslationService translationService;
     private final Binder<Aluno> binder = new Binder<>(Aluno.class);
+    private Idioma idiomaAtual = Idioma.PT;
 
     @Autowired
     private final EmailService emailService;
 
     private final Map<Long, Select<String>> mapaFrequencias = new HashMap<>();
     private final VerticalLayout containerFrequencias = new VerticalLayout();
+    private final Div resumoPagamento = new Div();
 
     private byte[] fotoBytesTemporaria = null;
     private Studio studioAtual = null;
     private final BuildProperties buildProperties;
 
     public InscricaoPublicaView(AlunoRepository alunoRepository, TurmaRepository turmaRepository,
-            EmailService emailService, StudioRepository studioRepository, BuildProperties buildProperties) {
+            EmailService emailService, StudioRepository studioRepository, BuildProperties buildProperties,
+            MensalidadeConfig mensalidadeConfig, TranslationService translationService) {
         this.alunoRepository = alunoRepository;
         this.turmaRepository = turmaRepository;
         this.emailService = emailService;
         this.studioRepository = studioRepository;
         this.buildProperties = buildProperties;
+        this.mensalidadeConfig = mensalidadeConfig;
+        this.translationService = translationService;
     }
 
     @Override
@@ -111,12 +122,23 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         Image logo = new Image(logoSrc, studioNomeDisplay);
         logo.setWidth("min(180px, 40vw)");
 
-        H2 titulo = new H2("Ficha de Inscrição");
-        Span subtitulo = new Span("Junte-se à nossa família de dança!");
+        H2 titulo = new H2(translationService.t("inscricao.titulo", idiomaAtual));
+        Span subtitulo = new Span(translationService.t("inscricao.subtitulo", idiomaAtual));
 
         VerticalLayout header = new VerticalLayout(logo, titulo, subtitulo);
         header.setAlignItems(Alignment.CENTER);
         header.setSpacing(false);
+
+        java.util.List<Idioma> idiomasStudio = studioAtual != null
+                ? studioAtual.getIdiomasDisponiveisList() : java.util.List.of(Idioma.PT);
+        Select<Idioma> seletorIdioma = new Select<>();
+        if (idiomasStudio.size() > 1) {
+            seletorIdioma.setItems(idiomasStudio);
+            seletorIdioma.setValue(Idioma.PT);
+            seletorIdioma.setItemLabelGenerator(Idioma::getLabel);
+            seletorIdioma.getStyle().set("margin-top", "8px");
+            header.add(seletorIdioma);
+        }
 
         // --- 1.5. COMPONENTE DE UPLOAD DA FOTO (NOVO) ---
         MemoryBuffer buffer = new MemoryBuffer();
@@ -241,6 +263,15 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         containerFrequencias.setSpacing(true);
         containerFrequencias.setWidthFull();
 
+        resumoPagamento.getStyle()
+                .set("background", "#f8f9fa")
+                .set("border-radius", "10px")
+                .set("padding", "16px")
+                .set("margin-top", "8px");
+
+        Runnable atualizarResumo = () -> atualizarResumoInscricao(
+                turmasInteresse.getValue(), dataNascimento.getValue(), socio.getValue());
+
         turmasInteresse.addValueChangeListener(event -> {
             Set<Turma> atuais = event.getValue();
             mapaFrequencias.keySet().removeIf(id -> {
@@ -261,6 +292,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
                     freqSelect.setValue("2 vezes / semana");
                     freqSelect.setLabel("Frequência em " + t.getDescricao());
                     freqSelect.setWidthFull();
+                    freqSelect.addValueChangeListener(ev -> atualizarResumo.run());
 
                     HorizontalLayout row = new HorizontalLayout(new Icon(VaadinIcon.ARROW_RIGHT), freqSelect);
                     row.setWidthFull();
@@ -271,7 +303,12 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
                     mapaFrequencias.put(t.getId(), freqSelect);
                 }
             });
+
+            atualizarResumo.run();
         });
+
+        dataNascimento.addValueChangeListener(ev -> atualizarResumo.run());
+        socio.addValueChangeListener(ev -> atualizarResumo.run());
 
         // --- 4. BINDER ---
         binder.forField(nomeCompleto).asRequired("Obrigatório").bind(Aluno::getNomeCompleto, Aluno::setNomeCompleto);
@@ -315,8 +352,21 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         // Inserção ordenada dos componentes dentro do card (Cabeçalho -> Upload Foto ->
         // Formulário -> Turmas)
+        seletorIdioma.addValueChangeListener(ev -> {
+            idiomaAtual = ev.getValue();
+            titulo.setText(translationService.t("inscricao.titulo", idiomaAtual));
+            subtitulo.setText(translationService.t("inscricao.subtitulo", idiomaAtual));
+            nomeCompleto.setLabel(translationService.t("inscricao.nomeCompleto", idiomaAtual));
+            dataNascimento.setLabel(translationService.t("inscricao.dataNascimento", idiomaAtual));
+            telemovel.setLabel(translationService.t("inscricao.telemovel", idiomaAtual));
+            email.setLabel(translationService.t("inscricao.email", idiomaAtual));
+            morada.setLabel(translationService.t("inscricao.morada", idiomaAtual));
+            turmasInteresse.setLabel(translationService.t("inscricao.turmas", idiomaAtual));
+            btnSubmeter.setText(translationService.t("inscricao.submeter", idiomaAtual));
+        });
+
         VerticalLayout card = new VerticalLayout(header, layoutFoto, form, turmasInteresse, containerFrequencias,
-                btnSubmeter);
+                resumoPagamento, btnSubmeter);
         card.setMaxWidth("850px");
         card.setWidth("100%");
         card.getStyle()
@@ -349,6 +399,42 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         add(footer);
     } // fim construirUI
+
+    private void atualizarResumoInscricao(Set<Turma> selecionadas, LocalDate dataNasc, boolean socioVal) {
+        resumoPagamento.removeAll();
+        if (selecionadas.isEmpty() || studioAtual == null) return;
+
+        boolean crianca = dataNasc != null && java.time.Period.between(dataNasc, LocalDate.now()).getYears() < 18;
+
+        double mensalidadeBaseTotal = selecionadas.stream()
+                .mapToDouble(t -> {
+                    Select<String> freqSelect = mapaFrequencias.get(t.getId());
+                    int freq = (freqSelect != null && "1 vez / semana".equals(freqSelect.getValue())) ? 1 : 2;
+                    return mensalidadeConfig.calcularMensalidade(studioAtual, crianca ? "crianca" : "adulto", freq, socioVal);
+                }).sum();
+
+        long numModalidades = selecionadas.stream().map(Turma::getModalidade).map(Modalidade::getId).distinct().count();
+
+        MensalidadeConfig.ResumoInscricao resumo = mensalidadeConfig.calcularResumo(
+                studioAtual, mensalidadeBaseTotal, false, false, (int) numModalidades);
+
+        resumoPagamento.add(
+                linhaResumo("Mensalidade estimada", resumo.mensalidadeBase(), false),
+                linhaResumo("Taxa de inscrição", resumo.taxa(), false),
+                linhaResumo("Desconto +modalidades", -resumo.descontoMultiModalidade(), resumo.descontoMultiModalidade() > 0),
+                linhaResumo("Total estimado (1º pagamento)", resumo.total(), false));
+    }
+
+    private HorizontalLayout linhaResumo(String label, double valor, boolean destacarDesconto) {
+        Span nome = new Span(label);
+        Span val = new Span(String.format("%.2f €", valor));
+        val.getStyle().set("font-weight", "600");
+        if (destacarDesconto) val.getStyle().set("color", "#27ae60");
+        HorizontalLayout linha = new HorizontalLayout(nome, val);
+        linha.setWidthFull();
+        linha.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
+        return linha;
+    }
 
     private void submeter(Set<Turma> selecionadas) {
         Aluno novo = new Aluno();
@@ -390,8 +476,8 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         String nome = studioAtual != null ? studioAtual.getNome() : "o estúdio";
         VerticalLayout layout = new VerticalLayout(
                 new com.vaadin.flow.component.icon.Icon(com.vaadin.flow.component.icon.VaadinIcon.CHECK_CIRCLE),
-                new H2("Enviado!"),
-                new Span(nome + " entrará em contacto muito em breve."));
+                new H2(translationService.t("inscricao.sucesso.titulo", idiomaAtual)),
+                new Span(nome + translationService.t("inscricao.sucesso.msg", idiomaAtual)));
         layout.setAlignItems(Alignment.CENTER);
         add(layout);
     }

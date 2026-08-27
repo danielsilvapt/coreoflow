@@ -6,6 +6,7 @@ import pt.studioflow.model.ListaEspera;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
 
+import jakarta.transaction.Transactional;
 import java.util.List;
 
 @Repository
@@ -18,4 +19,7 @@ public interface ListaEsperaRepository extends JpaRepository<ListaEspera, Long> 
     List<ListaEspera> findByTurmaAndStudioOrderByDataInscricaoAsc(Turma turma, Studio studio);
 
     long countByTurmaAndEstado(Turma turma, ListaEspera.Estado estado);
+
+    @Transactional
+    void deleteByTurma(Turma turma);
 }
