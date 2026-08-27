@@ -27,10 +27,12 @@ import jakarta.annotation.security.RolesAllowed;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.textfield.NumberField;
 import pt.studioflow.model.CampoAluno;
+import pt.studioflow.model.Idioma;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.StudioModulo;
 import pt.studioflow.service.LogoUploadService;
 import pt.studioflow.service.StudioService;
+import pt.studioflow.view.component.ColorPickerField;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -194,8 +196,10 @@ public class StudioAdminView extends VerticalLayout {
         TextField email = new TextField("Email de Contacto");
         email.setValue(studio.getEmailContacto() != null ? studio.getEmailContacto() : "");
 
-        TextField corPrimaria = new TextField("Cor Primária (hex)");
-        corPrimaria.setValue(studio.getCorPrimaria() != null ? studio.getCorPrimaria() : "#4A90E2");
+        ColorPickerField corPrimaria = new ColorPickerField("Cor Primária",
+                studio.getCorPrimaria() != null ? studio.getCorPrimaria() : "#4A90E2");
+        ColorPickerField corSecundaria = new ColorPickerField("Cor Secundária",
+                studio.getCorSecundaria() != null ? studio.getCorSecundaria() : "#2D3436");
 
         TextField vendusApiKey = new TextField("Chave API Vendus");
         vendusApiKey.setValue(studio.getVendusApiKey() != null ? studio.getVendusApiKey() : "");
@@ -236,14 +240,23 @@ public class StudioAdminView extends VerticalLayout {
         NumberField descontoMais65 = new NumberField("Desconto +65 anos (%)");
         descontoMais65.setValue(studio.getDescontoMais65Percentagem());
 
+        NumberField taxaInscricao = new NumberField("Taxa de Inscrição (€)");
+        taxaInscricao.setValue(studio.getTaxaInscricao() != null ? studio.getTaxaInscricao() : 0.0);
+        taxaInscricao.setMin(0);
+
+        NumberField taxaRenovacao = new NumberField("Taxa de Renovação (€)");
+        taxaRenovacao.setValue(studio.getTaxaRenovacao() != null ? studio.getTaxaRenovacao() : 0.0);
+        taxaRenovacao.setMin(0);
+
         Checkbox ativo = new Checkbox("Estúdio ativo");
         ativo.setValue(studio.isAtivo());
 
-        form.add(nome, slug, email, corPrimaria, vendusApiKey, emailCriador,
+        form.add(nome, slug, email, corPrimaria, corSecundaria, vendusApiKey, emailCriador,
                 emailAssinante1, emailAssinante2,
                 mensalidadeCrianca1x, mensalidadeCrianca2x,
                 mensalidadeAdulto1x, mensalidadeAdulto2x, naoSocioAdicional,
                 descontoFamiliares, descontoDirecao, descontoMaisModal, descontoMais65,
+                taxaInscricao, taxaRenovacao,
                 ativo);
 
         // --- Campos do aluno ---
@@ -318,12 +331,25 @@ public class StudioAdminView extends VerticalLayout {
         }
         modulosGroup.setValue(selecionados);
 
+        // --- Idiomas do formulário público ---
+        H4 secIdiomas = new H4("Idiomas do Formulário Público");
+        secIdiomas.getStyle().set("margin", "12px 0 4px 0");
+
+        CheckboxGroup<Idioma> idiomasGroup = new CheckboxGroup<>();
+        idiomasGroup.setLabel("Idiomas disponíveis na inscrição/renovação online");
+        idiomasGroup.setItems(Idioma.values());
+        idiomasGroup.setItemLabelGenerator(Idioma::getLabel);
+        idiomasGroup.addThemeVariants(CheckboxGroupVariant.LUMO_VERTICAL);
+        idiomasGroup.setWidthFull();
+        idiomasGroup.setValue(new HashSet<>(studio.getIdiomasDisponiveisList()));
+
         VerticalLayout content = new VerticalLayout(
                 logoSection, form,
                 secCampos, camposGroup,
                 secFat, faturacaoAuto,
                 secRemun, tipoRemun, valorRemun,
-                secModulos, modulosGroup);
+                secModulos, modulosGroup,
+                secIdiomas, idiomasGroup);
         content.setPadding(false);
         content.setSpacing(true);
 
@@ -335,7 +361,8 @@ public class StudioAdminView extends VerticalLayout {
             studio.setNome(nome.getValue().trim());
             studio.setSlug(slug.getValue().trim().toLowerCase());
             studio.setEmailContacto(email.getValue().trim());
-            studio.setCorPrimaria(corPrimaria.getValue().trim());
+            studio.setCorPrimaria(corPrimaria.getValue());
+            studio.setCorSecundaria(corSecundaria.getValue());
             studio.setLogoPath(pendingLogoPath[0]);
             studio.setVendusApiKey(vendusApiKey.getValue().trim());
             studio.setEmailCriadorTransferencias(emailCriador.getValue().trim());
@@ -350,6 +377,8 @@ public class StudioAdminView extends VerticalLayout {
             studio.setDescontoDirecaoPercentagem(descontoDirecao.getValue());
             studio.setDescontoMaisModalidadesPercentagem(descontoMaisModal.getValue());
             studio.setDescontoMais65Percentagem(descontoMais65.getValue());
+            studio.setTaxaInscricao(taxaInscricao.getValue());
+            studio.setTaxaRenovacao(taxaRenovacao.getValue());
             studio.setAtivo(ativo.getValue());
 
             // Faturação
@@ -367,6 +396,10 @@ public class StudioAdminView extends VerticalLayout {
             String modulosStr = modulosGroup.getValue().stream()
                     .map(StudioModulo::name).collect(Collectors.joining(","));
             studio.setModulosAtivos(modulosStr);
+
+            // Idiomas
+            studio.setIdiomasDisponiveis(idiomasGroup.getValue().stream()
+                    .map(Idioma::name).collect(Collectors.joining(",")));
 
             studioService.save(studio);
             Notification.show("Estúdio guardado!").addThemeVariants(NotificationVariant.LUMO_SUCCESS);

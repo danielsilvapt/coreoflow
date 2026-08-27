@@ -16,6 +16,12 @@ import pt.studioflow.model.Sala;
 import pt.studioflow.model.Turma;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
+import pt.studioflow.repository.AvaliacaoAlunoRepository;
+import pt.studioflow.repository.ListaEsperaRepository;
+import pt.studioflow.repository.MarcacaoSalaRepository;
+import pt.studioflow.repository.MensalidadeRepository;
+import pt.studioflow.repository.OcorrenciaAulaRepository;
+import pt.studioflow.repository.PresencaRepository;
 import pt.studioflow.repository.TurmaRepository;
 
 @Service
@@ -29,6 +35,24 @@ public class TurmaService {
 
     @Autowired
     private AlunoTurmaRepository alunoTurmaRepository;
+
+    @Autowired
+    private MensalidadeRepository mensalidadeRepository;
+
+    @Autowired
+    private PresencaRepository presencaRepository;
+
+    @Autowired
+    private AvaliacaoAlunoRepository avaliacaoAlunoRepository;
+
+    @Autowired
+    private ListaEsperaRepository listaEsperaRepository;
+
+    @Autowired
+    private OcorrenciaAulaRepository ocorrenciaAulaRepository;
+
+    @Autowired
+    private MarcacaoSalaRepository marcacaoSalaRepository;
 
     // =========================
     // TURMAS
@@ -51,7 +75,28 @@ public class TurmaService {
 
     @Transactional
     public void delete(Turma turma) {
+        // AlunoTurma e Aula têm cascade a partir de Turma; as restantes entidades
+        // que referenciam turma_id precisam de ser limpas manualmente para evitar
+        // violação de FK (mensalidades, presenças, avaliações, lista de espera,
+        // ocorrências de aula). Marcações de sala mantêm-se, só perdem a turma associada.
+        // Flush incremental a cada passo: evita que o flush final tenha de
+        // ordenar deletes pendentes em várias entidades relacionadas de uma vez
+        // (ambíguo/frágil no cascade do Hibernate quando a turma também vai ser
+        // apagada na mesma transação).
+        mensalidadeRepository.deleteByTurma(turma);
+        mensalidadeRepository.flush();
+        presencaRepository.deleteByTurma(turma);
+        presencaRepository.flush();
+        avaliacaoAlunoRepository.deleteByTurma(turma);
+        avaliacaoAlunoRepository.flush();
+        listaEsperaRepository.deleteByTurma(turma);
+        listaEsperaRepository.flush();
+        ocorrenciaAulaRepository.deleteByTurma(turma);
+        ocorrenciaAulaRepository.flush();
+        marcacaoSalaRepository.desvincularTurma(turma);
+        marcacaoSalaRepository.flush();
         turmaRepository.delete(turma);
+        turmaRepository.flush();
     }
 
     // =========================

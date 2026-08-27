@@ -47,6 +47,7 @@ public class DashboardView extends Div {
         private final ProfessorRepository professorRepository;
         private final RegistoHorasRepository registoHorasRepository;
         private final MarcacaoSalaRepository marcacaoSalaRepository;
+        private final pt.studioflow.service.DashboardService dashboardService;
 
         public DashboardView(
                         AlunoRepository alunoRepository,
@@ -58,7 +59,8 @@ public class DashboardView extends Div {
                         UserRepository userRepository,
                         ProfessorRepository professorRepository,
                         RegistoHorasRepository registoHorasRepository,
-                        MarcacaoSalaRepository marcacaoSalaRepository) {
+                        MarcacaoSalaRepository marcacaoSalaRepository,
+                        pt.studioflow.service.DashboardService dashboardService) {
 
                 this.alunoRepository = alunoRepository;
                 this.turmaRepository = turmaRepository;
@@ -70,6 +72,7 @@ public class DashboardView extends Div {
                 this.professorRepository = professorRepository;
                 this.registoHorasRepository = registoHorasRepository;
                 this.marcacaoSalaRepository = marcacaoSalaRepository;
+                this.dashboardService = dashboardService;
 
                 boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
@@ -279,6 +282,12 @@ public class DashboardView extends Div {
                                         valorGrande(String.valueOf(novos.size()), "#FFD700"));
                         cNovos.addClickListener(e -> abrirModalNovosAlunos(novos));
                         gridLayout.add(cNovos);
+
+                        if (studio != null) {
+                                LocalDate inicioAnoLetivo = LocalDate.of(
+                                                hoje.getMonthValue() >= 9 ? hoje.getYear() : hoje.getYear() - 1, 9, 1);
+                                gridLayout.add(criarCardRenovacoes(todosAlunos, inicioAnoLetivo));
+                        }
 
                         LocalDate lR = hoje.minusDays(15);
                         List<Aluno> risco = todosAlunos.stream().filter(Aluno::isAtivo).filter(a -> {
@@ -593,6 +602,63 @@ public class DashboardView extends Div {
                 Dialog d = new Dialog();
                 d.setHeaderTitle(t);
                 d.add(c);
+                d.open();
+        }
+
+        private Div criarCardRenovacoes(List<Aluno> alunosDoStudio, LocalDate inicioAnoLetivo) {
+                long pendentes = dashboardService.countRenovacoesPendentes(alunosDoStudio);
+                long concluidas = dashboardService.countRenovacoesConcluidasAnoLetivo(alunosDoStudio, inicioAnoLetivo);
+                long elegiveis = dashboardService.countElegiveisRenovacaoAnoLetivo(alunosDoStudio, inicioAnoLetivo);
+
+                VerticalLayout content = new VerticalLayout();
+                content.setPadding(false);
+                content.setSpacing(false);
+                content.getStyle().set("gap", "6px");
+
+                HorizontalLayout linhaTopo = new HorizontalLayout(
+                                valorGrande(String.valueOf(pendentes), pendentes > 0 ? "#e65100" : "#607d8b"),
+                                new Span("pedidos por validar"));
+                linhaTopo.setAlignItems(FlexComponent.Alignment.BASELINE);
+
+                ProgressBar pb = new ProgressBar();
+                pb.setWidthFull();
+                pb.setValue(elegiveis > 0 ? Math.max(0.0, Math.min(1.0, (double) concluidas / elegiveis)) : 0.0);
+
+                Span legenda = new Span(concluidas + " de " + elegiveis + " alunos elegíveis já renovaram este ano letivo");
+                legenda.getStyle().set("font-size", "12px").set("color", "#7f8c8d");
+
+                content.add(linhaTopo, pb, legenda);
+
+                Div card = criarCard("Renovações", VaadinIcon.REFRESH, content);
+                card.getStyle().set("grid-column", "1 / -1");
+                card.addClickListener(e -> abrirModalRenovacoesPendentes(alunosDoStudio));
+                return card;
+        }
+
+        private void abrirModalRenovacoesPendentes(List<Aluno> alunosDoStudio) {
+                List<Aluno> pendentes = dashboardService.listarRenovacoesPendentes(alunosDoStudio);
+
+                Dialog d = new Dialog();
+                d.setHeaderTitle("Renovações Pendentes de Validação");
+                d.setWidth("650px");
+
+                if (pendentes.isEmpty()) {
+                        d.add(new Span("Não há pedidos de renovação por validar."));
+                } else {
+                        Grid<Aluno> g = new Grid<>(Aluno.class, false);
+                        g.setItems(pendentes);
+                        g.addColumn(Aluno::getNomeCompleto).setHeader("Nome").setFlexGrow(2);
+                        g.addColumn(a -> a.getTurmas() != null && !a.getTurmas().isEmpty()
+                                        ? a.getTurmas().stream().map(at -> at.getTurma().getDescricao())
+                                                        .collect(Collectors.joining(", "))
+                                        : "—").setHeader("Turma Atual").setFlexGrow(2);
+                        g.addColumn(Aluno::getDataInscricaoRenovacao).setHeader("Pedido em");
+                        d.add(g);
+
+                        Button btnIr = new Button("Ir para Validação de Inscrições",
+                                        e -> getUI().ifPresent(ui -> ui.navigate("validar-inscricoes")));
+                        d.getFooter().add(btnIr);
+                }
                 d.open();
         }
 

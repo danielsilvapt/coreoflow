@@ -118,6 +118,27 @@ public class Studio {
     @Column(name = "desconto_mais65_percentagem")
     private Double descontoMais65Percentagem = 10.0;
 
+    /** Taxa de inscrição cobrada uma vez a novos alunos. */
+    @Column(name = "taxa_inscricao")
+    private Double taxaInscricao = 0.0;
+
+    /** Taxa cobrada ao renovar a matrícula num novo ano letivo. */
+    @Column(name = "taxa_renovacao")
+    private Double taxaRenovacao = 0.0;
+
+    // =====================================================
+    // IDIOMAS DO FORMULÁRIO PÚBLICO (por estúdio)
+    // =====================================================
+
+    /**
+     * Idiomas disponíveis no formulário público — lista separada por vírgulas
+     * dos valores de Idioma. Nulo ou vazio = apenas Português (ao contrário do
+     * padrão "vazio = todos" de modulosAtivos/camposAluno: um estúdio não deve
+     * expor EN/FR sem configuração explícita).
+     */
+    @Column(name = "idiomas_disponiveis")
+    private String idiomasDisponiveis;
+
     // =====================================================
     // CONFIGURAÇÕES FINANCEIRAS (por estúdio)
     // =====================================================
@@ -196,6 +217,31 @@ public class Studio {
 
     public Double getDescontoMais65Percentagem() { return descontoMais65Percentagem; }
     public void setDescontoMais65Percentagem(Double v) { this.descontoMais65Percentagem = v; }
+
+    public Double getTaxaInscricao() { return taxaInscricao; }
+    public void setTaxaInscricao(Double v) { this.taxaInscricao = v; }
+
+    public Double getTaxaRenovacao() { return taxaRenovacao; }
+    public void setTaxaRenovacao(Double v) { this.taxaRenovacao = v; }
+
+    public String getIdiomasDisponiveis() { return idiomasDisponiveis; }
+    public void setIdiomasDisponiveis(String idiomasDisponiveis) { this.idiomasDisponiveis = idiomasDisponiveis; }
+
+    /** Lista de idiomas ativos para este estúdio. Nulo/vazio = apenas PT. */
+    public java.util.List<Idioma> getIdiomasDisponiveisList() {
+        if (idiomasDisponiveis == null || idiomasDisponiveis.isBlank()) {
+            return java.util.List.of(Idioma.PT);
+        }
+        java.util.List<Idioma> idiomas = new java.util.ArrayList<>();
+        for (String i : idiomasDisponiveis.split(",")) {
+            try {
+                idiomas.add(Idioma.valueOf(i.trim()));
+            } catch (IllegalArgumentException ignored) {
+                // valor inválido no CSV, ignora
+            }
+        }
+        return idiomas.isEmpty() ? java.util.List.of(Idioma.PT) : idiomas;
+    }
 
     public String getEmailCriadorTransferencias() { return emailCriadorTransferencias; }
     public void setEmailCriadorTransferencias(String v) { this.emailCriadorTransferencias = v; }

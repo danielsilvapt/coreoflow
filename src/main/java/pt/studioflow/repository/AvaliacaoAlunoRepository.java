@@ -7,6 +7,7 @@ import pt.studioflow.model.AvaliacaoAluno;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
 
+import jakarta.transaction.Transactional;
 import java.util.List;
 
 @Repository
@@ -14,4 +15,7 @@ public interface AvaliacaoAlunoRepository extends JpaRepository<AvaliacaoAluno, 
     List<AvaliacaoAluno> findByAlunoOrderByDataAvaliacaoDesc(Aluno aluno);
     List<AvaliacaoAluno> findByStudioOrderByDataAvaliacaoDesc(Studio studio);
     List<AvaliacaoAluno> findByTurmaAndStudioOrderByDataAvaliacaoDesc(Turma turma, Studio studio);
+
+    @Transactional
+    void deleteByTurma(Turma turma);
 }

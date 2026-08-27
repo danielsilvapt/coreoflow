@@ -330,6 +330,56 @@ public class EmailService {
                 }
         }
 
+        public void enviarEmailNotificacaoRenovacao(Aluno aluno) {
+                try {
+                        SimpleMailMessage mensagem = new SimpleMailMessage();
+                        mensagem.setTo(mailFrom);
+                        mensagem.setSubject("Pedido de Renovação de Matrícula: " + aluno.getNomeCompleto());
+
+                        String corpoEmail = String.format(
+                                        "Olá,\n\n" +
+                                                        "Um pedido de renovação de matrícula foi submetido no sistema da CoreoFlow.\n\n"
+                                                        +
+                                                        "Detalhes do Aluno:\n" +
+                                                        "- Nome: %s\n" +
+                                                        "- E-mail de contacto: %s\n\n" +
+                                                        "Por favor, aceda à área de administração e consulte o menu 'Validar Inscrições' para efetuar o tratamento e validação deste processo.\n\n"
+                                                        +
+                                                        "Mensagem gerada automaticamente pelo plataforma CoreoFlow.",
+                                        aluno.getNomeCompleto(),
+                                        aluno.getEmail());
+
+                        mensagem.setText(corpoEmail);
+                        mailSender.send(mensagem);
+
+                } catch (Exception ex) {
+                        System.err.println("Falha ao enviar e-mail de notificação de renovação: " + ex.getMessage());
+                }
+        }
+
+        /** Email de confirmação enviado diretamente ao candidato após submeter um pedido (inscrição ou renovação). */
+        public void enviarEmailConfirmacaoCandidato(Aluno aluno, String nomeEstudio) {
+                if (aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
+                try {
+                        SimpleMailMessage mensagem = new SimpleMailMessage();
+                        mensagem.setTo(aluno.getEmail());
+                        mensagem.setSubject("Recebemos o teu pedido — " + nomeEstudio);
+
+                        String corpoEmail = String.format(
+                                        "Olá %s,\n\n" +
+                                                        "Recebemos o teu pedido com sucesso e entraremos em contacto muito em breve.\n\n"
+                                                        +
+                                                        "Obrigado,\n%s",
+                                        aluno.getNomeCompleto(), nomeEstudio);
+
+                        mensagem.setText(corpoEmail);
+                        mailSender.send(mensagem);
+
+                } catch (Exception ex) {
+                        System.err.println("Falha ao enviar e-mail de confirmação ao candidato: " + ex.getMessage());
+                }
+        }
+
         public void enviarEmailNotificacaoExperimental(Aluno aluno, Turma turma) {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();

@@ -39,6 +39,9 @@ public interface MensalidadeRepository extends JpaRepository<Mensalidade, Long> 
     @Transactional
     void deleteByAluno(Aluno aluno);
 
+    @Transactional
+    void deleteByTurma(Turma turma);
+
     // ===================== MULTI-TENANT =====================
     java.util.List<Mensalidade> findAllByStudio(Studio studio);
     java.util.List<Mensalidade> findByAlunoAndStudio(pt.studioflow.model.Aluno aluno, Studio studio);

@@ -4,11 +4,9 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
-import com.vaadin.flow.component.customfield.CustomField;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.Input;
 import com.vaadin.flow.component.html.NativeLabel;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -27,10 +25,13 @@ import pt.studioflow.repository.ModalidadeRepository;
 import pt.studioflow.repository.ProfessorRepository;
 import pt.studioflow.repository.SalaRepository;
 import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.service.TurmaService;
+import pt.studioflow.view.component.ColorPickerField;
 
 public class TurmaForm extends Dialog {
 
     private final TurmaRepository turmaRepository;
+    private final TurmaService turmaService;
     private final TurmaView turmaView;
 
     private final Binder<Turma> binder = new BeanValidationBinder<>(Turma.class);
@@ -51,45 +52,16 @@ public class TurmaForm extends Dialog {
     private Checkbox ativo = new Checkbox("Ativa");
 
     // Color picker nativo
-    private final CorField cor = new CorField();
+    private final ColorPickerField cor = new ColorPickerField("Cor da Turma");
 
     private Turma turmaAtual;
 
-    /** CustomField para cor hex que funciona com o Binder */
-    public static class CorField extends CustomField<String> {
-        private final Input colorInput = new Input();
-
-        public CorField() {
-            setLabel("Cor da Turma");
-            colorInput.setType("color");
-            colorInput.setValue("#4A90E2");
-            colorInput.getStyle()
-                    .set("width", "48px")
-                    .set("height", "36px")
-                    .set("border", "none")
-                    .set("padding", "2px")
-                    .set("cursor", "pointer")
-                    .set("border-radius", "6px");
-            colorInput.addValueChangeListener(e -> setModelValue(e.getValue(), true));
-            add(colorInput);
-        }
-
-        @Override
-        protected String generateModelValue() {
-            return colorInput.getValue();
-        }
-
-        @Override
-        protected void setPresentationValue(String value) {
-            colorInput.setValue(value != null && !value.isBlank() ? value : "#4A90E2");
-        }
-    }
-
     public TurmaForm(TurmaRepository turmaRepository, ModalidadeRepository modalidadeRepository,
             TurmaView turmaView, SalaRepository salaRepository,
-            ProfessorRepository professorRepository) {
+            ProfessorRepository professorRepository, TurmaService turmaService) {
         this.turmaRepository = turmaRepository;
         this.turmaView = turmaView;
+        this.turmaService = turmaService;
 
         setHeaderTitle("Configuração da Turma");
 
@@ -176,6 +148,6 @@ public class TurmaForm extends Dialog {
     }
 
     public void eliminarTurma(Turma turma) {
-        turmaRepository.delete(turma);
+        turmaService.delete(turma);
     }
 }
