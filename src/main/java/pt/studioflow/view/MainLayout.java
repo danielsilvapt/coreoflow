@@ -104,13 +104,60 @@ public class MainLayout extends AppLayout {
                                 "vaadin-tab[selected] { color: " + getPrimaryColor() + " !important; font-weight: 700; }" +
                                 ".drawer-content { background: rgba(255, 255, 255, 0.8) !important; backdrop-filter: blur(10px); }"
                                 +
-                                ".nav-item:hover { background: rgba(255, 93, 19, 0.1) !important; transform: translateX(5px); transition: all 0.2s; }";
+                                ".nav-item:hover { background: rgba(255, 93, 19, 0.1) !important; transform: translateX(5px); transition: all 0.2s; }"
+                                +
+                                // --- Modo escuro ---
+                                "html[theme~='dark'] vaadin-app-layout { background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%) !important; }"
+                                +
+                                "html[theme~='dark'] .app-header { background: rgba(24,24,38,0.92) !important; border-bottom-color: rgba(255,255,255,0.08) !important; }"
+                                +
+                                "html[theme~='dark'] .drawer-panel { background: rgba(20,20,32,0.95) !important; }" +
+                                "html[theme~='dark'] .user-badge, html[theme~='dark'] .notif-btn, html[theme~='dark'] .dark-mode-toggle { background: #23233a !important; border-color: rgba(255,255,255,0.1) !important; }"
+                                +
+                                "html[theme~='dark'] .user-name { color: #e8e8f0 !important; }" +
+                                "html[theme~='dark'] .branding-footer { background: rgba(20,20,32,0.95) !important; border-top-color: rgba(255,255,255,0.08) !important; }"
+                                +
+                                "html[theme~='dark'] .brand-line1 { color: #8ab4f8 !important; }" +
+                                "html[theme~='dark'] .nav-item:hover { background: rgba(255,255,255,0.08) !important; }";
 
                 UI.getCurrent().getElement().executeJs(
                                 "const style = document.createElement('style');" +
                                                 "style.textContent = $0;" +
-                                                "document.head.appendChild(style);",
+                                                "document.head.appendChild(style);" +
+                                                "if (localStorage.getItem('coreoflow-dark-mode') === 'true') {" +
+                                                "  document.documentElement.setAttribute('theme', 'dark');" +
+                                                "}",
                                 styles);
+        }
+
+        private Button createDarkModeToggle() {
+                Icon icon = VaadinIcon.MOON.create();
+                icon.setSize("18px");
+                icon.setColor(getPrimaryColor());
+
+                Button toggle = new Button(icon);
+                toggle.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ICON);
+                toggle.addClassName("dark-mode-toggle");
+                toggle.getStyle()
+                                .set("border-radius", "50%")
+                                .set("width", "40px")
+                                .set("height", "40px")
+                                .set("min-width", "40px")
+                                .set("background", "white")
+                                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.08)")
+                                .set("border", "1px solid #eee")
+                                .set("cursor", "pointer");
+                toggle.getElement().setAttribute("title", "Alternar modo escuro");
+                toggle.addClickListener(e -> UI.getCurrent().getElement().executeJs(
+                                "const html = document.documentElement;" +
+                                                "if (html.getAttribute('theme') === 'dark') {" +
+                                                "  html.removeAttribute('theme');" +
+                                                "  localStorage.setItem('coreoflow-dark-mode', 'false');" +
+                                                "} else {" +
+                                                "  html.setAttribute('theme', 'dark');" +
+                                                "  localStorage.setItem('coreoflow-dark-mode', 'true');" +
+                                                "}"));
+                return toggle;
         }
 
         private void createHeader() {
@@ -158,6 +205,7 @@ public class MainLayout extends AppLayout {
                 userMenu.addThemeVariants(MenuBarVariant.LUMO_TERTIARY);
 
                 HorizontalLayout userBadge = new HorizontalLayout();
+                userBadge.addClassName("user-badge");
                 userBadge.setAlignItems(Alignment.CENTER);
                 userBadge.getStyle()
                                 .set("background", "white")
@@ -171,6 +219,7 @@ public class MainLayout extends AppLayout {
                 userIcon.setSize("18px");
 
                 Span nameSpan = new Span(username);
+                nameSpan.addClassName("user-name");
                 nameSpan.getStyle().set("font-weight", "600").set("color", getSecondaryColor());
 
                 userBadge.add(userIcon, nameSpan, VaadinIcon.CHEVRON_DOWN_SMALL.create());
@@ -191,6 +240,8 @@ public class MainLayout extends AppLayout {
                 boolean isSuperAdmin = authForBell != null && authForBell.getAuthorities().stream()
                         .anyMatch(a -> a.getAuthority().equals("ROLE_SUPERADMIN"));
 
+                Button darkModeToggle = createDarkModeToggle();
+
                 HorizontalLayout rightLayout;
                 if (!isSuperAdmin) {
                         Icon bellIcon = VaadinIcon.BELL.create();
@@ -199,6 +250,7 @@ public class MainLayout extends AppLayout {
 
                         Button btnNotificacoes = new Button(bellIcon);
                         btnNotificacoes.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ICON);
+                        btnNotificacoes.addClassName("notif-btn");
                         btnNotificacoes.getStyle()
                                         .set("border-radius", "50%")
                                         .set("width", "40px")
@@ -210,14 +262,15 @@ public class MainLayout extends AppLayout {
                                         .set("cursor", "pointer");
                         btnNotificacoes.getElement().setAttribute("title", "Notificações");
                         btnNotificacoes.addClickListener(e -> UI.getCurrent().navigate(NotificacoesView.class));
-                        rightLayout = new HorizontalLayout(btnNotificacoes, userMenu);
+                        rightLayout = new HorizontalLayout(darkModeToggle, btnNotificacoes, userMenu);
                 } else {
-                        rightLayout = new HorizontalLayout(userMenu);
+                        rightLayout = new HorizontalLayout(darkModeToggle, userMenu);
                 }
                 rightLayout.setAlignItems(Alignment.CENTER);
                 rightLayout.setSpacing(true);
 
                 HorizontalLayout headerContent = new HorizontalLayout(leftLayout, rightLayout);
+                headerContent.addClassName("app-header");
                 headerContent.setWidthFull();
                 headerContent.setAlignItems(Alignment.CENTER);
                 headerContent.setJustifyContentMode(
@@ -244,6 +297,7 @@ public class MainLayout extends AppLayout {
 
                 // Layout principal do Drawer
                 VerticalLayout drawerContent = new VerticalLayout();
+                drawerContent.addClassName("drawer-panel");
                 drawerContent.setPadding(false);
                 drawerContent.setSpacing(false);
                 drawerContent.setSizeFull();
@@ -424,6 +478,7 @@ public class MainLayout extends AppLayout {
 
                 // Footer de branding — fixo no fundo do drawer
                 Span brandLine1 = new Span("CoreoFlow");
+                brandLine1.addClassName("brand-line1");
                 brandLine1.getStyle()
                         .set("font-weight", "700")
                         .set("font-size", "12px")
@@ -438,6 +493,7 @@ public class MainLayout extends AppLayout {
                         .set("letter-spacing", "0.3px");
 
                 com.vaadin.flow.component.html.Div brandingFooter = new com.vaadin.flow.component.html.Div(brandLine1, brandLine2);
+                brandingFooter.addClassName("branding-footer");
                 brandingFooter.getStyle()
                         .set("display", "flex")
                         .set("flex-direction", "column")
