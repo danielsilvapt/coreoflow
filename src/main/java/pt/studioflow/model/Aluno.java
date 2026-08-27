@@ -114,7 +114,7 @@ public class Aluno {
 
     /** true se o pedido PENDENTE atual é uma renovação de matrícula (não uma nova inscrição). */
     @Column(name = "pedido_renovacao")
-    private boolean pedidoRenovacao = false;
+    private Boolean pedidoRenovacao = false;
 
     @Lob
     @Column(name = "foto", columnDefinition = "LONGBLOB")
@@ -358,6 +358,6 @@ public class Aluno {
     public Studio getStudio() { return studio; }
     public void setStudio(Studio studio) { this.studio = studio; }
 
-    public boolean isPedidoRenovacao() { return pedidoRenovacao; }
+    public boolean isPedidoRenovacao() { return pedidoRenovacao != null && pedidoRenovacao; }
     public void setPedidoRenovacao(boolean pedidoRenovacao) { this.pedidoRenovacao = pedidoRenovacao; }
 }
