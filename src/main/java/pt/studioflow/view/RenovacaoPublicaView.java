@@ -19,6 +19,7 @@ import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 import pt.studioflow.config.MensalidadeConfig;
@@ -46,6 +47,7 @@ import java.util.stream.Collectors;
  * (mesmo fluxo de aprovação das novas inscrições, ver InscricaoPublicaView).
  */
 @Route("renovacao")
+@RouteAlias("renew")
 @AnonymousAllowed
 public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterObserver {
 
