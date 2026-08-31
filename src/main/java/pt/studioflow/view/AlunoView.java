@@ -200,6 +200,8 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
 
         grid.addColumn(Aluno::getTelemovel).setHeader("TELEMÓVEL").setAutoWidth(true);
 
+        grid.addColumn(Aluno::getEmail).setHeader("EMAIL").setAutoWidth(true);
+
         grid.addComponentColumn(aluno -> {
             boolean temDivida = temDividaMaisDeUmMes(aluno);
             Span badge = new Span(temDivida ? "DÍVIDA" : "REGULAR");
@@ -220,6 +222,14 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
         fNome.setPlaceholder("Pesquisar...");
         filterRow.getCell(grid.getColumns().get(1)).setComponent(fNome);
 
+        TextField fTelemovel = criarFiltroTexto("telemovel");
+        fTelemovel.setPlaceholder("Pesquisar...");
+        filterRow.getCell(grid.getColumns().get(2)).setComponent(fTelemovel);
+
+        TextField fEmail = criarFiltroTexto("email");
+        fEmail.setPlaceholder("Pesquisar...");
+        filterRow.getCell(grid.getColumns().get(3)).setComponent(fEmail);
+
         ComboBox<String> comboAtivo = new ComboBox<>();
         comboAtivo.setItems("Todos", "Ativos", "Não Ativos");
         comboAtivo.setValue("Ativos");
@@ -228,7 +238,7 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
             filtroAtivo = e.getValue();
             aplicarFiltros();
         });
-        filterRow.getCell(grid.getColumns().get(4)).setComponent(comboAtivo);
+        filterRow.getCell(grid.getColumns().get(5)).setComponent(comboAtivo);
     }
 
     private TextField criarFiltroTexto(String campo) {
@@ -252,7 +262,13 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
                             .contains(removerAcentos(filtrosTexto.get("nome").toLowerCase()));
             boolean matchAtivo = "Todos".equals(filtroAtivo)
                     || ("Ativos".equals(filtroAtivo) ? aluno.isAtivo() : !aluno.isAtivo());
-            return matchNome && matchAtivo;
+            boolean matchTelemovel = filtrosTexto.getOrDefault("telemovel", "").isEmpty() ||
+                    (aluno.getTelemovel() != null && aluno.getTelemovel().toLowerCase()
+                            .contains(filtrosTexto.get("telemovel").toLowerCase()));
+            boolean matchEmail = filtrosTexto.getOrDefault("email", "").isEmpty() ||
+                    (aluno.getEmail() != null && aluno.getEmail().toLowerCase()
+                            .contains(filtrosTexto.get("email").toLowerCase()));
+            return matchNome && matchAtivo && matchTelemovel && matchEmail;
         });
         updateDashboard();
     }
