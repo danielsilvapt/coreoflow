@@ -17,6 +17,8 @@ import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -242,8 +244,14 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         FormLayout infoRapida = new FormLayout();
         infoRapida.add(nomeCompleto, criancaCombo);
         if (campoAtivo(CampoAluno.GENERO)) infoRapida.add(genero);
-        if (campoAtivo(CampoAluno.SOCIO)) infoRapida.add(socio, numeroSocio);
-        infoRapida.add(ativo);
+        if (campoAtivo(CampoAluno.SOCIO)) infoRapida.add(numeroSocio);
+
+        HorizontalLayout socioAtivoRow = new HorizontalLayout(ativo);
+        socioAtivoRow.setSpacing(true);
+        if (campoAtivo(CampoAluno.SOCIO)) {
+            socioAtivoRow.addComponentAsFirst(socio);
+        }
+        infoRapida.add(socioAtivoRow);
         infoRapida.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));
         infoRapida.setColspan(nomeCompleto, 2);
 
@@ -303,15 +311,65 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         return f;
     }
 
-    private FormLayout criarFormQuotas() {
-        FormLayout f = baseForm();
+    private VerticalLayout criarFormQuotas() {
         seguroDesportivo.setLabel("Seguro Desportivo");
         seguroDesportivo.setItems("Associação", "Próprio", "Outro");
-        if (campoAtivo(CampoAluno.SEGURO_DESPORTIVO)) f.add(seguroDesportivo);
-        if (campoAtivo(CampoAluno.QUOTAS))
-            f.add(dataQuotaPagamento, dataExpiracaoQuota, dataSeguroPagamento, dataExpiracaoSeguro,
-                    dataInscricaoRenovacao);
-        return f;
+
+        boolean mostraQuotas = campoAtivo(CampoAluno.QUOTAS);
+        boolean mostraSeguroSelect = campoAtivo(CampoAluno.SEGURO_DESPORTIVO);
+
+        VerticalLayout layout = new VerticalLayout();
+        layout.setPadding(true);
+        layout.setSpacing(true);
+
+        if (mostraQuotas) {
+            layout.add(criarGrupoQuotaSeguro("Quota", null, dataQuotaPagamento, dataExpiracaoQuota));
+        }
+        if (mostraSeguroSelect || mostraQuotas) {
+            layout.add(criarGrupoQuotaSeguro("Seguro Desportivo",
+                    mostraSeguroSelect ? seguroDesportivo : null,
+                    mostraQuotas ? dataSeguroPagamento : null,
+                    mostraQuotas ? dataExpiracaoSeguro : null));
+        }
+        if (mostraQuotas) {
+            FormLayout renovacao = baseForm();
+            renovacao.add(dataInscricaoRenovacao);
+            layout.add(renovacao);
+        }
+        return layout;
+    }
+
+    // Agrupa visualmente a data de pagamento com a respetiva data de expiração
+    // (mesma coluna nas duas secções), para ficar claro a que cobrança pertence cada data.
+    private Div criarGrupoQuotaSeguro(String titulo, Select<String> tipoSelect, DatePicker pagamento,
+            DatePicker expiracao) {
+        H4 h = new H4(titulo);
+        h.getStyle().set("margin", "0 0 0.5rem 0");
+
+        VerticalLayout conteudo = new VerticalLayout(h);
+        conteudo.setPadding(false);
+        conteudo.setSpacing(true);
+
+        if (tipoSelect != null) {
+            tipoSelect.setWidth("250px");
+            conteudo.add(tipoSelect);
+        }
+
+        if (pagamento != null && expiracao != null) {
+            HorizontalLayout datas = new HorizontalLayout(pagamento, expiracao);
+            datas.setWidthFull();
+            datas.setSpacing(true);
+            datas.setFlexGrow(1, pagamento);
+            datas.setFlexGrow(1, expiracao);
+            conteudo.add(datas);
+        }
+
+        Div grupo = new Div(conteudo);
+        grupo.getStyle().set("border", "1px solid var(--lumo-contrast-10pct)")
+                .set("border-radius", "8px")
+                .set("padding", "1rem")
+                .set("margin-bottom", "1rem");
+        return grupo;
     }
 
     private VerticalLayout criarTabTurmas() {
