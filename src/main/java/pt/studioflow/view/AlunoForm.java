@@ -3,7 +3,6 @@ package pt.studioflow.view;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -315,6 +314,8 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
     private VerticalLayout criarFormQuotas() {
         seguroDesportivo.setLabel("Seguro Desportivo");
         seguroDesportivo.setItems("Associação", "Próprio", "Outro");
+        seguroDesportivo.setWidth("250px");
+        dataInscricaoRenovacao.setWidth("250px");
 
         boolean mostraQuotas = campoAtivo(CampoAluno.QUOTAS);
         boolean mostraSeguroSelect = campoAtivo(CampoAluno.SEGURO_DESPORTIVO);
@@ -323,32 +324,38 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         layout.setPadding(true);
         layout.setSpacing(true);
 
-        if (mostraQuotas) {
-            dataInscricaoRenovacao.setWidth("250px");
-            HorizontalLayout renovacaoRow = new HorizontalLayout(dataInscricaoRenovacao);
-            renovacaoRow.setWidthFull();
-            renovacaoRow.setJustifyContentMode(JustifyContentMode.CENTER);
-            layout.add(renovacaoRow);
+        // Renovação à esquerda (acima da Quota) e o tipo de Seguro à direita (acima do
+        // Seguro Desportivo), para as datas de pagamento/expiração ficarem alinhadas
+        // entre as duas secções.
+        if (mostraQuotas || mostraSeguroSelect) {
+            HorizontalLayout topoRow = new HorizontalLayout();
+            topoRow.setWidthFull();
+            topoRow.setSpacing(true);
+            if (mostraQuotas) {
+                Div renovacaoBox = new Div(dataInscricaoRenovacao);
+                renovacaoBox.setWidthFull();
+                topoRow.add(renovacaoBox);
+                topoRow.setFlexGrow(1, renovacaoBox);
+            }
+            if (mostraSeguroSelect) {
+                Div seguroComboBox = new Div(seguroDesportivo);
+                seguroComboBox.setWidthFull();
+                seguroComboBox.getStyle().set("display", "flex").set("justify-content", "flex-end");
+                topoRow.add(seguroComboBox);
+                topoRow.setFlexGrow(1, seguroComboBox);
+            }
+            layout.add(topoRow);
         }
 
-        List<Div> grupos = new ArrayList<>();
         if (mostraQuotas) {
-            grupos.add(criarGrupoQuotaSeguro("Quota", null, dataQuotaPagamento, dataExpiracaoQuota));
-        }
-        if (mostraSeguroSelect || mostraQuotas) {
-            grupos.add(criarGrupoQuotaSeguro("Seguro Desportivo",
-                    mostraSeguroSelect ? seguroDesportivo : null,
-                    mostraQuotas ? dataSeguroPagamento : null,
-                    mostraQuotas ? dataExpiracaoSeguro : null));
-        }
-        if (!grupos.isEmpty()) {
-            HorizontalLayout gruposRow = new HorizontalLayout();
+            Div grupoQuota = criarGrupoQuotaSeguro("Quota", dataQuotaPagamento, dataExpiracaoQuota);
+            Div grupoSeguro = criarGrupoQuotaSeguro("Seguro Desportivo", dataSeguroPagamento, dataExpiracaoSeguro);
+
+            HorizontalLayout gruposRow = new HorizontalLayout(grupoQuota, grupoSeguro);
             gruposRow.setWidthFull();
             gruposRow.setSpacing(true);
-            grupos.forEach(g -> {
-                gruposRow.add(g);
-                gruposRow.setFlexGrow(1, g);
-            });
+            gruposRow.setFlexGrow(1, grupoQuota);
+            gruposRow.setFlexGrow(1, grupoSeguro);
             layout.add(gruposRow);
         }
         return layout;
@@ -356,28 +363,19 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
 
     // Agrupa visualmente a data de pagamento com a respetiva data de expiração
     // (mesma coluna nas duas secções), para ficar claro a que cobrança pertence cada data.
-    private Div criarGrupoQuotaSeguro(String titulo, Select<String> tipoSelect, DatePicker pagamento,
-            DatePicker expiracao) {
+    private Div criarGrupoQuotaSeguro(String titulo, DatePicker pagamento, DatePicker expiracao) {
         H4 h = new H4(titulo);
         h.getStyle().set("margin", "0 0 0.5rem 0");
 
-        VerticalLayout conteudo = new VerticalLayout(h);
+        HorizontalLayout datas = new HorizontalLayout(pagamento, expiracao);
+        datas.setWidthFull();
+        datas.setSpacing(true);
+        datas.setFlexGrow(1, pagamento);
+        datas.setFlexGrow(1, expiracao);
+
+        VerticalLayout conteudo = new VerticalLayout(h, datas);
         conteudo.setPadding(false);
         conteudo.setSpacing(true);
-
-        if (tipoSelect != null) {
-            tipoSelect.setWidth("250px");
-            conteudo.add(tipoSelect);
-        }
-
-        if (pagamento != null && expiracao != null) {
-            HorizontalLayout datas = new HorizontalLayout(pagamento, expiracao);
-            datas.setWidthFull();
-            datas.setSpacing(true);
-            datas.setFlexGrow(1, pagamento);
-            datas.setFlexGrow(1, expiracao);
-            conteudo.add(datas);
-        }
 
         Div grupo = new Div(conteudo);
         grupo.setWidthFull();
