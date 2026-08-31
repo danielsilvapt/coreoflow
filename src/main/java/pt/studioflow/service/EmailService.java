@@ -14,6 +14,7 @@ import pt.studioflow.model.Convite;
 import pt.studioflow.model.Professor;
 import pt.studioflow.model.Turma;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -34,16 +35,18 @@ public class EmailService {
 
                 helper.setFrom(mailFrom, "CoreoFlow");
 
-                if (professorCorrespondente != null) {
-                        helper.setTo(professorCorrespondente.getEmail());
-                }
-
-                destinatarios.add(mailFrom);
-
-                destinatarios.add(mailFrom);
-                destinatarios.add(mailFrom);
-
+                // Alunos como destinatários ocultos (privacidade entre alunos)
                 helper.setBcc(destinatarios.toArray(new String[0]));
+
+                // Em cópia: apenas o email do estúdio e o professor da modalidade
+                List<String> emailsCc = new ArrayList<>();
+                emailsCc.add(mailFrom);
+                if (professorCorrespondente != null && professorCorrespondente.getEmail() != null
+                                && !professorCorrespondente.getEmail().isBlank()) {
+                        emailsCc.add(professorCorrespondente.getEmail());
+                }
+                helper.setCc(emailsCc.toArray(new String[0]));
+
                 helper.setReplyTo(mailFrom);
                 helper.setSubject(assunto);
 
