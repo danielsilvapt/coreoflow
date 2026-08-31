@@ -261,6 +261,23 @@ public class TurmaComunicacaoView extends VerticalLayout {
         }
     }
 
+    // O professor da modalidade é o professor da turma selecionada; se a turma
+    // não tiver professor associado, tenta-se o professor cujo primeiro nome
+    // coincide com o utilizador com sessão iniciada.
+    private Professor resolverProfessorParaCc(String firstNameLogado) {
+        Turma turmaSelecionada = turmaCombo.getValue();
+        if (turmaSelecionada != null && turmaSelecionada.getProfessor() != null) {
+            return turmaSelecionada.getProfessor();
+        }
+        pt.studioflow.model.Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
+        List<Professor> todosProfessores = studio != null ? professorRepository.findAllByStudio(studio)
+                : professorRepository.findAll();
+        return todosProfessores.stream()
+                .filter(p -> p.getNome().split(" ")[0].equalsIgnoreCase(firstNameLogado))
+                .findFirst()
+                .orElse(null);
+    }
+
     private void abrirModalEmail() {
         if (selecionados.isEmpty()) {
             Notification.show("Selecione os alunos nos cards primeiro!");
@@ -284,23 +301,22 @@ public class TurmaComunicacaoView extends VerticalLayout {
         String login = auth.getName();
         String firstNameLogado = userRepository.findByUsername(login).map(User::getFirstName).orElse("");
 
-        // Procuramos todos os professores e filtramos em memória ou via Query
-        // Aqui buscamos o professor cujo primeiro nome coincide com o login
-        pt.studioflow.model.Studio _studioC = pt.studioflow.config.TenantContext.getCurrentStudio();
-        List<Professor> todosProfessores = _studioC != null ? professorRepository.findAllByStudio(_studioC) : professorRepository.findAll();
-
-        Professor professorCorrespondente = todosProfessores.stream()
-                .filter(p -> {
-                    String primeiroNomeProf = p.getNome().split(" ")[0];
-                    return primeiroNomeProf.equalsIgnoreCase(firstNameLogado);
-                })
-                .findFirst()
-                .orElse(null);
+        // Professor a colocar em Cc: primeiro o professor da turma selecionada
+        // (professor da modalidade); só se a turma não tiver professor é que
+        // recorremos ao professor cujo primeiro nome coincide com o login.
+        final Professor professorCorrespondente = resolverProfessorParaCc(firstNameLogado);
 
         mensagem.setValue("\n\n\n\n\nCumprimentos, \n\n"
                 + (professorCorrespondente != null && professorCorrespondente.getNome() != null
                         ? professorCorrespondente.getNome()
                         : ""));
+
+        Checkbox ccProfessor = new Checkbox(
+                professorCorrespondente != null && professorCorrespondente.getNome() != null
+                        ? "Colocar o professor \"" + professorCorrespondente.getNome() + "\" em cópia (Cc)"
+                        : "Colocar o professor da turma em cópia (Cc)");
+        ccProfessor.setValue(true);
+        ccProfessor.setEnabled(professorCorrespondente != null);
 
         Button enviar = new Button("Enviar Agora", ev -> {
             List<String> emails = selecionados.stream()
@@ -314,10 +330,11 @@ public class TurmaComunicacaoView extends VerticalLayout {
             }
 
             try {
-                emailService.enviarEmailParaLista(professorCorrespondente, emails, assunto.getValue(),
+                Professor profCc = ccProfessor.getValue() ? professorCorrespondente : null;
+                emailService.enviarEmailParaLista(profCc, emails, assunto.getValue(),
                         mensagem.getValue());
                 dialog.close();
-                Notification.show("E-mail enviado com sucesso para " + (emails.size() - 3) + " alunos!")
+                Notification.show("E-mail enviado com sucesso para " + emails.size() + " alunos!")
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } catch (Exception ex) {
                 Notification.show("Erro ao enviar e-mail: " + ex.getMessage())
@@ -325,7 +342,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
             }
         });
         enviar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        content.add(assunto, mensagem);
+        content.add(assunto, mensagem, ccProfessor);
         dialog.add(content);
         dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), enviar);
         dialog.open();

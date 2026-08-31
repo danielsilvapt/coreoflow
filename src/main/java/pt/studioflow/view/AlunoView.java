@@ -190,17 +190,40 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
             image.setWidth("40px");
             image.setHeight("40px");
             image.getStyle().set("border-radius", "50%").set("object-fit", "cover");
-            VerticalLayout info = new VerticalLayout(new Span(aluno.getNomeCompleto()));
+            Span nome = new Span(aluno.getNomeCompleto());
+            nome.getStyle().set("font-size", "1.05rem").set("font-weight", "600").set("white-space", "nowrap");
+            VerticalLayout info = new VerticalLayout(nome);
             info.setPadding(false);
             info.setSpacing(false);
             row.add(image, info);
             return row;
         })).setHeader("ALUNO").setSortable(true).setComparator(Comparator.comparing(Aluno::getNomeCompleto))
-                .setFlexGrow(1);
+                .setWidth("190px").setFlexGrow(2);
 
-        grid.addColumn(Aluno::getTelemovel).setHeader("TELEMÓVEL").setAutoWidth(true);
+        // Largura fixa (não autoWidth) para telemóvel: o nome mantém sempre o mesmo
+        // espaço reservado, sem ser "empurrado" por um valor mais comprido.
+        Grid.Column<Aluno> colTelemovel = grid.addColumn(Aluno::getTelemovel).setHeader("TELEMÓVEL")
+                .setWidth("140px").setFlexGrow(0);
 
-        grid.addColumn(Aluno::getEmail).setHeader("EMAIL").setAutoWidth(true);
+        // AutoWidth para o email: ajusta-se ao endereço mais comprido da lista atual,
+        // em vez de cortar com uma largura fixa.
+        Grid.Column<Aluno> colEmail = grid.addColumn(Aluno::getEmail).setHeader("EMAIL")
+                .setAutoWidth(true).setFlexGrow(0);
+
+        // Em ecrãs pequenos (ex.: portátil), o nome do aluno tem sempre prioridade:
+        // telemóvel e email escondem-se para deixar espaço, e voltam a aparecer
+        // assim que o ecrã tiver largura suficiente.
+        final int LARGURA_MINIMA_CONTACTOS = 1200;
+        UI.getCurrent().getPage().retrieveExtendedClientDetails(details -> {
+            boolean ecraPequeno = details.getBodyClientWidth() < LARGURA_MINIMA_CONTACTOS;
+            colTelemovel.setVisible(!ecraPequeno);
+            colEmail.setVisible(!ecraPequeno);
+        });
+        UI.getCurrent().getPage().addBrowserWindowResizeListener(e -> {
+            boolean ecraPequeno = e.getWidth() < LARGURA_MINIMA_CONTACTOS;
+            colTelemovel.setVisible(!ecraPequeno);
+            colEmail.setVisible(!ecraPequeno);
+        });
 
         grid.addComponentColumn(aluno -> {
             boolean temDivida = temDividaMaisDeUmMes(aluno);
