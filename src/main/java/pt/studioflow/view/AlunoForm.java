@@ -3,6 +3,7 @@ package pt.studioflow.view;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -323,18 +324,32 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         layout.setSpacing(true);
 
         if (mostraQuotas) {
-            layout.add(criarGrupoQuotaSeguro("Quota", null, dataQuotaPagamento, dataExpiracaoQuota));
+            dataInscricaoRenovacao.setWidth("250px");
+            HorizontalLayout renovacaoRow = new HorizontalLayout(dataInscricaoRenovacao);
+            renovacaoRow.setWidthFull();
+            renovacaoRow.setJustifyContentMode(JustifyContentMode.CENTER);
+            layout.add(renovacaoRow);
+        }
+
+        List<Div> grupos = new ArrayList<>();
+        if (mostraQuotas) {
+            grupos.add(criarGrupoQuotaSeguro("Quota", null, dataQuotaPagamento, dataExpiracaoQuota));
         }
         if (mostraSeguroSelect || mostraQuotas) {
-            layout.add(criarGrupoQuotaSeguro("Seguro Desportivo",
+            grupos.add(criarGrupoQuotaSeguro("Seguro Desportivo",
                     mostraSeguroSelect ? seguroDesportivo : null,
                     mostraQuotas ? dataSeguroPagamento : null,
                     mostraQuotas ? dataExpiracaoSeguro : null));
         }
-        if (mostraQuotas) {
-            FormLayout renovacao = baseForm();
-            renovacao.add(dataInscricaoRenovacao);
-            layout.add(renovacao);
+        if (!grupos.isEmpty()) {
+            HorizontalLayout gruposRow = new HorizontalLayout();
+            gruposRow.setWidthFull();
+            gruposRow.setSpacing(true);
+            grupos.forEach(g -> {
+                gruposRow.add(g);
+                gruposRow.setFlexGrow(1, g);
+            });
+            layout.add(gruposRow);
         }
         return layout;
     }
@@ -365,10 +380,11 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         }
 
         Div grupo = new Div(conteudo);
+        grupo.setWidthFull();
         grupo.getStyle().set("border", "1px solid var(--lumo-contrast-10pct)")
                 .set("border-radius", "8px")
                 .set("padding", "1rem")
-                .set("margin-bottom", "1rem");
+                .set("box-sizing", "border-box");
         return grupo;
     }
 
