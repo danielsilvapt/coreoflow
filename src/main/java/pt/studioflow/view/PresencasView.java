@@ -82,9 +82,11 @@ public class PresencasView extends VerticalLayout {
     private final Map<Long, Map<LocalDate, Boolean>> presencasCache = new HashMap<>();
     private Div chartContainer;
 
-    // Modo "Todos": galeria de cards com o gráfico de presenças do mês atual
-    // de cada turma. É o ecrã que aparece por defeito ao entrar na view.
+    // Modo "Todos": galeria de cards com o gráfico de presenças do mês
+    // escolhido de cada turma, mais um painel de contagens. É o ecrã que
+    // aparece por defeito ao entrar na view.
     private Div cardsContainer;
+    private Div statsContainer;
     private Button btnExperimental;
     private Button btnGuardar;
     private final Turma TODAS = criarSentinelaTodas();
@@ -177,6 +179,15 @@ public class PresencasView extends VerticalLayout {
         chartContainer.addClassName("chart-card");
         chartContainer.setHeight("280px");
 
+        statsContainer = new Div();
+        statsContainer.setId("stats-container");
+        statsContainer.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "repeat(auto-fit, minmax(180px, 1fr))")
+                .set("gap", "16px")
+                .set("width", "100%")
+                .set("margin", "6px 0 4px");
+
         cardsContainer = new Div();
         cardsContainer.setId("cards-container");
         cardsContainer.getStyle()
@@ -186,7 +197,7 @@ public class PresencasView extends VerticalLayout {
                 .set("width", "100%")
                 .set("margin-top", "10px");
 
-        add(title, toolbar, grid, chartContainer, cardsContainer);
+        add(title, toolbar, grid, chartContainer, statsContainer, cardsContainer);
     }
 
     private void abrirDialogExperimental() {
@@ -328,27 +339,55 @@ public class PresencasView extends VerticalLayout {
         mesCombo.setVisible(true);
         btnExperimental.setVisible(true);
         btnGuardar.setVisible(true);
+        statsContainer.setVisible(false);
         cardsContainer.setVisible(false);
     }
 
     private void entrarModoTodos() {
         grid.setVisible(false);
         chartContainer.setVisible(false);
-        mesCombo.setVisible(false);
+        mesCombo.setVisible(true); // no modo "Todos" continua a ser possível escolher o mês
         btnExperimental.setVisible(false);
         btnGuardar.setVisible(false);
+        statsContainer.setVisible(true);
         cardsContainer.setVisible(true);
         renderCardsTodasTurmas();
     }
 
+    private Div criarStatCard(String label, String valor, String cor) {
+        Div card = new Div();
+        card.addClassName("chart-card");
+        card.getStyle().set("margin-top", "0").set("padding", "14px 18px");
+        Span v = new Span(valor);
+        v.getStyle().set("font-size", "1.6rem").set("font-weight", "800").set("display", "block")
+                .set("color", cor != null ? cor : "#1e293b");
+        Span l = new Span(label);
+        l.getStyle().set("font-size", "0.75rem").set("color", "#64748b").set("text-transform", "uppercase")
+                .set("letter-spacing", "0.04em");
+        card.add(v, l);
+        return card;
+    }
+
+    private int diasDeAulaNoMes(Turma turma, YearMonth mes) {
+        java.util.Set<DayOfWeek> dias = turma.getAulas().stream().map(Aula::getDia)
+                .collect(Collectors.toSet());
+        int n = 0;
+        for (int d = 1; d <= mes.lengthOfMonth(); d++) {
+            if (dias.contains(mes.atDay(d).getDayOfWeek()))
+                n++;
+        }
+        return n;
+    }
+
     /**
-     * Modo "Todos": um card por turma (estilo galeria da Comunicação) com o
-     * gráfico de presenças do mês atual, à semelhança do gráfico da folha
-     * individual. É o ecrã por defeito ao entrar na view.
+     * Modo "Todos": painel de contagens (presença esperada vs real em todas as
+     * turmas) e um card por turma com o gráfico de presenças do mês escolhido.
+     * É o ecrã por defeito ao entrar na view.
      */
     private void renderCardsTodasTurmas() {
         cardsContainer.removeAll();
-        YearMonth mes = YearMonth.now();
+        statsContainer.removeAll();
+        YearMonth mes = mesCombo.getValue() != null ? mesCombo.getValue() : YearMonth.now();
         LocalDate ini = mes.atDay(1);
         LocalDate fim = mes.atEndOfMonth();
 
@@ -360,6 +399,9 @@ public class PresencasView extends VerticalLayout {
             return;
         }
 
+        long esperadaTotal = 0;
+        long realTotal = 0;
+
         List<String> desenhos = new ArrayList<>();
         for (Turma base : turmas) {
             Turma turma = turmaRepository.findByIdCompleto(base.getId());
@@ -369,6 +411,11 @@ public class PresencasView extends VerticalLayout {
                     .filter(Presenca::isPresente)
                     .forEach(p -> porDia.merge(p.getData().getDayOfMonth(), 1L, Long::sum));
             long total = porDia.values().stream().mapToLong(Long::longValue).sum();
+
+            long nAlunos = turmaService.getAlunosDaTurma(turma).size();
+            long esperada = nAlunos * diasDeAulaNoMes(turma, mes);
+            esperadaTotal += esperada;
+            realTotal += total;
 
             String wrapId = "pres-wrap-" + turma.getId();
 
@@ -383,7 +430,8 @@ public class PresencasView extends VerticalLayout {
             canvasWrap.setId(wrapId);
             canvasWrap.setHeight("190px");
 
-            Span sub = new Span(total > 0 ? total + " presenças marcadas este mês" : "Sem presenças marcadas este mês");
+            Span sub = new Span("Real " + total + " / Esperado " + esperada
+                    + (esperada > 0 ? "  (" + Math.round(total * 100.0 / esperada) + "%)" : ""));
             sub.getStyle().set("font-size", "0.8rem").set("color", "#888");
 
             card.add(header, canvasWrap, sub);
@@ -404,6 +452,13 @@ public class PresencasView extends VerticalLayout {
                     + "borderColor:'#16a085',backgroundColor:'rgba(22,160,133,0.1)',fill:true,tension:0.3}]},"
                     + "options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});})();");
         }
+
+        long taxa = esperadaTotal > 0 ? Math.round(realTotal * 100.0 / esperadaTotal) : 0;
+        statsContainer.add(
+                criarStatCard("Turmas", String.valueOf(turmas.size()), "#1e293b"),
+                criarStatCard("Presença esperada", String.valueOf(esperadaTotal), "#0e7490"),
+                criarStatCard("Presença real", String.valueOf(realTotal), "#16a085"),
+                criarStatCard("Taxa de presença", taxa + "%", taxa >= 75 ? "#16a085" : "#d97706"));
 
         if (!desenhos.isEmpty()) {
             String script = "(function go(){if(typeof Chart==='undefined'){setTimeout(go,120);return;}"
