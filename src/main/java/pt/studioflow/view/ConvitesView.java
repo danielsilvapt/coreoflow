@@ -49,7 +49,7 @@ public class ConvitesView extends VerticalLayout {
 
     private final Grid<Convite> grid = new Grid<>(Convite.class, false);
     private Grid.Column<Convite> colunaData;
-    private ListDataProvider<Convite> dataProvider;
+    private final ListDataProvider<Convite> dataProvider = new ListDataProvider<>(new java.util.ArrayList<>());
     private TextField filterText = new TextField();
 
     private List<Turma> todasTurmas;
@@ -90,6 +90,7 @@ public class ConvitesView extends VerticalLayout {
         filterText.addValueChangeListener(e -> aplicarFiltro());
 
         configurarGrid();
+        grid.setItems(dataProvider);
 
         add(ViewUtils.toolbar(filterText, btnNovo), grid);
         atualizarDados();
