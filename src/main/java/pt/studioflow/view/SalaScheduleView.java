@@ -40,6 +40,7 @@ import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Aula;
 import pt.studioflow.model.MarcacaoSala;
+import pt.studioflow.model.OcorrenciaAula;
 import pt.studioflow.model.Professor;
 import pt.studioflow.model.Sala;
 import pt.studioflow.model.Studio;
@@ -48,6 +49,7 @@ import pt.studioflow.model.User;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AulaRepository;
 import pt.studioflow.repository.MarcacaoSalaRepository;
+import pt.studioflow.repository.OcorrenciaAulaRepository;
 import pt.studioflow.repository.ProfessorRepository;
 import pt.studioflow.repository.SalaRepository;
 import pt.studioflow.repository.TurmaRepository;
@@ -68,6 +70,7 @@ public class SalaScheduleView extends VerticalLayout {
     private final AlunoRepository alunoRepository;
     private final EmailService emailService;
     private final UserRepository userRepository;
+    private final OcorrenciaAulaRepository ocorrenciaAulaRepository;
 
     private final int HORA_INICIO = 9;
     private final int HORA_FIM = 23;
@@ -86,7 +89,7 @@ public class SalaScheduleView extends VerticalLayout {
     public SalaScheduleView(SalaRepository salaRepository, TurmaRepository turmaRepository,
             MarcacaoSalaRepository marcacaoRepository, AulaRepository aulaRepository,
             ProfessorRepository professorRepository, TurmaService turmaService, AlunoRepository alunoRepository,
-            EmailService emailService, UserRepository userRepository) {
+            EmailService emailService, UserRepository userRepository, OcorrenciaAulaRepository ocorrenciaAulaRepository) {
 
         this.salaRepository = salaRepository;
         this.turmaRepository = turmaRepository;
@@ -96,6 +99,7 @@ public class SalaScheduleView extends VerticalLayout {
         this.alunoRepository = alunoRepository;
         this.emailService = emailService;
         this.userRepository = userRepository;
+        this.ocorrenciaAulaRepository = ocorrenciaAulaRepository;
 
         this.isAdmin = VaadinServletRequest.getCurrent().getHttpServletRequest().isUserInRole("ADMIN");
 
@@ -426,11 +430,18 @@ public class SalaScheduleView extends VerticalLayout {
         List<MarcacaoSala> todasMarcacoes = studio != null
                 ? marcacaoRepository.findByStudioAndDataBetween(studio, semanaAtual, semanaAtual.plusDays(6))
                 : marcacaoRepository.findByDataBetween(semanaAtual, semanaAtual.plusDays(6));
+        List<OcorrenciaAula> ocorrenciasDaSemana = studio != null
+                ? ocorrenciaAulaRepository.findByStudioAndDataBetweenOrderByDataAsc(studio, semanaAtual,
+                        semanaAtual.plusDays(6))
+                : ocorrenciaAulaRepository.findAll().stream()
+                        .filter(o -> !o.getData().isBefore(semanaAtual) && !o.getData().isAfter(semanaAtual.plusDays(6)))
+                        .collect(Collectors.toList());
 
-        grelhaContainer.add(criarGrelhaGlobal(salas, todasAulas, todasMarcacoes));
+        grelhaContainer.add(criarGrelhaGlobal(salas, todasAulas, todasMarcacoes, ocorrenciasDaSemana));
     }
 
-    private Div criarGrelhaGlobal(List<Sala> salas, List<Aula> aulas, List<MarcacaoSala> marcacoes) {
+    private Div criarGrelhaGlobal(List<Sala> salas, List<Aula> aulas, List<MarcacaoSala> marcacoes,
+            List<OcorrenciaAula> ocorrencias) {
         Div container = new Div();
         container.getStyle().set("display", "inline-block").set("min-width", "100%").set("position", "relative");
 
@@ -573,7 +584,15 @@ public class SalaScheduleView extends VerticalLayout {
 
                 aulas.stream()
                         .filter(a -> a.getDia().equals(dia) && a.getSala().getId().equals(sala.getId()))
-                        .forEach(a -> coluna.add(criarElementoAula(a)));
+                        .forEach(a -> {
+                            OcorrenciaAula oc = ocorrencias.stream()
+                                    .filter(o -> o.getTipo() != OcorrenciaAula.Tipo.REPOSICAO)
+                                    .filter(o -> o.getTurma() != null && a.getTurma() != null
+                                            && o.getTurma().getId().equals(a.getTurma().getId())
+                                            && o.getData().equals(dataDia))
+                                    .findFirst().orElse(null);
+                            coluna.add(criarElementoAula(a, oc));
+                        });
 
                 marcacoes.stream()
                         .filter(m -> m.getSala().getId().equals(sala.getId()) && m.getData().equals(dataDia))
@@ -586,18 +605,33 @@ public class SalaScheduleView extends VerticalLayout {
         return container;
     }
 
-    private Div criarElementoAula(Aula a) {
+    private Div criarElementoAula(Aula a, OcorrenciaAula ocorrencia) {
         double top = calcularTop(a.getHoraInicio());
         double height = calcularAltura(a.getHoraInicio(), a.getHoraFim());
         String corBase = (a.getTurma() != null && a.getTurma().getCor() != null) ? a.getTurma().getCor() : "#3b82f6";
 
-        Span label = new Span(a.getTurma().getDescricao());
+        boolean cancelada = ocorrencia != null && ocorrencia.getTipo() == OcorrenciaAula.Tipo.CANCELAMENTO;
+        boolean substituida = ocorrencia != null && ocorrencia.getTipo() == OcorrenciaAula.Tipo.SUBSTITUICAO;
+
+        String texto = a.getTurma().getDescricao();
+        if (cancelada) {
+            texto = "❌ " + texto + " (Cancelada)";
+        } else if (substituida) {
+            String nomeSubst = ocorrencia.getProfessorSubstituto() != null
+                    ? ocorrencia.getProfessorSubstituto().getNome() : "—";
+            texto = "🔄 " + texto + " (Subst.: " + nomeSubst + ")";
+        }
+
+        Span label = new Span(texto);
         label.getStyle()
                 .set("font-size", "0.68rem")
                 .set("font-weight", "700")
                 .set("overflow", "hidden")
                 .set("text-overflow", "ellipsis")
                 .set("white-space", "nowrap");
+        if (cancelada) {
+            label.getStyle().set("text-decoration", "line-through");
+        }
 
         Div div = new Div(label);
         div.addClassName("schedule-card"); // Ativa o efeito hover 3D
@@ -607,7 +641,7 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("height", (height - 4) + "px")
                 .set("left", "3px")
                 .set("width", "calc(100% - 6px)")
-                .set("background-color", corBase)
+                .set("background-color", cancelada ? "#94a3b8" : corBase)
                 .set("color", "#ffffff")
                 .set("z-index", "10")
                 .set("display", "flex")
@@ -616,7 +650,10 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("border-radius", "6px")
                 .set("padding", "0 4px")
                 .set("box-shadow", "0 1px 3px rgba(0,0,0,0.1)")
-                .set("border-left", "4px solid rgba(0,0,0,0.15)");
+                .set("border-left", "4px solid " + (substituida ? "#E67E22" : "rgba(0,0,0,0.15)"));
+        if (cancelada) {
+            div.getStyle().set("opacity", "0.65");
+        }
 
         if (isAdmin) {
             div.getStyle().set("cursor", "pointer");
