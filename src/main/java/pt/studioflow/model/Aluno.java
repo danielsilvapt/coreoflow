@@ -116,6 +116,13 @@ public class Aluno {
     @Column(name = "pedido_renovacao")
     private Boolean pedidoRenovacao = false;
 
+    /**
+     * Marcado em ValidacaoInscricoesView pelo botão "Validar Dados" - confirma que a ficha
+     * foi revista pela secretaria, sem ainda ativar o aluno nem gerar mensalidades.
+     */
+    @Column(name = "dados_validados")
+    private Boolean dadosValidados = false;
+
     @Lob
     @Column(name = "foto", columnDefinition = "LONGBLOB")
     private byte[] foto; // Foto do aluno em Base64 (armazenada como bytes)
@@ -360,4 +367,7 @@ public class Aluno {
 
     public boolean isPedidoRenovacao() { return pedidoRenovacao != null && pedidoRenovacao; }
     public void setPedidoRenovacao(boolean pedidoRenovacao) { this.pedidoRenovacao = pedidoRenovacao; }
+
+    public boolean isDadosValidados() { return Boolean.TRUE.equals(dadosValidados); }
+    public void setDadosValidados(boolean dadosValidados) { this.dadosValidados = dadosValidados; }
 }
