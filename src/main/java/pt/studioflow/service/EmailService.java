@@ -383,6 +383,30 @@ public class EmailService {
                 }
         }
 
+        /** Email enviado ao aluno quando a renovação de matrícula é aprovada na validação. */
+        public void enviarEmailAprovacaoRenovacao(Aluno aluno) {
+                if (aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
+                try {
+                        SimpleMailMessage mensagem = new SimpleMailMessage();
+                        mensagem.setTo(aluno.getEmail());
+                        mensagem.setSubject("Renovação de matrícula confirmada");
+
+                        String corpoEmail = String.format(
+                                        "Olá %s,\n\n" +
+                                                        "A tua renovação de matrícula foi confirmada. Estás inscrito para o novo período.\n\n"
+                                                        +
+                                                        "Bom trabalho e até breve!\n\n" +
+                                                        "Mensagem gerada automaticamente pelo plataforma CoreoFlow.",
+                                        aluno.getNomeCompleto());
+
+                        mensagem.setText(corpoEmail);
+                        mailSender.send(mensagem);
+
+                } catch (Exception ex) {
+                        System.err.println("Falha ao enviar e-mail de aprovação de renovação: " + ex.getMessage());
+                }
+        }
+
         public void enviarEmailNotificacaoExperimental(Aluno aluno, Turma turma) {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();

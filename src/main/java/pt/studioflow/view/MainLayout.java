@@ -169,26 +169,14 @@ public class MainLayout extends AppLayout {
                 DrawerToggle toggle = new DrawerToggle();
                 toggle.getStyle().set("color", getPrimaryColor());
 
-                // Branding dinâmico - usa logo do estúdio atual ou logo CoreoFlow
+                // Branding: canto superior esquerdo mostra SEMPRE o logo CoreoFlow (como o
+                // superadmin) - o logo do estúdio vai para a direita, junto ao menu de utilizador.
                 Studio currentStudio = TenantContext.getCurrentStudio();
                 Authentication authForLogo = SecurityContextHolder.getContext().getAuthentication();
                 boolean saForLogo = authForLogo != null && authForLogo.getAuthorities().stream()
                         .anyMatch(a -> a.getAuthority().equals("ROLE_SUPERADMIN"));
 
-                String logoSrc;
-                String studioNome;
-                if (saForLogo || currentStudio == null) {
-                        logoSrc = "images/logo2-coreoflow.png";
-                        studioNome = "CoreoFlow";
-                } else if (currentStudio.getLogoPath() != null && !currentStudio.getLogoPath().isBlank()) {
-                        logoSrc = normalizarLogoPath(currentStudio.getLogoPath());
-                        studioNome = currentStudio.getNome();
-                } else {
-                        logoSrc = "images/logo2-coreoflow.png";
-                        studioNome = currentStudio.getNome();
-                }
-
-                Image logo = new Image(logoSrc, studioNome);
+                Image logo = new Image("images/logo2-coreoflow.png", "CoreoFlow");
                 logo.setHeight("52px");
                 logo.getStyle().set("cursor", "pointer");
                 logo.addClickListener(e -> {
@@ -247,6 +235,18 @@ public class MainLayout extends AppLayout {
 
                 Button darkModeToggle = createDarkModeToggle();
 
+                // Logo do estúdio no canto superior direito, ao lado da seta do menu de utilizador.
+                Image studioLogo = null;
+                if (currentStudio != null && currentStudio.getLogoPath() != null
+                                && !currentStudio.getLogoPath().isBlank()) {
+                        studioLogo = new Image(normalizarLogoPath(currentStudio.getLogoPath()),
+                                        currentStudio.getNome() != null ? currentStudio.getNome() : "Estúdio");
+                        studioLogo.setHeight("38px");
+                        studioLogo.getStyle().set("cursor", "pointer").set("object-fit", "contain");
+                        studioLogo.getElement().setAttribute("title", currentStudio.getNome());
+                        studioLogo.addClickListener(e -> UI.getCurrent().navigate(DashboardView.class));
+                }
+
                 HorizontalLayout rightLayout;
                 if (!isSuperAdmin) {
                         Icon bellIcon = VaadinIcon.BELL.create();
@@ -267,9 +267,13 @@ public class MainLayout extends AppLayout {
                                         .set("cursor", "pointer");
                         btnNotificacoes.getElement().setAttribute("title", "Notificações");
                         btnNotificacoes.addClickListener(e -> UI.getCurrent().navigate(NotificacoesView.class));
-                        rightLayout = new HorizontalLayout(darkModeToggle, btnNotificacoes, userMenu);
+                        rightLayout = studioLogo != null
+                                        ? new HorizontalLayout(darkModeToggle, btnNotificacoes, studioLogo, userMenu)
+                                        : new HorizontalLayout(darkModeToggle, btnNotificacoes, userMenu);
                 } else {
-                        rightLayout = new HorizontalLayout(darkModeToggle, userMenu);
+                        rightLayout = studioLogo != null
+                                        ? new HorizontalLayout(darkModeToggle, studioLogo, userMenu)
+                                        : new HorizontalLayout(darkModeToggle, userMenu);
                 }
                 rightLayout.setAlignItems(Alignment.CENTER);
                 rightLayout.setSpacing(true);
