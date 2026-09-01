@@ -34,8 +34,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import pt.studioflow.model.Aluno;
+import pt.studioflow.model.Lead;
 import pt.studioflow.model.User;
 import pt.studioflow.repository.AlunoRepository;
+import pt.studioflow.repository.LeadRepository;
 import pt.studioflow.repository.MarcacaoSalaRepository;
 import pt.studioflow.repository.TransferenciaRepository;
 import pt.studioflow.repository.UserRepository;
@@ -59,6 +61,7 @@ public class MainLayout extends AppLayout {
         private final TransferenciaRepository transferenciaRepository;
         private final BuildProperties buildProperties;
         private final EmailService emailService;
+        private final LeadRepository leadRepository;
 
 
         // Cores da Identidade Visual Renovada
@@ -77,7 +80,8 @@ public class MainLayout extends AppLayout {
         public MainLayout(UserRepository userRepository, PasswordEncoder passwordEncoder,
                         AlunoRepository alunoRepository, MarcacaoSalaRepository marcacaoRepository,
                         TransferenciaRepository transferenciaRepository, AuthService authService,
-                        BuildProperties buildProperties, EmailService emailService) {
+                        BuildProperties buildProperties, EmailService emailService,
+                        LeadRepository leadRepository) {
                 this.userRepository = userRepository;
                 this.authService = authService;
                 authService.initTenantContext(); // Inicializa o TenantContext para esta sessão
@@ -87,6 +91,7 @@ public class MainLayout extends AppLayout {
                 this.transferenciaRepository = transferenciaRepository;
                 this.buildProperties = buildProperties;
                 this.emailService = emailService;
+                this.leadRepository = leadRepository;
 
                 injectGlobalStyles();
                 createHeader();
@@ -336,6 +341,12 @@ public class MainLayout extends AppLayout {
                         tabs.add(criarTab("Saúde", VaadinIcon.HEALTH_CARD, "#E74C3C", PainelSaudeView.class, null));
                         tabs.add(criarTab("Estúdios", VaadinIcon.GLOBE, "#7B61FF", StudioAdminView.class, null));
                         tabs.add(criarTab("Utilizadores", VaadinIcon.SHIELD, "#27AE60", UserView.class, null));
+                        tabs.add(criarHeaderMenu("Comercial"));
+                        long leadsAtivos = leadRepository.findAll().stream()
+                                        .filter(l -> l.getEstado() != Lead.EstadoLead.GANHO && l.getEstado() != Lead.EstadoLead.PERDIDO)
+                                        .count();
+                        tabs.add(criarTab("Leads / Prospects", VaadinIcon.PHONE, "#009688", LeadsView.class,
+                                        leadsAtivos > 0 ? String.valueOf(leadsAtivos) : null));
                         tabs.add(criarHeaderMenu("Monetização"));
                         tabs.add(criarTab("Planos", VaadinIcon.PACKAGE, "#FF6F00", PlanosSubscricaoView.class, null));
                         tabs.add(criarTab("Billing", VaadinIcon.INVOICE, "#C62828", BillingView.class, null));
