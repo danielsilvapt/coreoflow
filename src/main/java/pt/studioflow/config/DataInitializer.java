@@ -7,7 +7,9 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import pt.studioflow.model.Lead;
 import pt.studioflow.model.User;
+import pt.studioflow.repository.LeadRepository;
 import pt.studioflow.repository.UserRepository;
 
 @Component
@@ -17,10 +19,13 @@ public class DataInitializer implements ApplicationRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LeadRepository leadRepository;
 
-    public DataInitializer(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public DataInitializer(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                            LeadRepository leadRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.leadRepository = leadRepository;
     }
 
     @Override
@@ -45,5 +50,36 @@ public class DataInitializer implements ApplicationRunner {
                 log.info(">>> SUPERADMIN criado. Login: superadmin / coreoflow2026");
             }
         );
+
+        seedLeadsIniciais();
+    }
+
+    /**
+     * Semeia os primeiros leads comerciais (apenas na primeira vez, se a
+     * tabela estiver vazia) para que a pipeline de vendas já apareça
+     * preenchida em /admin/leads.
+     */
+    private void seedLeadsIniciais() {
+        if (leadRepository.count() > 0) return;
+
+        Lead risa = new Lead();
+        risa.setNome("RiSa by ADCR");
+        risa.setTipo(Lead.TipoLead.ESCOLA_DANCA);
+        risa.setNomeContacto("Sandra Silva");
+        risa.setEstado(Lead.EstadoLead.NOVO);
+        risa.setOrigem("Prospecção direta");
+        risa.setProximoPasso("Marcar demo");
+        leadRepository.save(risa);
+
+        Lead ritmus = new Lead();
+        ritmus.setNome("Ritmus - Academia de Dança");
+        ritmus.setTipo(Lead.TipoLead.ESCOLA_DANCA);
+        ritmus.setNomeContacto("João Martins");
+        ritmus.setEstado(Lead.EstadoLead.NOVO);
+        ritmus.setOrigem("Prospecção direta");
+        ritmus.setProximoPasso("Marcar demo");
+        leadRepository.save(ritmus);
+
+        log.info(">>> Leads iniciais semeados: RiSa by ADCR, Ritmus - Academia de Dança");
     }
 }
