@@ -276,7 +276,7 @@ public class NotificacoesView extends VerticalLayout {
             salasPendentes.stream().map(m ->
                 (m.getData() != null ? m.getData() + " " : "") + m.getHoraInicio() + "–" + m.getHoraFim()
                 + " | " + (m.getProfessor() != null ? m.getProfessor() : "—") + " (" + m.getTipo() + ")"
-            ).collect(Collectors.toList()), "sala-schedule"));
+            ).collect(Collectors.toList()), "horario-salas"));
 
         conteudo.add(criarCard("Inscrições Pendentes de Validação", inscricoesPendentes.size(), "#1565c0", VaadinIcon.USER_CHECK,
             inscricoesPendentes.stream().map(a -> a.getNomeCompleto() + " (" + a.getStatus() + ")")
@@ -285,7 +285,7 @@ public class NotificacoesView extends VerticalLayout {
         conteudo.add(criarCard("Transferências Pendentes", transferPendentes.size(), "#e65100", VaadinIcon.INSTITUTION,
             transferPendentes.stream().map(t ->
                 (t.getDescricao() != null ? t.getDescricao() : "Transferência") + " | " + t.getEstado()
-            ).collect(Collectors.toList()), "transferencias"));
+            ).collect(Collectors.toList()), "financeiro-transferencias"));
 
         conteudo.add(criarCard("Mensalidades em Dívida", comDivida.size(), "#c62828", VaadinIcon.MONEY,
             comDivida.stream().map(a -> a.getNomeCompleto() + " — " + a.getTelemovel())
@@ -382,13 +382,13 @@ public class NotificacoesView extends VerticalLayout {
             salasAprovadas.stream().map(m ->
                 (m.getData() != null ? m.getData().toString() : "—") + " " + m.getHoraInicio() + "–" + m.getHoraFim()
                 + " | " + (m.getSala() != null ? m.getSala().getNome() : "—") + " (" + m.getTipo() + ")"
-            ).collect(Collectors.toList()), "sala-schedule"));
+            ).collect(Collectors.toList()), "horario-salas"));
 
         conteudo.add(criarCard("⏳ Pedidos de Sala Aguardam Aprovação", salasPendentes.size(), "#f57f17", VaadinIcon.CLOCK,
             salasPendentes.stream().map(m ->
                 (m.getData() != null ? m.getData().toString() : "—") + " " + m.getHoraInicio() + "–" + m.getHoraFim()
                 + " | " + (m.getSala() != null ? m.getSala().getNome() : "—") + " (" + m.getTipo() + ")"
-            ).collect(Collectors.toList()), "sala-schedule"));
+            ).collect(Collectors.toList()), "horario-salas"));
 
         if (fimDeMes) {
             String nomeMes = mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt"));

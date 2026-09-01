@@ -44,12 +44,14 @@ import pt.studioflow.model.Professor;
 import pt.studioflow.model.Sala;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
+import pt.studioflow.model.User;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AulaRepository;
 import pt.studioflow.repository.MarcacaoSalaRepository;
 import pt.studioflow.repository.ProfessorRepository;
 import pt.studioflow.repository.SalaRepository;
 import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.repository.UserRepository;
 import pt.studioflow.service.EmailService;
 import pt.studioflow.service.TurmaService;
 
@@ -65,6 +67,7 @@ public class SalaScheduleView extends VerticalLayout {
     private final ProfessorRepository professorRepository;
     private final AlunoRepository alunoRepository;
     private final EmailService emailService;
+    private final UserRepository userRepository;
 
     private final int HORA_INICIO = 9;
     private final int HORA_FIM = 23;
@@ -83,7 +86,7 @@ public class SalaScheduleView extends VerticalLayout {
     public SalaScheduleView(SalaRepository salaRepository, TurmaRepository turmaRepository,
             MarcacaoSalaRepository marcacaoRepository, AulaRepository aulaRepository,
             ProfessorRepository professorRepository, TurmaService turmaService, AlunoRepository alunoRepository,
-            EmailService emailService) {
+            EmailService emailService, UserRepository userRepository) {
 
         this.salaRepository = salaRepository;
         this.turmaRepository = turmaRepository;
@@ -92,6 +95,7 @@ public class SalaScheduleView extends VerticalLayout {
         this.professorRepository = professorRepository;
         this.alunoRepository = alunoRepository;
         this.emailService = emailService;
+        this.userRepository = userRepository;
 
         this.isAdmin = VaadinServletRequest.getCurrent().getHttpServletRequest().isUserInRole("ADMIN");
 
@@ -353,6 +357,20 @@ public class SalaScheduleView extends VerticalLayout {
     private List<Professor> getProfessoresDoStudio() {
         Studio s = TenantContext.getCurrentStudio();
         return s != null ? professorRepository.findAllByStudio(s) : professorRepository.findAll();
+    }
+
+    /**
+     * Resolve o primeiro nome do utilizador logado a partir do campo firstName na BD
+     * (mesma lógica usada no resto da app), em vez de assumir que o username/principal
+     * (que pode vir como "slug:username") corresponde ao primeiro nome.
+     */
+    private String resolverPrimeiroNomeUserLogado(String userLogado) {
+        String firstName = userRepository.findByPrincipalName(userLogado).map(User::getFirstName).orElse(null);
+        if (firstName != null && !firstName.isBlank()) {
+            return firstName.trim().split("\\s+")[0].toLowerCase();
+        }
+        String semSlug = userLogado.contains(":") ? userLogado.split(":", 2)[1] : userLogado;
+        return semSlug.split("[\\.\\s_]")[0].toLowerCase();
     }
 
     private List<Aluno> getAlunosDoStudio() {
@@ -726,7 +744,7 @@ public class SalaScheduleView extends VerticalLayout {
         layout.setSpacing(true);
 
         String userLogado = VaadinServletRequest.getCurrent().getHttpServletRequest().getUserPrincipal().getName();
-        String primeiroNomeUser = userLogado.split("[\\.\\s_]")[0].toLowerCase();
+        String primeiroNomeUser = resolverPrimeiroNomeUserLogado(userLogado);
 
         Professor profLogado = getProfessoresDoStudio().stream()
                 .filter(p -> p.getNome() != null && !p.getNome().trim().isEmpty())
@@ -1035,7 +1053,7 @@ public class SalaScheduleView extends VerticalLayout {
         layout.setSpacing(true);
 
         String userLogado = VaadinServletRequest.getCurrent().getHttpServletRequest().getUserPrincipal().getName();
-        String primeiroNomeUser = userLogado.split("[\\.\\s_]")[0].toLowerCase();
+        String primeiroNomeUser = resolverPrimeiroNomeUserLogado(userLogado);
 
         Professor profLogado = getProfessoresDoStudio().stream()
                 .filter(p -> p.getNome() != null && !p.getNome().trim().isEmpty())
