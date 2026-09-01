@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -38,6 +39,7 @@ import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Professor;
 import pt.studioflow.model.Turma;
 import pt.studioflow.model.User;
+import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.ProfessorRepository;
 import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.repository.UserRepository;
@@ -54,6 +56,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
     private final EmailService emailService;
     private final ProfessorRepository professorRepository;
     private final UserRepository userRepository;
+    private final AlunoRepository alunoRepository;
 
     private final Div containerCards = new Div();
 
@@ -61,17 +64,31 @@ public class TurmaComunicacaoView extends VerticalLayout {
     private final List<Checkbox> listaCheckboxes = new ArrayList<>();
 
     private ComboBox<Turma> turmaCombo;
+    private ComboBox<String> filtroEstado;
+
+    // Sentinela "Todos os alunos" (opção por defeito da combo de turmas).
+    private final Turma TODOS = criarSentinelaTodos();
+    // Professor associado ao utilizador logado (null para ADMIN/DELEG).
+    private Professor professorLogado;
+
+    private static Turma criarSentinelaTodos() {
+        Turma t = new Turma();
+        t.setDescricao("👥 Todos os alunos");
+        return t;
+    }
 
     public TurmaComunicacaoView(TurmaRepository turmaRepository,
             TurmaService turmaService,
             EmailService emailService,
             ProfessorRepository professorRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            AlunoRepository alunoRepository) {
         this.turmaRepository = turmaRepository;
         this.turmaService = turmaService;
         this.emailService = emailService;
         this.professorRepository = professorRepository;
         this.userRepository = userRepository;
+        this.alunoRepository = alunoRepository;
 
         setSizeFull();
         setPadding(false);
@@ -103,6 +120,13 @@ public class TurmaComunicacaoView extends VerticalLayout {
         turmaCombo.setWidth("300px");
         turmaCombo.addValueChangeListener(e -> atualizarGaleria(e.getValue()));
 
+        filtroEstado = new ComboBox<>("Estado");
+        filtroEstado.setItems("Ativos", "Inativos");
+        filtroEstado.setValue("Ativos");
+        filtroEstado.setWidth("140px");
+        filtroEstado.setAllowCustomValue(false);
+        filtroEstado.addValueChangeListener(e -> atualizarGaleria(turmaCombo.getValue()));
+
         Button btnSelecionarTodos = new Button("Selecionar Todos", new Icon(VaadinIcon.CHECK_SQUARE_O),
                 e -> setTodos(true));
         btnSelecionarTodos.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
@@ -117,12 +141,19 @@ public class TurmaComunicacaoView extends VerticalLayout {
         Button btnZapGrupo = new Button("Abrir Grupo WhatsApp", new Icon(VaadinIcon.CHAT), e -> entrarNoGrupo());
         btnZapGrupo.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
 
-        HorizontalLayout toolbar = new HorizontalLayout(turmaCombo, btnSelecionarTodos, btnLimpar, btnEmail,
-                btnZapGrupo);
+        HorizontalLayout toolbar = new HorizontalLayout(turmaCombo, filtroEstado, btnSelecionarTodos, btnLimpar,
+                btnEmail, btnZapGrupo);
         toolbar.setAlignItems(Alignment.BASELINE);
         toolbar.setFlexGrow(1, turmaCombo);
 
         add(toolbar, new Hr());
+    }
+
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+        // Render inicial: por defeito a combo está em "Todos os alunos".
+        atualizarGaleria(turmaCombo.getValue());
     }
 
     private void carregarTurmasPorPermissao() {
@@ -134,41 +165,34 @@ public class TurmaComunicacaoView extends VerticalLayout {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_DELEG"));
 
         pt.studioflow.model.Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
+        List<Turma> turmas;
         if (isAdmin || isDelegado) {
-            turmaCombo.setItems(studio != null ? turmaRepository.findAllByStudio(studio) : turmaRepository.findAllComplete());
-
+            turmas = studio != null ? turmaRepository.findAllByStudio(studio) : turmaRepository.findAllComplete();
         } else {
             // Regra: firstName do User logado == primeiro nome do Professor
             String login = auth.getName();
             String firstNameLogado = userRepository.findByPrincipalName(login).map(User::getFirstName).orElse("");
 
-            // Procuramos todos os professores e filtramos em memória ou via Query
-            // Aqui buscamos o professor cujo primeiro nome coincide com o login
             List<Professor> todosProfessores = studio != null ? professorRepository.findAllByStudio(studio) : professorRepository.findAll();
-
-            Professor professorCorrespondente = todosProfessores.stream()
-                    .filter(p -> {
-                        String primeiroNomeProf = p.getNome().split(" ")[0];
-                        return primeiroNomeProf.equalsIgnoreCase(firstNameLogado);
-                    })
+            professorLogado = todosProfessores.stream()
+                    .filter(p -> p.getNome() != null && p.getNome().split(" ")[0].equalsIgnoreCase(firstNameLogado))
                     .findFirst()
                     .orElse(null);
 
-            if (professorCorrespondente != null) {
-                List<Turma> turmasDoProf = turmaRepository.findByProfessor(professorCorrespondente);
-                turmaCombo.setItems(turmasDoProf);
-
-                // Se só tiver uma turma, seleciona logo
-                if (turmasDoProf.size() == 1) {
-                    turmaCombo.setValue(turmasDoProf.get(0));
-                }
-
+            if (professorLogado != null) {
+                turmas = turmaRepository.findByProfessor(professorLogado);
             } else {
+                turmas = new ArrayList<>();
                 Notification.show("Professor não vinculado ao utilizador logado.", 3000, Notification.Position.MIDDLE)
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
             }
-
         }
+
+        List<Turma> comTodos = new ArrayList<>();
+        comTodos.add(TODOS);
+        comTodos.addAll(turmas);
+        turmaCombo.setItems(comTodos);
+        turmaCombo.setValue(TODOS);
     }
 
     private void setTodos(boolean valor) {
@@ -179,15 +203,47 @@ public class TurmaComunicacaoView extends VerticalLayout {
         listaCheckboxes.forEach(cb -> cb.setValue(valor));
     }
 
+    private boolean isTodos(Turma turma) {
+        return turma == null || turma == TODOS;
+    }
+
+    /**
+     * Lista de alunos a mostrar na galeria. Em modo "Todos" devolve todos os
+     * alunos do estúdio (ou das turmas do professor), filtrados por Ativos /
+     * Inativos. Para uma turma específica devolve os alunos dessa turma.
+     */
+    private List<Aluno> alunosParaGaleria(Turma turma) {
+        if (!isTodos(turma)) {
+            return turmaService.getAlunosDaTurma(turma);
+        }
+
+        pt.studioflow.model.Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
+        List<Aluno> base;
+        if (professorLogado != null) {
+            base = turmaRepository.findByProfessor(professorLogado).stream()
+                    .flatMap(t -> turmaService.getAlunosDaTurma(t).stream())
+                    .collect(Collectors.toMap(Aluno::getId, a -> a, (a, b) -> a))
+                    .values().stream().collect(Collectors.toList());
+        } else {
+            base = studio != null ? alunoRepository.findAllByStudioOrderByNomeCompletoAsc(studio)
+                    : alunoRepository.findAllByOrderByNomeCompletoAsc();
+        }
+
+        boolean querAtivos = !"Inativos".equals(filtroEstado.getValue());
+        return base.stream()
+                .filter(a -> a.isAtivo() == querAtivos)
+                .sorted(java.util.Comparator.comparing(Aluno::getNomeCompleto, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+    }
+
     private void atualizarGaleria(Turma turma) {
         containerCards.removeAll();
         selecionados.clear();
         listaCheckboxes.clear();
 
-        if (turma == null)
-            return;
+        filtroEstado.setVisible(isTodos(turma));
 
-        List<Aluno> alunos = turmaService.getAlunosDaTurma(turma);
+        List<Aluno> alunos = alunosParaGaleria(turma);
         for (Aluno aluno : alunos) {
             VerticalLayout card = new VerticalLayout();
             card.getStyle()
