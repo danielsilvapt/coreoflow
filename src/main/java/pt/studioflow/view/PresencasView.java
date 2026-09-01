@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -81,6 +82,19 @@ public class PresencasView extends VerticalLayout {
     private final Map<Long, Map<LocalDate, Boolean>> presencasCache = new HashMap<>();
     private Div chartContainer;
 
+    // Modo "Todos": galeria de cards com o gráfico de presenças do mês atual
+    // de cada turma. É o ecrã que aparece por defeito ao entrar na view.
+    private Div cardsContainer;
+    private Button btnExperimental;
+    private Button btnGuardar;
+    private final Turma TODAS = criarSentinelaTodas();
+
+    private static Turma criarSentinelaTodas() {
+        Turma t = new Turma();
+        t.setDescricao("📊 Todas as turmas");
+        return t;
+    }
+
     public PresencasView(TurmaRepository turmaRepository,
             PresencaRepository presencaRepository,
             TurmaService turmaService,
@@ -144,11 +158,11 @@ public class PresencasView extends VerticalLayout {
         mesCombo.setValue(YearMonth.now());
         mesCombo.setWidth("180px");
 
-        Button btnExperimental = new Button("Aula Experimental", VaadinIcon.MAGIC.create(),
+        btnExperimental = new Button("Aula Experimental", VaadinIcon.MAGIC.create(),
                 e -> abrirDialogExperimental());
         btnExperimental.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
 
-        Button btnGuardar = new Button("Guardar", VaadinIcon.DATABASE.create(), e -> guardarPresencas());
+        btnGuardar = new Button("Guardar", VaadinIcon.DATABASE.create(), e -> guardarPresencas());
         btnGuardar.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
 
         toolbar.add(turmaCombo, mesCombo, btnExperimental, btnGuardar);
@@ -163,7 +177,16 @@ public class PresencasView extends VerticalLayout {
         chartContainer.addClassName("chart-card");
         chartContainer.setHeight("280px");
 
-        add(title, toolbar, grid, chartContainer);
+        cardsContainer = new Div();
+        cardsContainer.setId("cards-container");
+        cardsContainer.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "repeat(auto-fill, minmax(320px, 1fr))")
+                .set("gap", "20px")
+                .set("width", "100%")
+                .set("margin-top", "10px");
+
+        add(title, toolbar, grid, chartContainer, cardsContainer);
     }
 
     private void abrirDialogExperimental() {
@@ -285,13 +308,108 @@ public class PresencasView extends VerticalLayout {
     }
 
     private void carregarTudo() {
-        if (turmaCombo.getValue() == null || mesCombo.getValue() == null)
+        if (turmaCombo.getValue() == null || turmaCombo.getValue() == TODAS) {
+            entrarModoTodos();
+            return;
+        }
+        entrarModoTurma();
+        if (mesCombo.getValue() == null)
             return;
         turmaSelecionada = turmaRepository.findByIdCompleto(turmaCombo.getValue().getId());
         mesSelecionado = mesCombo.getValue();
         carregarPresencasCache();
         atualizarColunasGrid();
         atualizarGrafico();
+    }
+
+    private void entrarModoTurma() {
+        grid.setVisible(true);
+        chartContainer.setVisible(true);
+        mesCombo.setVisible(true);
+        btnExperimental.setVisible(true);
+        btnGuardar.setVisible(true);
+        cardsContainer.setVisible(false);
+    }
+
+    private void entrarModoTodos() {
+        grid.setVisible(false);
+        chartContainer.setVisible(false);
+        mesCombo.setVisible(false);
+        btnExperimental.setVisible(false);
+        btnGuardar.setVisible(false);
+        cardsContainer.setVisible(true);
+        renderCardsTodasTurmas();
+    }
+
+    /**
+     * Modo "Todos": um card por turma (estilo galeria da Comunicação) com o
+     * gráfico de presenças do mês atual, à semelhança do gráfico da folha
+     * individual. É o ecrã por defeito ao entrar na view.
+     */
+    private void renderCardsTodasTurmas() {
+        cardsContainer.removeAll();
+        YearMonth mes = YearMonth.now();
+        LocalDate ini = mes.atDay(1);
+        LocalDate fim = mes.atEndOfMonth();
+
+        List<Turma> turmas = turmasParaCards();
+        if (turmas.isEmpty()) {
+            Span vazio = new Span("Sem turmas para mostrar.");
+            vazio.getStyle().set("color", "#888");
+            cardsContainer.add(vazio);
+            return;
+        }
+
+        List<String> desenhos = new ArrayList<>();
+        for (Turma base : turmas) {
+            Turma turma = turmaRepository.findByIdCompleto(base.getId());
+
+            Map<Integer, Long> porDia = new java.util.TreeMap<>();
+            presencaRepository.findByTurmaAndDataBetween(turma, ini, fim).stream()
+                    .filter(Presenca::isPresente)
+                    .forEach(p -> porDia.merge(p.getData().getDayOfMonth(), 1L, Long::sum));
+            long total = porDia.values().stream().mapToLong(Long::longValue).sum();
+
+            String wrapId = "pres-wrap-" + turma.getId();
+
+            Div card = new Div();
+            card.addClassName("chart-card");
+            card.getStyle().set("margin-top", "0");
+
+            Span header = new Span(turma.getDescricao());
+            header.getStyle().set("font-weight", "700").set("display", "block").set("margin-bottom", "6px");
+
+            Div canvasWrap = new Div();
+            canvasWrap.setId(wrapId);
+            canvasWrap.setHeight("190px");
+
+            Span sub = new Span(total > 0 ? total + " presenças marcadas este mês" : "Sem presenças marcadas este mês");
+            sub.getStyle().set("font-size", "0.8rem").set("color", "#888");
+
+            card.add(header, canvasWrap, sub);
+            cardsContainer.add(card);
+
+            List<String> pontos = new ArrayList<>();
+            for (int d = 1; d <= mes.lengthOfMonth(); d++) {
+                long c = porDia.getOrDefault(d, 0L);
+                if (c > 0)
+                    pontos.add("{x:'" + d + "',y:" + c + "}");
+            }
+            desenhos.add("(function(){var w=document.getElementById('" + wrapId + "');if(!w)return;"
+                    + "var el=w.querySelector('canvas');if(!el){el=document.createElement('canvas');w.appendChild(el);}"
+                    + "window.__presCards=window.__presCards||{};"
+                    + "if(window.__presCards['" + wrapId + "'])window.__presCards['" + wrapId + "'].destroy();"
+                    + "window.__presCards['" + wrapId + "']=new Chart(el.getContext('2d'),{type:'line',"
+                    + "data:{datasets:[{label:'Presenças',data:[" + String.join(",", pontos) + "],"
+                    + "borderColor:'#16a085',backgroundColor:'rgba(22,160,133,0.1)',fill:true,tension:0.3}]},"
+                    + "options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});})();");
+        }
+
+        if (!desenhos.isEmpty()) {
+            String script = "(function go(){if(typeof Chart==='undefined'){setTimeout(go,120);return;}"
+                    + String.join("", desenhos) + "})();";
+            UI.getCurrent().getPage().executeJs(script);
+        }
     }
 
     private void carregarPresencasCache() {
@@ -327,8 +445,19 @@ public class PresencasView extends VerticalLayout {
                         .filter(t -> t.getProfessor() != null && normalizar(t.getProfessor().getNome())
                                 .contains(normalizar(getFirstNameFromDatabase())))
                         .collect(Collectors.toList());
-        turmaCombo.setItems(turmas);
+
+        List<Turma> comTodas = new ArrayList<>();
+        comTodas.add(TODAS);
+        comTodas.addAll(turmas);
+        turmaCombo.setItems(comTodas);
         turmaCombo.setItemLabelGenerator(Turma::getDescricao);
+        turmaCombo.setValue(TODAS);
+    }
+
+    private List<Turma> turmasParaCards() {
+        return turmaCombo.getListDataView().getItems()
+                .filter(t -> t != TODAS)
+                .collect(Collectors.toList());
     }
 
     private void atualizarFeedbackVisual() {
@@ -374,6 +503,14 @@ public class PresencasView extends VerticalLayout {
     private void configurarEventos() {
         turmaCombo.addValueChangeListener(e -> carregarTudo());
         mesCombo.addValueChangeListener(e -> carregarTudo());
+    }
+
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+        // Render inicial: por defeito entra no modo "Todos". Feito no onAttach
+        // para o Chart.js e o DOM já estarem disponíveis ao correr o executeJs.
+        carregarTudo();
     }
 
     private String getFirstNameFromDatabase() {
