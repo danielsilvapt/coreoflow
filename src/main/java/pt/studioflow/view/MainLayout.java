@@ -239,7 +239,8 @@ public class MainLayout extends AppLayout {
                 Image studioLogo = null;
                 if (currentStudio != null && currentStudio.getLogoPath() != null
                                 && !currentStudio.getLogoPath().isBlank()) {
-                        studioLogo = new Image(normalizarLogoPath(currentStudio.getLogoPath()),
+                        studioLogo = new Image(
+                                        pt.studioflow.util.LogoUrl.comVersao(currentStudio.getLogoPath()),
                                         currentStudio.getNome() != null ? currentStudio.getNome() : "Estúdio");
                         studioLogo.setHeight("38px");
                         studioLogo.getStyle().set("cursor", "pointer").set("object-fit", "contain");

@@ -78,7 +78,7 @@ public class StudioAdminView extends VerticalLayout {
 
         grid.addComponentColumn(studio -> {
             if (studio.getLogoPath() != null && !studio.getLogoPath().isBlank()) {
-                Image img = new Image(studio.getLogoPath(), studio.getNome());
+                Image img = new Image(pt.studioflow.util.LogoUrl.comVersao(studio.getLogoPath()), studio.getNome());
                 img.setHeight("32px");
                 img.getStyle().set("object-fit", "contain");
                 return img;
@@ -139,7 +139,7 @@ public class StudioAdminView extends VerticalLayout {
         logoPreview.getStyle().set("object-fit", "contain").set("display",
                 (studio.getLogoPath() != null && !studio.getLogoPath().isBlank()) ? "block" : "none");
         if (studio.getLogoPath() != null && !studio.getLogoPath().isBlank()) {
-            logoPreview.setSrc(studio.getLogoPath());
+            logoPreview.setSrc(pt.studioflow.util.LogoUrl.comVersao(studio.getLogoPath()));
             logoPreview.setAlt(studio.getNome());
         }
 
