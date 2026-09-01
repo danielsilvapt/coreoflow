@@ -31,4 +31,24 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** Compatibilidade com código legado - procura por username (usado antes de ter studio context) */
     Optional<User> findByUsername(String username);
+
+    /**
+     * Resolve o utilizador a partir do nome de principal do Spring Security.
+     * Para utilizadores de um estúdio esse nome vem no formato "slug:username";
+     * este método faz o strip do prefixo do tenant e procura dentro do studio
+     * ativo na sessão. Deve ser usado por todas as views em vez de
+     * {@link #findByUsername(String)} com o auth.getName().
+     */
+    default Optional<User> findByPrincipalName(String principalName) {
+        if (principalName == null) {
+            return Optional.empty();
+        }
+        String username = principalName.contains(":")
+                ? principalName.split(":", 2)[1]
+                : principalName;
+        Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
+        return studio != null
+                ? findByUsernameAndStudio(username, studio)
+                : findByUsername(username);
+    }
 }

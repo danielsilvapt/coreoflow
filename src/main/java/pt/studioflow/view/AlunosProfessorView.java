@@ -274,7 +274,7 @@ public class AlunosProfessorView extends VerticalLayout {
 
     private String getFirstNameFromDatabase() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth == null ? "" : userRepository.findByUsername(auth.getName()).map(User::getFirstName).orElse("");
+        return auth == null ? "" : userRepository.findByPrincipalName(auth.getName()).map(User::getFirstName).orElse("");
     }
 
     private String normalizar(String texto) {

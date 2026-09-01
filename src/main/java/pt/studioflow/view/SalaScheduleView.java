@@ -799,7 +799,13 @@ public class SalaScheduleView extends VerticalLayout {
                 return;
             }
 
+            if (inicio.isEmpty() || fim.isEmpty()) {
+                Notification.show("Indique a hora de início e de fim!");
+                return;
+            }
+
             MarcacaoSala m = new MarcacaoSala();
+            m.setStudio(TenantContext.getCurrentStudio());
             m.setData(comboData.getValue());
             m.setSala(comboSala.getValue());
 
@@ -826,11 +832,15 @@ public class SalaScheduleView extends VerticalLayout {
             dialog.close();
             atualizarTudo();
 
-            emailService.notificarAdminNovoPedido(
-                    m.getProfessor(), m.getTipo(), m.getTurma() != null ? m.getTurma().getDescricao() : "",
-                    m.getSala().getNome(), m.getData().toString(),
-                    m.getHoraInicio().toString(), m.getHoraFim().toString(),
-                    m.getObservacoes() != null ? m.getObservacoes() : "");
+            try {
+                emailService.notificarAdminNovoPedido(
+                        m.getProfessor(), m.getTipo(), m.getTurma() != null ? m.getTurma().getDescricao() : "",
+                        m.getSala().getNome(), m.getData().toString(),
+                        m.getHoraInicio().toString(), m.getHoraFim().toString(),
+                        m.getObservacoes() != null ? m.getObservacoes() : "");
+            } catch (Exception ex) {
+                // o pedido foi gravado; falha no email não deve bloquear o fluxo
+            }
 
             Notification.show("Agendamento processado com sucesso!");
         });
@@ -1104,7 +1114,13 @@ public class SalaScheduleView extends VerticalLayout {
                 return;
             }
 
+            if (inicio.isEmpty() || fim.isEmpty()) {
+                Notification.show("Indique a hora de início e de fim!");
+                return;
+            }
+
             MarcacaoSala m = new MarcacaoSala();
+            m.setStudio(TenantContext.getCurrentStudio());
             m.setSala(sala);
             m.setData(data);
 
@@ -1131,11 +1147,15 @@ public class SalaScheduleView extends VerticalLayout {
             dialog.close();
             atualizarTudo();
 
-            emailService.notificarAdminNovoPedido(
-                    m.getProfessor(), m.getTipo(), m.getTurma() != null ? m.getTurma().getDescricao() : "",
-                    m.getSala().getNome(), m.getData().toString(),
-                    m.getHoraInicio().toString(), m.getHoraFim().toString(),
-                    m.getObservacoes() != null ? m.getObservacoes() : "");
+            try {
+                emailService.notificarAdminNovoPedido(
+                        m.getProfessor(), m.getTipo(), m.getTurma() != null ? m.getTurma().getDescricao() : "",
+                        m.getSala().getNome(), m.getData().toString(),
+                        m.getHoraInicio().toString(), m.getHoraFim().toString(),
+                        m.getObservacoes() != null ? m.getObservacoes() : "");
+            } catch (Exception ex) {
+                // o pedido foi gravado; falha no email não deve bloquear o fluxo
+            }
 
             Notification.show("Agendamento processado com sucesso!");
         });

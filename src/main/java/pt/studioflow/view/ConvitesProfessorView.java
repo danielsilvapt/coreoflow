@@ -74,7 +74,7 @@ public class ConvitesProfessorView extends VerticalLayout {
         if (isDelegado) {
             this.minhasTurmas = _studio != null ? turmaRepository.findAllByStudio(_studio) : turmaRepository.findAll();
         } else {
-            String firstName = userRepository.findByUsername(login).map(User::getFirstName).orElse("");
+            String firstName = userRepository.findByPrincipalName(login).map(User::getFirstName).orElse("");
             (_studio != null ? professorRepository.findAllByStudio(_studio) : professorRepository.findAll()).stream()
                     .filter(p -> p.getNome().toLowerCase().contains(firstName.toLowerCase()))
                     .findFirst().ifPresent(p -> {

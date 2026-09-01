@@ -140,7 +140,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
         } else {
             // Regra: firstName do User logado == primeiro nome do Professor
             String login = auth.getName();
-            String firstNameLogado = userRepository.findByUsername(login).map(User::getFirstName).orElse("");
+            String firstNameLogado = userRepository.findByPrincipalName(login).map(User::getFirstName).orElse("");
 
             // Procuramos todos os professores e filtramos em memória ou via Query
             // Aqui buscamos o professor cujo primeiro nome coincide com o login
@@ -299,7 +299,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
         String login = auth.getName();
-        String firstNameLogado = userRepository.findByUsername(login).map(User::getFirstName).orElse("");
+        String firstNameLogado = userRepository.findByPrincipalName(login).map(User::getFirstName).orElse("");
 
         // Professor a colocar em Cc: primeiro o professor da turma selecionada
         // (professor da modalidade); só se a turma não tiver professor é que

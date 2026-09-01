@@ -68,7 +68,7 @@ public class TransferenciasView extends VerticalLayout {
         this.usernameLogado = VaadinServletRequest.getCurrent().getHttpServletRequest().getUserPrincipal().getName();
 
         // 2. Procurar na tabela de "users" o e-mail real associado a este código
-        userRepository.findByUsername(usernameLogado).ifPresent(user -> {
+        userRepository.findByPrincipalName(usernameLogado).ifPresent(user -> {
             this.userEmailLogado = user.getEmail();
         });
 
