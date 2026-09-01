@@ -92,7 +92,7 @@ public class NotificacoesView extends VerticalLayout {
         headerRow.setAlignItems(Alignment.CENTER);
         headerRow.setJustifyContentMode(JustifyContentMode.BETWEEN);
         H2 titulo = new H2("Notificações");
-        titulo.getStyle().set("margin", "0");
+        titulo.getStyle().set("margin-top", "0");
         Button btnAtualizar = new Button("Atualizar", VaadinIcon.REFRESH.create());
         btnAtualizar.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         btnAtualizar.addClickListener(e -> {

@@ -58,6 +58,7 @@ public class StudioAdminView extends VerticalLayout {
         setPadding(true);
 
         H2 titulo = new H2("Gestão de Estúdios");
+        titulo.getStyle().set("margin-top", "0");
 
         Button btnNovo = new Button("Novo Estúdio", VaadinIcon.PLUS.create());
         btnNovo.addThemeVariants(ButtonVariant.LUMO_PRIMARY);

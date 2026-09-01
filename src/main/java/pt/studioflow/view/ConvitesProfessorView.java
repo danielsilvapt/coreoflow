@@ -83,7 +83,9 @@ public class ConvitesProfessorView extends VerticalLayout {
                     });
         }
 
-        add(new H2("Convocatória de Alunos para Eventos"));
+        H2 titulo = new H2("Convocatória de Alunos para Eventos");
+        titulo.getStyle().set("margin-top", "0");
+        add(titulo);
 
         // 2. Filtros
         HorizontalLayout filtros = new HorizontalLayout();

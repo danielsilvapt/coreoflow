@@ -143,6 +143,7 @@ public class PresencasView extends VerticalLayout {
 
     private void configurarUI() {
         H2 title = new H2("Folha de Presenças");
+        title.getStyle().set("margin-top", "0");
 
         HorizontalLayout toolbar = new HorizontalLayout();
         toolbar.setWidthFull();
