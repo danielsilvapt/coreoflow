@@ -9,6 +9,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -60,7 +61,11 @@ public class CampanhasView extends VerticalLayout {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        add(ViewUtils.toolbar(ViewUtils.botaoNovo("Nova Campanha", e -> abrirDialog(null))),
+
+        H2 titulo = new H2("Campanhas");
+        titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
+
+        add(titulo, ViewUtils.toolbar(ViewUtils.botaoNovo("Nova Campanha", e -> abrirDialog(null))),
             criarGrid());
         atualizar();
     }
