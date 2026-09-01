@@ -515,7 +515,7 @@ public class PresencasView extends VerticalLayout {
 
     private String getFirstNameFromDatabase() {
         Authentication a = SecurityContextHolder.getContext().getAuthentication();
-        return userRepository.findByUsername(a.getName()).map(User::getFirstName).orElse("");
+        return userRepository.findByPrincipalName(a.getName()).map(User::getFirstName).orElse("");
     }
 
     private String normalizar(String t) {

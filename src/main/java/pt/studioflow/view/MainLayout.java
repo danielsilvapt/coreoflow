@@ -391,7 +391,7 @@ public class MainLayout extends AppLayout {
                                         .getHttpServletRequest().getUserPrincipal().getName();
 
                         // 2. Descobrir o email real associado na DB (tal como fizemos na View)
-                        String emailUser = userRepository.findByUsername(usernameLogado)
+                        String emailUser = userRepository.findByPrincipalName(usernameLogado)
                                         .map(pt.studioflow.model.User::getEmail)
                                         .orElse("");
 

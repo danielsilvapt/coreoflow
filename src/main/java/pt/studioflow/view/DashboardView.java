@@ -117,7 +117,7 @@ public class DashboardView extends Div {
                         : marcacaoSalaRepository.findAllWithAlunosByData(hoje);
 
                 String login = SecurityContextHolder.getContext().getAuthentication().getName();
-                String firstNameBD = userRepository.findByUsername(login).map(User::getFirstName).orElse("");
+                String firstNameBD = userRepository.findByPrincipalName(login).map(User::getFirstName).orElse("");
                 String busca = normalizar(firstNameBD);
 
                 // --- 1. ÁREA PESSOAL & PROFESSOR ---

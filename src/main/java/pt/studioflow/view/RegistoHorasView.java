@@ -486,7 +486,7 @@ public class RegistoHorasView extends VerticalLayout {
     private String getFirstNameFromDatabase() {
         Object p = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String l = (p instanceof UserDetails) ? ((UserDetails) p).getUsername() : p.toString();
-        return userRepository.findByUsername(l).map(User::getFirstName).orElse("");
+        return userRepository.findByPrincipalName(l).map(User::getFirstName).orElse("");
     }
 
     private String normalizar(String t) {
