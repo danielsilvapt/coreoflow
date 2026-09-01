@@ -306,10 +306,18 @@ public class TurmaComunicacaoView extends VerticalLayout {
         // recorremos ao professor cujo primeiro nome coincide com o login.
         final Professor professorCorrespondente = resolverProfessorParaCc(firstNameLogado);
 
-        mensagem.setValue("\n\n\n\n\nCumprimentos, \n\n"
-                + (professorCorrespondente != null && professorCorrespondente.getNome() != null
-                        ? professorCorrespondente.getNome()
-                        : ""));
+        // Assinatura: o nome do professor só assina quando é o próprio professor
+        // da modalidade que está a compor o email. Para qualquer outro utilizador
+        // (direção, secretaria, ...) a mensagem é assinada com o nome do estúdio.
+        pt.studioflow.model.Studio studioAtual = pt.studioflow.config.TenantContext.getCurrentStudio();
+        String nomeEstudio = studioAtual != null && studioAtual.getNome() != null ? studioAtual.getNome() : "";
+        boolean logadoEProfessor = professorCorrespondente != null
+                && professorCorrespondente.getNome() != null
+                && !firstNameLogado.isBlank()
+                && professorCorrespondente.getNome().split(" ")[0].equalsIgnoreCase(firstNameLogado);
+        String assinatura = logadoEProfessor ? professorCorrespondente.getNome() : nomeEstudio;
+
+        mensagem.setValue("\n\n\n\n\nCumprimentos, \n\n" + assinatura);
 
         Checkbox ccProfessor = new Checkbox(
                 professorCorrespondente != null && professorCorrespondente.getNome() != null
