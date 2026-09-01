@@ -92,18 +92,33 @@ public class MensalidadeService {
             valorBase += studio.getMensalidadeNaoSocioAdicional();
         }
 
-        // 🔹 Gerar mensalidades do mês atual até junho
+        // 🔹 Gerar mensalidades do mês atual até junho (fim do ano letivo).
+        // O ano letivo começa em setembro (ano N) e termina em junho (ano N+1),
+        // por isso o ciclo tem de atravessar a mudança de ano civil.
         LocalDate hoje = LocalDate.now();
-        int anoAtual = hoje.getYear();
         int mesAtual = hoje.getMonthValue();
+
+        java.time.YearMonth inicio;
+        java.time.YearMonth fim;
+        if (mesAtual >= 9) { // setembro–dezembro: ano letivo em curso termina em junho do ano seguinte
+            inicio = java.time.YearMonth.of(hoje.getYear(), mesAtual);
+            fim = java.time.YearMonth.of(hoje.getYear() + 1, 6);
+        } else if (mesAtual >= 7) { // julho–agosto: arranca já o próximo ano letivo
+            inicio = java.time.YearMonth.of(hoje.getYear(), 9);
+            fim = java.time.YearMonth.of(hoje.getYear() + 1, 6);
+        } else { // janeiro–junho: ano letivo em curso termina em junho deste ano
+            inicio = java.time.YearMonth.of(hoje.getYear(), mesAtual);
+            fim = java.time.YearMonth.of(hoje.getYear(), 6);
+        }
 
         List<Mensalidade> mensalidades = new ArrayList<>();
 
-        for (int mes = mesAtual; mes <= 6; mes++) { // de mês atual até junho
-            Month monthEnum = Month.of(mes);
+        for (java.time.YearMonth ym = inicio; !ym.isAfter(fim); ym = ym.plusMonths(1)) {
+            Month monthEnum = ym.getMonth();
+            int ano = ym.getYear();
 
             // Verifica se já existe
-            boolean jaExiste = mensalidadeRepository.existsByAlunoAndTurmaAndAnoAndMes(aluno, turma, anoAtual,
+            boolean jaExiste = mensalidadeRepository.existsByAlunoAndTurmaAndAnoAndMes(aluno, turma, ano,
                     monthEnum);
             if (jaExiste)
                 continue;
@@ -111,7 +126,7 @@ public class MensalidadeService {
             Mensalidade m = new Mensalidade();
             m.setAluno(aluno);
             m.setTurma(turma);
-            m.setAno(anoAtual);
+            m.setAno(ano);
             m.setMes(monthEnum);
             m.setEstado(EstadoMensalidade.POR_EMITIR);
             m.setValor(valorBase);
