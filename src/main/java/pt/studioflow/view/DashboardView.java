@@ -276,22 +276,38 @@ public class DashboardView extends Div {
                                         && a.getDataNascimento().getDayOfMonth() == hoje.getDayOfMonth()).toList();
                         gridLayout.add(criarCardAniversarios(anivs));
 
+                        LocalDate inicioMes = mesAtual.atDay(1);
                         LocalDate inicioAnoLetivo = LocalDate.of(
                                         hoje.getMonthValue() >= 9 ? hoje.getYear() : hoje.getYear() - 1, 9, 1);
 
+                        // "Novo aluno" = teve inscrição/renovação registada no período E não tinha
+                        // presenças antes do início do período (senão é apenas uma renovação de
+                        // um aluno já existente, não um aluno novo).
+                        Set<Long> alunosComPresencaAntesDoMes = todasPresencas.stream()
+                                        .filter(p -> p.getAluno() != null && p.getData() != null
+                                                        && p.getData().isBefore(inicioMes))
+                                        .map(p -> p.getAluno().getId()).collect(Collectors.toSet());
+                        Set<Long> alunosComPresencaAntesDoAnoLetivo = todasPresencas.stream()
+                                        .filter(p -> p.getAluno() != null && p.getData() != null
+                                                        && p.getData().isBefore(inicioAnoLetivo))
+                                        .map(p -> p.getAluno().getId()).collect(Collectors.toSet());
+
                         List<Aluno> novosMes = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
-                                        && YearMonth.from(a.getDataInscricaoRenovacao()).equals(mesAtual)).toList();
+                                        && YearMonth.from(a.getDataInscricaoRenovacao()).equals(mesAtual)
+                                        && !alunosComPresencaAntesDoMes.contains(a.getId())).toList();
                         Div cNovosMes = criarCard(
                                         "Novos Alunos (" + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")) + ")",
                                         VaadinIcon.STAR, valorGrande(String.valueOf(novosMes.size()), "#FFD700"));
-                        cNovosMes.addClickListener(e -> abrirModalNovosAlunos(novosMes));
+                        cNovosMes.addClickListener(e -> abrirModalNovosAlunos(novosMes,
+                                        "Novos Alunos — " + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt"))));
                         gridLayout.add(cNovosMes);
 
                         List<Aluno> novosAnoLetivo = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
-                                        && !a.getDataInscricaoRenovacao().isBefore(inicioAnoLetivo)).toList();
+                                        && !a.getDataInscricaoRenovacao().isBefore(inicioAnoLetivo)
+                                        && !alunosComPresencaAntesDoAnoLetivo.contains(a.getId())).toList();
                         Div cNovosAno = criarCard("Novos Alunos (Ano Letivo)", VaadinIcon.CALENDAR,
                                         valorGrande(String.valueOf(novosAnoLetivo.size()), "#FFA000"));
-                        cNovosAno.addClickListener(e -> abrirModalNovosAlunos(novosAnoLetivo));
+                        cNovosAno.addClickListener(e -> abrirModalNovosAlunos(novosAnoLetivo, "Novos Alunos — Ano Letivo"));
                         gridLayout.add(cNovosAno);
 
                         if (studio != null) {
@@ -671,9 +687,9 @@ public class DashboardView extends Div {
                 d.open();
         }
 
-        private void abrirModalNovosAlunos(List<Aluno> a) {
+        private void abrirModalNovosAlunos(List<Aluno> a, String titulo) {
                 Dialog d = new Dialog();
-                d.setHeaderTitle("Novos Alunos");
+                d.setHeaderTitle(titulo);
                 Grid<Aluno> g = new Grid<>(Aluno.class, false);
                 g.setItems(a);
                 g.addColumn(Aluno::getNomeCompleto).setHeader("Nome");
