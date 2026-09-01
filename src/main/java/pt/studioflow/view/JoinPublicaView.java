@@ -66,7 +66,7 @@ public class JoinPublicaView extends VerticalLayout implements BeforeEnterObserv
         getStyle().set("background-color", "#f8f9fa");
 
         String logoSrc = (studioAtual.getLogoPath() != null && !studioAtual.getLogoPath().isBlank())
-                ? studioAtual.getLogoPath().replaceFirst("^src/main/resources/static/", "").replaceFirst("^static/", "").replaceFirst("^/", "")
+                ? pt.studioflow.util.LogoUrl.comVersao(studioAtual.getLogoPath())
                 : "images/logo-coreoflow.png";
         Image logo = new Image(logoSrc, studioAtual.getNome());
         logo.setWidth("min(180px, 40vw)");

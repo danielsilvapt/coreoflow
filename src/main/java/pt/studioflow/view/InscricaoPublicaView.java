@@ -116,7 +116,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         // --- 1. CABEÇALHO ---
         String logoSrc = (studioAtual != null && studioAtual.getLogoPath() != null && !studioAtual.getLogoPath().isBlank())
-                ? studioAtual.getLogoPath().replaceFirst("^src/main/resources/static/", "").replaceFirst("^static/", "").replaceFirst("^/", "")
+                ? pt.studioflow.util.LogoUrl.comVersao(studioAtual.getLogoPath())
                 : "images/logo-coreoflow.png";
         String studioNomeDisplay = (studioAtual != null) ? studioAtual.getNome() : "CoreoFlow";
         Image logo = new Image(logoSrc, studioNomeDisplay);
