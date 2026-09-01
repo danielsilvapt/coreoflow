@@ -276,16 +276,25 @@ public class DashboardView extends Div {
                                         && a.getDataNascimento().getDayOfMonth() == hoje.getDayOfMonth()).toList();
                         gridLayout.add(criarCardAniversarios(anivs));
 
-                        List<Aluno> novos = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
+                        LocalDate inicioAnoLetivo = LocalDate.of(
+                                        hoje.getMonthValue() >= 9 ? hoje.getYear() : hoje.getYear() - 1, 9, 1);
+
+                        List<Aluno> novosMes = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
                                         && YearMonth.from(a.getDataInscricaoRenovacao()).equals(mesAtual)).toList();
-                        Div cNovos = criarCard("Novos Alunos", VaadinIcon.STAR,
-                                        valorGrande(String.valueOf(novos.size()), "#FFD700"));
-                        cNovos.addClickListener(e -> abrirModalNovosAlunos(novos));
-                        gridLayout.add(cNovos);
+                        Div cNovosMes = criarCard(
+                                        "Novos Alunos (" + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")) + ")",
+                                        VaadinIcon.STAR, valorGrande(String.valueOf(novosMes.size()), "#FFD700"));
+                        cNovosMes.addClickListener(e -> abrirModalNovosAlunos(novosMes));
+                        gridLayout.add(cNovosMes);
+
+                        List<Aluno> novosAnoLetivo = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
+                                        && !a.getDataInscricaoRenovacao().isBefore(inicioAnoLetivo)).toList();
+                        Div cNovosAno = criarCard("Novos Alunos (Ano Letivo)", VaadinIcon.CALENDAR,
+                                        valorGrande(String.valueOf(novosAnoLetivo.size()), "#FFA000"));
+                        cNovosAno.addClickListener(e -> abrirModalNovosAlunos(novosAnoLetivo));
+                        gridLayout.add(cNovosAno);
 
                         if (studio != null) {
-                                LocalDate inicioAnoLetivo = LocalDate.of(
-                                                hoje.getMonthValue() >= 9 ? hoje.getYear() : hoje.getYear() - 1, 9, 1);
                                 gridLayout.add(criarCardRenovacoes(todosAlunos, inicioAnoLetivo));
                         }
 
