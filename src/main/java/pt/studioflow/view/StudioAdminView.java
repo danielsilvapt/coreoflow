@@ -75,6 +75,22 @@ public class StudioAdminView extends VerticalLayout {
     }
 
     private void configurarGrid() {
+        grid.addComponentColumn(studio -> {
+            Button edit = new Button(VaadinIcon.EDIT.create());
+            edit.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            edit.addClickListener(e -> abrirFormulario(studio));
+
+            Button toggle = new Button(studio.isAtivo() ? VaadinIcon.PAUSE.create() : VaadinIcon.PLAY.create());
+            toggle.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            toggle.addClickListener(e -> {
+                studio.setAtivo(!studio.isAtivo());
+                studioService.save(studio);
+                carregarDados();
+            });
+
+            return new HorizontalLayout(edit, toggle);
+        }).setHeader("Ações").setWidth("120px").setFlexGrow(0);
+
         grid.addColumn(Studio::getId).setHeader("ID").setWidth("60px").setFlexGrow(0);
 
         grid.addComponentColumn(studio -> {
@@ -101,22 +117,6 @@ public class StudioAdminView extends VerticalLayout {
                     .set("font-size", "12px");
             return badge;
         }).setHeader("Estado").setWidth("100px").setFlexGrow(0);
-
-        grid.addComponentColumn(studio -> {
-            Button edit = new Button(VaadinIcon.EDIT.create());
-            edit.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            edit.addClickListener(e -> abrirFormulario(studio));
-
-            Button toggle = new Button(studio.isAtivo() ? VaadinIcon.PAUSE.create() : VaadinIcon.PLAY.create());
-            toggle.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            toggle.addClickListener(e -> {
-                studio.setAtivo(!studio.isAtivo());
-                studioService.save(studio);
-                carregarDados();
-            });
-
-            return new HorizontalLayout(edit, toggle);
-        }).setHeader("Ações").setWidth("120px").setFlexGrow(0);
 
         grid.setSizeFull();
     }

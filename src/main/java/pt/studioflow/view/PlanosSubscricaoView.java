@@ -64,6 +64,14 @@ public class PlanosSubscricaoView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
         grid.addComponentColumn(p -> {
+            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialogPlano(p));
+            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            Button atribuir = new Button("Atribuir Studio", e -> abrirAtribuirStudio(p));
+            atribuir.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            return new HorizontalLayout(editar, atribuir);
+        }).setHeader("Ações").setAutoWidth(true);
+
+        grid.addComponentColumn(p -> {
             Span b = new Span(p.getNome());
             b.getStyle().set("background", p.getCor() != null ? p.getCor() : "#4A90E2")
                     .set("color", "white").set("padding", "3px 10px")
@@ -84,14 +92,6 @@ public class PlanosSubscricaoView extends VerticalLayout {
                     .set("color", count > 0 ? "#1976D2" : "#888");
             return s;
         }).setHeader("Utilizadores").setAutoWidth(true);
-
-        grid.addComponentColumn(p -> {
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialogPlano(p));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            Button atribuir = new Button("Atribuir Studio", e -> abrirAtribuirStudio(p));
-            atribuir.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            return new HorizontalLayout(editar, atribuir);
-        }).setHeader("Ações").setAutoWidth(true);
 
         return grid;
     }

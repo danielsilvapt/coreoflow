@@ -81,7 +81,8 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
     private final DatePicker dataExpiracaoQuota = new DatePicker("Expiração Quota");
     private final DatePicker dataSeguroPagamento = new DatePicker("Data Pagamento Seguro");
     private final DatePicker dataExpiracaoSeguro = new DatePicker("Expiração Seguro");
-    private final DatePicker dataInscricaoRenovacao = new DatePicker("Inscrição/Renovação");
+    private final DatePicker dataInscricao = new DatePicker("Data de Inscrição");
+    private final DatePicker dataInscricaoRenovacao = new DatePicker("Data de Renovação");
 
     private final Checkbox ativo = new Checkbox("Ativo");
     private final Checkbox divida = new Checkbox("Dívida");
@@ -137,7 +138,7 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
 
         List<DatePicker> camposData = Arrays.asList(
                 dataNascimento, dataQuotaPagamento, dataExpiracaoQuota,
-                dataSeguroPagamento, dataExpiracaoSeguro, dataInscricaoRenovacao);
+                dataSeguroPagamento, dataExpiracaoSeguro, dataInscricao, dataInscricaoRenovacao);
         camposData.forEach(dp -> dp.setI18n(i18n));
     }
 
@@ -315,37 +316,38 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         seguroDesportivo.setLabel("Seguro Desportivo");
         seguroDesportivo.setItems("Associação", "Próprio", "Outro");
         seguroDesportivo.setWidth("250px");
+        dataInscricao.setWidth("250px");
         dataInscricaoRenovacao.setWidth("250px");
 
-        boolean mostraQuotas = campoAtivo(CampoAluno.QUOTAS);
         boolean mostraSeguroSelect = campoAtivo(CampoAluno.SEGURO_DESPORTIVO);
 
         VerticalLayout layout = new VerticalLayout();
         layout.setPadding(true);
         layout.setSpacing(true);
 
-        // Renovação à esquerda (acima da Quota) e o tipo de Seguro à direita (acima do
-        // Seguro Desportivo), para as datas de pagamento/expiração ficarem alinhadas
+        // Datas de Inscrição/Renovação à esquerda (mostradas sempre) e o tipo de Seguro à
+        // direita (acima do Seguro Desportivo), alinhado ao início do card "Seguro
+        // Desportivo" logo abaixo, para as datas de pagamento/expiração ficarem alinhadas
         // entre as duas secções.
-        if (mostraQuotas || mostraSeguroSelect) {
-            HorizontalLayout topoRow = new HorizontalLayout();
-            topoRow.setWidthFull();
-            topoRow.setSpacing(true);
-            if (mostraQuotas) {
-                Div renovacaoBox = new Div(dataInscricaoRenovacao);
-                renovacaoBox.setWidthFull();
-                topoRow.add(renovacaoBox);
-                topoRow.setFlexGrow(1, renovacaoBox);
-            }
-            if (mostraSeguroSelect) {
-                Div seguroComboBox = new Div(seguroDesportivo);
-                seguroComboBox.setWidthFull();
-                seguroComboBox.getStyle().set("display", "flex").set("justify-content", "flex-end");
-                topoRow.add(seguroComboBox);
-                topoRow.setFlexGrow(1, seguroComboBox);
-            }
-            layout.add(topoRow);
+        HorizontalLayout topoRow = new HorizontalLayout();
+        topoRow.setWidthFull();
+        topoRow.setSpacing(true);
+
+        HorizontalLayout datasInscricaoBox = new HorizontalLayout(dataInscricao, dataInscricaoRenovacao);
+        datasInscricaoBox.setWidthFull();
+        datasInscricaoBox.setSpacing(true);
+        topoRow.add(datasInscricaoBox);
+        topoRow.setFlexGrow(1, datasInscricaoBox);
+
+        if (mostraSeguroSelect) {
+            Div seguroComboBox = new Div(seguroDesportivo);
+            seguroComboBox.setWidthFull();
+            topoRow.add(seguroComboBox);
+            topoRow.setFlexGrow(1, seguroComboBox);
         }
+        layout.add(topoRow);
+
+        boolean mostraQuotas = campoAtivo(CampoAluno.QUOTAS);
 
         if (mostraQuotas) {
             Div grupoQuota = criarGrupoQuotaSeguro("Quota", dataQuotaPagamento, dataExpiracaoQuota);

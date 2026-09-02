@@ -59,27 +59,6 @@ public class ReferenciasView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
-        grid.addColumn(r -> r.getDataReferencia().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
-                .setHeader("Data").setAutoWidth(true).setSortable(true);
-        grid.addColumn(r -> r.getReferenciador().getNomeCompleto())
-                .setHeader("Quem referenciou").setFlexGrow(1).setSortable(true);
-        grid.addColumn(r -> r.getReferenciado().getNomeCompleto())
-                .setHeader("Novo aluno").setFlexGrow(1);
-        grid.addComponentColumn(r -> {
-            String[] cfg = switch (r.getEstado()) {
-                case PENDENTE     -> new String[]{"#fff3e0","#E67E22","Pendente"};
-                case CONFIRMADA   -> new String[]{"#e3f2fd","#1976D2","Confirmada"};
-                case RECOMPENSADA -> new String[]{"#e8f5e9","#27AE60","Recompensada"};
-            };
-            Span b = new Span(cfg[2]);
-            b.getStyle().set("background",cfg[0]).set("color",cfg[1])
-                    .set("padding","2px 8px").set("border-radius","10px")
-                    .set("font-size","11px").set("font-weight","600");
-            return b;
-        }).setHeader("Estado").setAutoWidth(true);
-        grid.addColumn(r -> r.getDescontoEuros() > 0
-                ? String.format("%.2f €", r.getDescontoEuros()) : "—")
-                .setHeader("Desconto").setAutoWidth(true);
         grid.addComponentColumn(r -> {
             HorizontalLayout actions = new HorizontalLayout();
             if (r.getEstado() == Referencia.Estado.PENDENTE) {
@@ -109,6 +88,28 @@ public class ReferenciasView extends VerticalLayout {
             actions.add(del);
             return actions;
         }).setHeader("Ações").setAutoWidth(true);
+
+        grid.addColumn(r -> r.getDataReferencia().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                .setHeader("Data").setAutoWidth(true).setSortable(true);
+        grid.addColumn(r -> r.getReferenciador().getNomeCompleto())
+                .setHeader("Quem referenciou").setFlexGrow(1).setSortable(true);
+        grid.addColumn(r -> r.getReferenciado().getNomeCompleto())
+                .setHeader("Novo aluno").setFlexGrow(1);
+        grid.addComponentColumn(r -> {
+            String[] cfg = switch (r.getEstado()) {
+                case PENDENTE     -> new String[]{"#fff3e0","#E67E22","Pendente"};
+                case CONFIRMADA   -> new String[]{"#e3f2fd","#1976D2","Confirmada"};
+                case RECOMPENSADA -> new String[]{"#e8f5e9","#27AE60","Recompensada"};
+            };
+            Span b = new Span(cfg[2]);
+            b.getStyle().set("background",cfg[0]).set("color",cfg[1])
+                    .set("padding","2px 8px").set("border-radius","10px")
+                    .set("font-size","11px").set("font-weight","600");
+            return b;
+        }).setHeader("Estado").setAutoWidth(true);
+        grid.addColumn(r -> r.getDescontoEuros() > 0
+                ? String.format("%.2f €", r.getDescontoEuros()) : "—")
+                .setHeader("Desconto").setAutoWidth(true);
 
         return grid;
     }

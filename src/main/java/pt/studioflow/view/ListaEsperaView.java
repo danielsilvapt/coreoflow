@@ -82,33 +82,6 @@ public class ListaEsperaView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
-        grid.addColumn(le -> le.getDataInscricao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
-                .setHeader("Data").setAutoWidth(true).setSortable(true);
-
-        grid.addColumn(ListaEspera::getNomeCompleto)
-                .setHeader("Nome").setAutoWidth(true).setSortable(true);
-
-        grid.addColumn(le -> le.getTurma() != null ? le.getTurma().getDescricao() : "—")
-                .setHeader("Turma").setAutoWidth(true);
-
-        grid.addColumn(ListaEspera::getTelemovel).setHeader("Telemóvel").setAutoWidth(true);
-        grid.addColumn(ListaEspera::getEmail).setHeader("Email").setAutoWidth(true);
-
-        grid.addComponentColumn(le -> {
-            Span badge = new Span(le.getEstado().name());
-            String[] style = switch (le.getEstado()) {
-                case AGUARDA -> new String[]{"#fff3e0", "#E67E22"};
-                case NOTIFICADO -> new String[]{"#e3f2fd", "#1976D2"};
-                case CONVERTIDO -> new String[]{"#e8f5e9", "#27AE60"};
-                case DESISTIU -> new String[]{"#fce4ec", "#C62828"};
-            };
-            badge.getStyle()
-                    .set("background", style[0]).set("color", style[1])
-                    .set("padding", "2px 8px").set("border-radius", "10px")
-                    .set("font-size", "11px").set("font-weight", "600");
-            return badge;
-        }).setHeader("Estado").setAutoWidth(true);
-
         grid.addComponentColumn(le -> {
             HorizontalLayout actions = new HorizontalLayout();
             actions.setSpacing(true);
@@ -161,6 +134,33 @@ public class ListaEsperaView extends VerticalLayout {
 
             return actions;
         }).setHeader("Ações").setAutoWidth(true);
+
+        grid.addColumn(le -> le.getDataInscricao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                .setHeader("Data").setAutoWidth(true).setSortable(true);
+
+        grid.addColumn(ListaEspera::getNomeCompleto)
+                .setHeader("Nome").setAutoWidth(true).setSortable(true);
+
+        grid.addColumn(le -> le.getTurma() != null ? le.getTurma().getDescricao() : "—")
+                .setHeader("Turma").setAutoWidth(true);
+
+        grid.addColumn(ListaEspera::getTelemovel).setHeader("Telemóvel").setAutoWidth(true);
+        grid.addColumn(ListaEspera::getEmail).setHeader("Email").setAutoWidth(true);
+
+        grid.addComponentColumn(le -> {
+            Span badge = new Span(le.getEstado().name());
+            String[] style = switch (le.getEstado()) {
+                case AGUARDA -> new String[]{"#fff3e0", "#E67E22"};
+                case NOTIFICADO -> new String[]{"#e3f2fd", "#1976D2"};
+                case CONVERTIDO -> new String[]{"#e8f5e9", "#27AE60"};
+                case DESISTIU -> new String[]{"#fce4ec", "#C62828"};
+            };
+            badge.getStyle()
+                    .set("background", style[0]).set("color", style[1])
+                    .set("padding", "2px 8px").set("border-radius", "10px")
+                    .set("font-size", "11px").set("font-weight", "600");
+            return badge;
+        }).setHeader("Estado").setAutoWidth(true);
 
         return grid;
     }

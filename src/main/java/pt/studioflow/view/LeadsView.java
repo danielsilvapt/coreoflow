@@ -83,6 +83,27 @@ public class LeadsView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_WRAP_CELL_CONTENT);
 
+        grid.addComponentColumn(l -> {
+            HorizontalLayout acoes = new HorizontalLayout();
+            acoes.setSpacing(false);
+
+            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialogLead(l));
+            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+            if (l.getTelefone() != null && !l.getTelefone().isBlank()) {
+                Button whatsapp = new Button(VaadinIcon.CHAT.create(), e -> abrirWhatsApp(l));
+                whatsapp.getStyle().set("color", "#25D366");
+                whatsapp.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                acoes.add(whatsapp);
+            }
+
+            Button apagar = new Button(VaadinIcon.TRASH.create(), e -> confirmarApagar(l));
+            apagar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+
+            acoes.add(editar, apagar);
+            return acoes;
+        }).setHeader("Ações").setAutoWidth(true);
+
         grid.addColumn(Lead::getNome).setHeader("Nome").setAutoWidth(true).setSortable(true);
         grid.addColumn(l -> l.getTipo() != null ? l.getTipo().getLabel() : "").setHeader("Tipo").setAutoWidth(true);
         grid.addColumn(Lead::getNomeContacto).setHeader("Contacto").setAutoWidth(true);
@@ -115,26 +136,6 @@ public class LeadsView extends VerticalLayout {
 
         grid.addColumn(l -> l.getProximoPasso() != null ? l.getProximoPasso() : "")
                 .setHeader("Próximo Passo").setAutoWidth(true);
-
-        grid.addComponentColumn(l -> {
-            HorizontalLayout acoes = new HorizontalLayout();
-            acoes.setSpacing(false);
-
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialogLead(l));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-
-            if (l.getTelefone() != null && !l.getTelefone().isBlank()) {
-                Button whatsapp = new Button(VaadinIcon.PHONE.create(), e -> abrirWhatsApp(l));
-                whatsapp.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_SUCCESS);
-                acoes.add(whatsapp);
-            }
-
-            Button apagar = new Button(VaadinIcon.TRASH.create(), e -> confirmarApagar(l));
-            apagar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
-
-            acoes.add(editar, apagar);
-            return acoes;
-        }).setHeader("Ações").setAutoWidth(true);
 
         return grid;
     }

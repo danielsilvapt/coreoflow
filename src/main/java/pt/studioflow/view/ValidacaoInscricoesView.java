@@ -265,6 +265,13 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_ROW_STRIPES);
 
+        grid.addComponentColumn(aluno -> {
+            Button btnVer = new Button("Rever Dados", VaadinIcon.EYE.create());
+            btnVer.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+            btnVer.addClickListener(e -> abrirDialogDetalhes(aluno));
+            return btnVer;
+        }).setHeader("Ações").setAutoWidth(true);
+
         grid.addColumn(Aluno::getNomeCompleto).setHeader("CANDIDATO").setSortable(true).setFlexGrow(1);
 
         grid.addComponentColumn(this::criarBadgeTipo).setHeader("TIPO").setAutoWidth(true);
@@ -289,13 +296,6 @@ public class ValidacaoInscricoesView extends VerticalLayout {
 
         grid.addComponentColumn(this::criarCelulaTurmas).setHeader("INTERESSES / TURMA").setAutoWidth(true)
                 .setFlexGrow(1);
-
-        grid.addComponentColumn(aluno -> {
-            Button btnVer = new Button("Rever Dados", VaadinIcon.EYE.create());
-            btnVer.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
-            btnVer.addClickListener(e -> abrirDialogDetalhes(aluno));
-            return btnVer;
-        }).setHeader("ACÇÕES").setAutoWidth(true);
 
         grid.setPartNameGenerator(aluno -> {
             if (aluno.getStatus() == AlunoStatus.EXPERIMENTAL) {
@@ -572,6 +572,9 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         aluno.setStatus(AlunoStatus.ATIVO);
         aluno.setAtivo(true);
         aluno.setPedidoRenovacao(false);
+        if (aluno.getDataInscricao() == null) {
+            aluno.setDataInscricao(LocalDate.now());
+        }
         if (isRenovacao) {
             aluno.setDataInscricaoRenovacao(LocalDate.now());
         }

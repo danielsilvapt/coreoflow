@@ -106,7 +106,7 @@ public class ModalidadeView extends VerticalLayout {
 
         grid.setColumns("codigo", "descricao", "profResponsavel");
 
-        grid.addColumn(new ComponentRenderer<>(modalidade -> {
+        Grid.Column<Modalidade> colAtivo = grid.addColumn(new ComponentRenderer<>(modalidade -> {
             if (modalidade.isAtivo()) {
                 Icon checkIcon = VaadinIcon.CHECK.create();
                 checkIcon.getStyle().set("color", "green");
@@ -118,7 +118,7 @@ public class ModalidadeView extends VerticalLayout {
             }
         })).setHeader("Ativo");
 
-        grid.addComponentColumn(modalidade -> {
+        Grid.Column<Modalidade> colAcoes = grid.addComponentColumn(modalidade -> {
             Button editar = new Button(new Icon(VaadinIcon.EDIT));
             editar.getElement().setProperty("title", "Editar");
             editar.addClickListener(e -> modalidadeForm.abrirFormulario(modalidade));
@@ -156,6 +156,8 @@ public class ModalidadeView extends VerticalLayout {
             return actions;
         }).setHeader("Ações").setAutoWidth(true).setFlexGrow(0);
 
+        grid.setColumnOrder(colAcoes, grid.getColumnByKey("codigo"), grid.getColumnByKey("descricao"),
+                grid.getColumnByKey("profResponsavel"), colAtivo);
     }
 
     public void updateList() {

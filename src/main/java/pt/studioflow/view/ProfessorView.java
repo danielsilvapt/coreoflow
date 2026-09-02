@@ -89,6 +89,8 @@ public class ProfessorView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_NO_BORDER);
         grid.getStyle().set("flex-grow", "1").set("margin", "12px 16px");
 
+        grid.addComponentColumn(this::criarBotoesLinha).setHeader("Ações").setAutoWidth(true);
+
         grid.addComponentColumn(p -> {
             Div avatar = new Div();
             String initials = p.getNome() != null && p.getNome().length() >= 2
@@ -126,8 +128,6 @@ public class ProfessorView extends VerticalLayout {
                     .set("font-size", "0.85rem");
             return badge;
         }).setHeader("Taxa/Hora").setAutoWidth(true).setSortable(true).setComparator(Professor::getValorHoraAula);
-
-        grid.addComponentColumn(this::criarBotoesLinha).setHeader("Ações").setAutoWidth(true);
 
         return grid;
     }
