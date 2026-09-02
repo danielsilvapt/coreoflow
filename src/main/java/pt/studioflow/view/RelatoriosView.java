@@ -170,11 +170,10 @@ public class RelatoriosView extends VerticalLayout {
                 return cb;
         }
 
-        private RemuneracaoService.Dados carregarDadosRemuneracao(Studio studio) {
+        private RemuneracaoService.Dados carregarDadosRemuneracao(Studio studio, List<Turma> turmas) {
+                java.util.Set<Long> turmaIds = turmas.stream().map(Turma::getId).collect(Collectors.toSet());
                 List<AlunoTurma> inscricoes = alunoTurmaRepository.findAll().stream()
-                                .filter(at -> at.getTurma() != null && (studio == null
-                                                || (at.getTurma().getStudio() != null
-                                                                && at.getTurma().getStudio().getId().equals(studio.getId()))))
+                                .filter(at -> at.getTurma() != null && turmaIds.contains(at.getTurma().getId()))
                                 .collect(Collectors.toList());
                 return new RemuneracaoService.Dados()
                                 .registos(studio != null ? registoHorasRepository.findAllByStudio(studio)
@@ -211,7 +210,7 @@ public class RelatoriosView extends VerticalLayout {
                                 : professorRepository.findAll();
                 List<Turma> turmas = studio != null ? turmaRepository.findAllByStudio(studio)
                                 : turmaRepository.findAll();
-                RemuneracaoService.Dados dados = carregarDadosRemuneracao(studio);
+                RemuneracaoService.Dados dados = carregarDadosRemuneracao(studio, turmas);
 
                 Dialog d = new Dialog();
                 d.setHeaderTitle("Pagamentos a Professores");
@@ -229,7 +228,7 @@ public class RelatoriosView extends VerticalLayout {
                         String nomeMes = mesLabel(mes);
                         boolean previsto = remuneracaoService.ehFuturo(mes);
                         List<RemuneracaoService.LinhaPagamento> linhas = remuneracaoService
-                                        .pagamentosPorProfessor(professores, turmas, mes, dados);
+                                        .pagamentosPorProfessor(professores, turmas, studio, mes, dados);
 
                         Grid<RemuneracaoService.LinhaPagamento> grid = new Grid<>();
                         grid.setItems(linhas);
@@ -636,7 +635,7 @@ public class RelatoriosView extends VerticalLayout {
                 Studio studio = TenantContext.getCurrentStudio();
                 List<Turma> turmas = studio != null ? turmaRepository.findAllByStudio(studio)
                                 : turmaRepository.findAll();
-                RemuneracaoService.Dados dados = carregarDadosRemuneracao(studio);
+                RemuneracaoService.Dados dados = carregarDadosRemuneracao(studio, turmas);
 
                 Dialog d = new Dialog();
                 d.setHeaderTitle("Rentabilidade Mensal");
@@ -652,7 +651,7 @@ public class RelatoriosView extends VerticalLayout {
                         container.removeAll();
                         YearMonth mes = seletor.getValue();
                         boolean previsto = remuneracaoService.ehFuturo(mes);
-                        Map<Long, double[]> rent = remuneracaoService.rentabilidadePorTurma(turmas, mes, dados);
+                        Map<Long, double[]> rent = remuneracaoService.rentabilidadePorTurma(turmas, studio, mes, dados);
 
                         List<Turma> ordenadas = turmas.stream()
                                         .filter(t -> {

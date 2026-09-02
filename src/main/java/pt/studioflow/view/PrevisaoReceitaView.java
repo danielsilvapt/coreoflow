@@ -111,13 +111,14 @@ public class PrevisaoReceitaView extends VerticalLayout {
         long alunosAtivos = alunos.stream().filter(a -> a.getStatus() == Aluno.AlunoStatus.ATIVO).count();
 
         List<pt.studioflow.model.Turma> turmas = turmaRepo.findAllByStudio(studio);
+        java.util.Set<Long> turmaIds = turmas.stream()
+                .map(pt.studioflow.model.Turma::getId).collect(java.util.stream.Collectors.toSet());
         RemuneracaoService.Dados dadosRemun = new RemuneracaoService.Dados()
                 .mensalidades(todas)
                 .registos(registoHorasRepo.findAllByStudio(studio))
                 .aulas(aulaRepo.findByTurmaStudio(studio))
                 .inscricoes(alunoTurmaRepo.findAll().stream()
-                        .filter(at -> at.getTurma() != null && at.getTurma().getStudio() != null
-                                && at.getTurma().getStudio().getId().equals(studio.getId()))
+                        .filter(at -> at.getTurma() != null && turmaIds.contains(at.getTurma().getId()))
                         .toList());
 
         // Receita real dos últimos 6 meses
@@ -165,7 +166,7 @@ public class PrevisaoReceitaView extends VerticalLayout {
             double base = futuro ? mediaHistorica : receitaReal;
 
             java.time.YearMonth ym = java.time.YearMonth.from(mes);
-            double custoProfs = remuneracaoService.rentabilidadePorTurma(turmas, ym, dadosRemun)
+            double custoProfs = remuneracaoService.rentabilidadePorTurma(turmas, studio, ym, dadosRemun)
                     .values().stream().mapToDouble(x -> x[1]).sum();
 
             double liquida = base - (futuro ? descontoSubsidios : 0) - custoProfs;

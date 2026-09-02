@@ -170,7 +170,7 @@ class RemuneracaoServiceTest {
                 registo("Ana Marques", "Ensaio", mesPassado, 1.5)));
 
         // 2h * 20 + 1.5h * 10 = 55
-        assertThat(service.custoProfessorTurma(t, mesPassado, d)).isCloseTo(55.0, within(0.001));
+        assertThat(service.custoProfessorTurma(t, s, mesPassado, d)).isCloseTo(55.0, within(0.001));
     }
 
     // ---------- custo real: modo PERCENTAGEM ----------
@@ -193,7 +193,7 @@ class RemuneracaoServiceTest {
                 .inscricoes(List.of(inscricao(a1, t, 1), inscricao(a2, t, 2)))
                 .registos(List.of(registo("Ana Marques", "Ensaio", mesPassado, 2.0))); // 2h * 20 (fallback) = 40
 
-        assertThat(service.custoProfessorTurma(t, mesPassado, d)).isCloseTo(15.0 + 16.0 + 40.0, within(0.001));
+        assertThat(service.custoProfessorTurma(t, s, mesPassado, d)).isCloseTo(15.0 + 16.0 + 40.0, within(0.001));
     }
 
     // ---------- previsão: mês futuro ----------
@@ -216,7 +216,7 @@ class RemuneracaoServiceTest {
         }
 
         RemuneracaoService.Dados d = new RemuneracaoService.Dados().aulas(List.of(aula));
-        assertThat(service.custoProfessorTurma(t, mesFuturo, d))
+        assertThat(service.custoProfessorTurma(t, s, mesFuturo, d))
                 .isCloseTo(segundasNoMes * 20.0, within(0.001));
     }
 
@@ -235,7 +235,7 @@ class RemuneracaoServiceTest {
         RemuneracaoService.Dados d = new RemuneracaoService.Dados()
                 .inscricoes(List.of(inscricao(socio, t, 2), inscricao(naoSocio, t, 2)));
 
-        assertThat(service.custoProfessorTurma(t, mesFuturo, d)).isCloseTo(35.0, within(0.001));
+        assertThat(service.custoProfessorTurma(t, s, mesFuturo, d)).isCloseTo(35.0, within(0.001));
     }
 
     @Test
@@ -246,7 +246,7 @@ class RemuneracaoServiceTest {
         RegistoHoras semTurma = registo("Ana Marques", "Ensaio", mesPassado, 3.0);
         semTurma.setTurma(null);
         RemuneracaoService.Dados d = new RemuneracaoService.Dados().registos(List.of(semTurma));
-        assertThat(service.custoProfessorTurma(t, mesPassado, d)).isEqualTo(0.0);
+        assertThat(service.custoProfessorTurma(t, s, mesPassado, d)).isEqualTo(0.0);
     }
 
     @Test

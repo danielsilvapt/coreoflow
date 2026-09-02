@@ -84,16 +84,18 @@ public class RelatorioHorasService {
             Map<String, Double> pagamentoPorNome = new java.util.HashMap<>();
             for (Studio s : studioRepository.findAll()) {
                 if (!s.isAtivo()) continue;
+                List<pt.studioflow.model.Turma> turmasStudio = turmaRepository.findAllByStudio(s);
+                java.util.Set<Long> turmaIds = turmasStudio.stream()
+                        .map(pt.studioflow.model.Turma::getId).collect(Collectors.toSet());
                 RemuneracaoService.Dados dados = new RemuneracaoService.Dados()
                         .registos(repository.findAllByStudio(s))
                         .mensalidades(mensalidadeRepository.findAllByStudio(s))
                         .inscricoes(alunoTurmaRepository.findAll().stream()
-                                .filter(at -> at.getTurma() != null && at.getTurma().getStudio() != null
-                                        && at.getTurma().getStudio().getId().equals(s.getId()))
+                                .filter(at -> at.getTurma() != null && turmaIds.contains(at.getTurma().getId()))
                                 .collect(Collectors.toList()))
                         .aulas(aulaRepository.findByTurmaStudio(s));
                 remuneracaoService.pagamentosPorProfessor(
-                        professorRepository.findAllByStudio(s), turmaRepository.findAllByStudio(s), mes, dados)
+                        professorRepository.findAllByStudio(s), turmasStudio, s, mes, dados)
                         .forEach(l -> pagamentoPorNome.merge(l.nome(), l.total(), Double::sum));
             }
 
