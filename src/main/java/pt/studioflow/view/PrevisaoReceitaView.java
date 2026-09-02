@@ -18,9 +18,14 @@ import pt.studioflow.model.EstadoMensalidade;
 import pt.studioflow.model.Mensalidade;
 import pt.studioflow.model.Studio;
 import pt.studioflow.repository.AlunoRepository;
+import pt.studioflow.repository.AlunoTurmaRepository;
+import pt.studioflow.repository.AulaRepository;
 import pt.studioflow.repository.MensalidadeRepository;
+import pt.studioflow.repository.RegistoHorasRepository;
 import pt.studioflow.repository.StudioRepository;
 import pt.studioflow.repository.SubsidioAlunoRepository;
+import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.service.RemuneracaoService;
 
 import java.time.LocalDate;
 import java.time.Month;
@@ -35,12 +40,37 @@ import java.util.Locale;
 public class PrevisaoReceitaView extends VerticalLayout {
 
     record LinhaProjecao(String periodo, long alunosAtivos, double receitaBase,
-                         double descontosSubsidios, double receitaLiquida, String tendencia) {}
+                         double descontosSubsidios, double custoProfessores,
+                         double receitaLiquida, String tendencia) {}
+
+    private final MensalidadeRepository mensalidadeRepo;
+    private final AlunoRepository alunoRepo;
+    private final StudioRepository studioRepo;
+    private final SubsidioAlunoRepository subsidioRepo;
+    private final TurmaRepository turmaRepo;
+    private final RegistoHorasRepository registoHorasRepo;
+    private final AlunoTurmaRepository alunoTurmaRepo;
+    private final AulaRepository aulaRepo;
+    private final RemuneracaoService remuneracaoService;
 
     public PrevisaoReceitaView(MensalidadeRepository mensalidadeRepo,
                                 AlunoRepository alunoRepo,
                                 StudioRepository studioRepo,
-                                SubsidioAlunoRepository subsidioRepo) {
+                                SubsidioAlunoRepository subsidioRepo,
+                                TurmaRepository turmaRepo,
+                                RegistoHorasRepository registoHorasRepo,
+                                AlunoTurmaRepository alunoTurmaRepo,
+                                AulaRepository aulaRepo,
+                                RemuneracaoService remuneracaoService) {
+        this.mensalidadeRepo = mensalidadeRepo;
+        this.alunoRepo = alunoRepo;
+        this.studioRepo = studioRepo;
+        this.subsidioRepo = subsidioRepo;
+        this.turmaRepo = turmaRepo;
+        this.registoHorasRepo = registoHorasRepo;
+        this.alunoTurmaRepo = alunoTurmaRepo;
+        this.aulaRepo = aulaRepo;
+        this.remuneracaoService = remuneracaoService;
         setSizeFull();
         setPadding(true);
         setSpacing(true);
@@ -63,25 +93,32 @@ public class PrevisaoReceitaView extends VerticalLayout {
                 add(titulo);
                 add(studioCombo);
                 if (e.getValue() != null)
-                    add(criarDashboard(e.getValue(), mensalidadeRepo, alunoRepo, subsidioRepo));
+                    add(criarDashboard(e.getValue()));
             });
             add(studioCombo);
             return;
         }
 
-        add(criarDashboard(studio, mensalidadeRepo, alunoRepo, subsidioRepo));
+        add(criarDashboard(studio));
     }
 
-    private VerticalLayout criarDashboard(Studio studio,
-                                           MensalidadeRepository mensalidadeRepo,
-                                           AlunoRepository alunoRepo,
-                                           SubsidioAlunoRepository subsidioRepo) {
+    private VerticalLayout criarDashboard(Studio studio) {
         VerticalLayout layout = new VerticalLayout();
         layout.setPadding(false);
 
         List<Mensalidade> todas = mensalidadeRepo.findAllByStudio(studio);
         List<Aluno> alunos = alunoRepo.findAllByStudio(studio);
         long alunosAtivos = alunos.stream().filter(a -> a.getStatus() == Aluno.AlunoStatus.ATIVO).count();
+
+        List<pt.studioflow.model.Turma> turmas = turmaRepo.findAllByStudio(studio);
+        RemuneracaoService.Dados dadosRemun = new RemuneracaoService.Dados()
+                .mensalidades(todas)
+                .registos(registoHorasRepo.findAllByStudio(studio))
+                .aulas(aulaRepo.findByTurmaStudio(studio))
+                .inscricoes(alunoTurmaRepo.findAll().stream()
+                        .filter(at -> at.getTurma() != null && at.getTurma().getStudio() != null
+                                && at.getTurma().getStudio().getId().equals(studio.getId()))
+                        .toList());
 
         // Receita real dos últimos 6 meses
         double receitaHistorica = todas.stream()
@@ -126,10 +163,16 @@ public class PrevisaoReceitaView extends VerticalLayout {
 
             boolean futuro = mes.isAfter(hoje);
             double base = futuro ? mediaHistorica : receitaReal;
-            double liquida = base - (futuro ? descontoSubsidios : 0);
+
+            java.time.YearMonth ym = java.time.YearMonth.from(mes);
+            double custoProfs = remuneracaoService.rentabilidadePorTurma(turmas, ym, dadosRemun)
+                    .values().stream().mapToDouble(x -> x[1]).sum();
+
+            double liquida = base - (futuro ? descontoSubsidios : 0) - custoProfs;
             String tendencia = futuro ? "📈 Previsão" : (receitaReal >= mediaHistorica * 0.9 ? "✅" : "⚠️");
 
-            linhas.add(new LinhaProjecao(periodo, alunosAtivos, base, futuro ? descontoSubsidios : 0, liquida, tendencia));
+            linhas.add(new LinhaProjecao(periodo, alunosAtivos, base, futuro ? descontoSubsidios : 0,
+                    custoProfs, liquida, tendencia));
         }
 
         Grid<LinhaProjecao> grid = new Grid<>();
@@ -142,12 +185,15 @@ public class PrevisaoReceitaView extends VerticalLayout {
         grid.addColumn(l -> l.descontosSubsidios() > 0
                 ? String.format("-%.2f €", l.descontosSubsidios()) : "—")
                 .setHeader("Descontos").setAutoWidth(true);
+        grid.addColumn(l -> l.custoProfessores() > 0
+                ? String.format("-%.2f €", l.custoProfessores()) : "—")
+                .setHeader("Custo Professores").setAutoWidth(true);
         grid.addComponentColumn(l -> {
             Span s = new Span(String.format("%.2f €", l.receitaLiquida()));
             s.getStyle().set("font-weight", "700")
-                    .set("color", l.receitaLiquida() >= mediaHistorica * 0.9 ? "#27AE60" : "#E74C3C");
+                    .set("color", l.receitaLiquida() >= 0 ? "#27AE60" : "#E74C3C");
             return s;
-        }).setHeader("Receita Líquida").setAutoWidth(true);
+        }).setHeader("Líquido após Profs").setAutoWidth(true);
         grid.addColumn(LinhaProjecao::tendencia).setHeader("Estado").setAutoWidth(true);
 
         grid.setItems(linhas);
