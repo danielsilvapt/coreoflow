@@ -254,10 +254,10 @@ public class DashboardView extends Div {
                                                                         && t.getProfessor().getId().equals(profLogado.getId()))
                                                         .collect(Collectors.toList());
                                         pt.studioflow.service.RemuneracaoService.Dados dRem = dadosRemuneracao(
-                                                        studio, todasMensalidades, todasAulas);
+                                                        studio, turmas, todasMensalidades, todasAulas);
                                         double aReceber = remuneracaoService
                                                         .pagamentosPorProfessor(java.util.List.of(profLogado), turmasProf,
-                                                                        mesAtual, dRem)
+                                                                        studio, mesAtual, dRem)
                                                         .stream()
                                                         .mapToDouble(pt.studioflow.service.RemuneracaoService.LinhaPagamento::total)
                                                         .sum();
@@ -529,8 +529,8 @@ public class DashboardView extends Div {
         private Map<String, Double> calcularRentabilidadeMap(List<Turma> turmas, List<Mensalidade> mens,
                         List<Aula> aulas, YearMonth mes) {
                 Studio studio = TenantContext.getCurrentStudio();
-                pt.studioflow.service.RemuneracaoService.Dados d = dadosRemuneracao(studio, mens, aulas);
-                Map<Long, double[]> rent = remuneracaoService.rentabilidadePorTurma(turmas, mes, d);
+                pt.studioflow.service.RemuneracaoService.Dados d = dadosRemuneracao(studio, turmas, mens, aulas);
+                Map<Long, double[]> rent = remuneracaoService.rentabilidadePorTurma(turmas, studio, mes, d);
                 Map<String, Double> res = new HashMap<>();
                 for (Turma t : turmas) {
                         double[] x = rent.get(t.getId());
@@ -541,16 +541,16 @@ public class DashboardView extends Div {
         }
 
         private pt.studioflow.service.RemuneracaoService.Dados dadosRemuneracao(Studio studio,
-                        List<Mensalidade> mens, List<Aula> aulas) {
+                        List<Turma> turmas, List<Mensalidade> mens, List<Aula> aulas) {
+                java.util.Set<Long> turmaIds = turmas.stream().map(Turma::getId).collect(Collectors.toSet());
                 return new pt.studioflow.service.RemuneracaoService.Dados()
                                 .mensalidades(mens)
                                 .aulas(aulas)
                                 .registos(studio != null ? registoHorasRepository.findAllByStudio(studio)
                                                 : registoHorasRepository.findAll())
                                 .inscricoes(alunoTurmaRepository.findAll().stream()
-                                                .filter(at -> at.getTurma() != null && (studio == null
-                                                                || (at.getTurma().getStudio() != null && at.getTurma()
-                                                                                .getStudio().getId().equals(studio.getId()))))
+                                                .filter(at -> at.getTurma() != null
+                                                                && turmaIds.contains(at.getTurma().getId()))
                                                 .collect(Collectors.toList()));
         }
 
