@@ -121,10 +121,14 @@ public class RemuneracaoService {
                 .sum();
     }
 
-    /** Custo do professor associado a uma turma no mês. */
-    public double custoProfessorTurma(Turma t, YearMonth mes, Dados d) {
+    /**
+     * Custo do professor associado a uma turma no mês.
+     * {@code studio} é passado explicitamente (nunca {@code t.getStudio()}) para
+     * não depender de uma associação lazy fora de sessão Hibernate.
+     */
+    public double custoProfessorTurma(Turma t, Studio studio, YearMonth mes, Dados d) {
         Professor p = t.getProfessor();
-        Studio s = t.getStudio();
+        Studio s = studio;
         TipoRemuneracao tipo = tipoEfetivo(p, s);
         boolean futuro = ehFuturo(mes);
 
@@ -174,11 +178,11 @@ public class RemuneracaoService {
     // =====================================================
 
     /** id da turma → [receita, custoProf, saldo]. */
-    public Map<Long, double[]> rentabilidadePorTurma(List<Turma> turmas, YearMonth mes, Dados d) {
+    public Map<Long, double[]> rentabilidadePorTurma(List<Turma> turmas, Studio studio, YearMonth mes, Dados d) {
         Map<Long, double[]> res = new LinkedHashMap<>();
         for (Turma t : turmas) {
-            double rec = receitaTurma(t, mes, d, t.getStudio());
-            double custo = custoProfessorTurma(t, mes, d);
+            double rec = receitaTurma(t, mes, d, studio);
+            double custo = custoProfessorTurma(t, studio, mes, d);
             res.put(t.getId(), new double[] { rec, custo, rec - custo });
         }
         return res;
@@ -186,12 +190,12 @@ public class RemuneracaoService {
 
     /** Pagamento devido a cada professor no mês (uma linha por professor com atividade). */
     public List<LinhaPagamento> pagamentosPorProfessor(List<Professor> professores, List<Turma> turmas,
-                                                       YearMonth mes, Dados d) {
+                                                       Studio studio, YearMonth mes, Dados d) {
         boolean futuro = ehFuturo(mes);
         List<LinhaPagamento> linhas = new ArrayList<>();
 
         for (Professor p : professores) {
-            Studio s = p.getStudio();
+            Studio s = studio;
             TipoRemuneracao modo = tipoEfetivo(p, s);
             List<Turma> turmasProf = turmas.stream()
                     .filter(t -> t.getProfessor() != null && t.getProfessor().getId().equals(p.getId()))
