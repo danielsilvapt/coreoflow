@@ -3,6 +3,7 @@ package pt.studioflow.view;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -24,8 +25,11 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.RolesAllowed;
+import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Professor;
+import pt.studioflow.model.Studio;
 import pt.studioflow.repository.ProfessorRepository;
+import pt.studioflow.service.RemuneracaoService;
 
 @Route(value = "professores", layout = MainLayout.class)
 @PageTitle("Professores | CoreoFlow")
@@ -33,10 +37,12 @@ import pt.studioflow.repository.ProfessorRepository;
 public class ProfessorView extends VerticalLayout {
 
     private final ProfessorRepository professorRepository;
+    private final RemuneracaoService remuneracaoService;
     private final Grid<Professor> grid = new Grid<>(Professor.class, false);
 
-    public ProfessorView(ProfessorRepository professorRepository) {
+    public ProfessorView(ProfessorRepository professorRepository, RemuneracaoService remuneracaoService) {
         this.professorRepository = professorRepository;
+        this.remuneracaoService = remuneracaoService;
 
         setSizeFull();
         setPadding(false);
@@ -118,16 +124,19 @@ public class ProfessorView extends VerticalLayout {
         grid.addColumn(Professor::getTelefone).setHeader("Telefone").setAutoWidth(true);
 
         grid.addComponentColumn(p -> {
-            Span badge = new Span(String.format("%.0f €/h", p.getValorHoraAula()));
+            Studio studio = TenantContext.getCurrentStudio();
+            boolean herdado = p.getTipoRemuneracao() == null || p.getTipoRemuneracao().isBlank();
+            Span badge = new Span(remuneracaoService.descricaoEfetiva(p, studio));
             badge.getStyle()
-                    .set("background", p.getValorHoraAula() >= 25 ? "#e8f5e9" : "#fff3e0")
-                    .set("color", p.getValorHoraAula() >= 25 ? "#2e7d32" : "#e65100")
+                    .set("background", herdado ? "#eef2f7" : "#e8f5e9")
+                    .set("color", herdado ? "#546e7a" : "#2e7d32")
                     .set("padding", "3px 10px")
                     .set("border-radius", "12px")
                     .set("font-weight", "600")
                     .set("font-size", "0.85rem");
+            badge.getElement().setProperty("title", herdado ? "Herdado do estúdio" : "Configuração própria");
             return badge;
-        }).setHeader("Taxa/Hora").setAutoWidth(true).setSortable(true).setComparator(Professor::getValorHoraAula);
+        }).setHeader("Remuneração").setAutoWidth(true);
 
         return grid;
     }
@@ -169,16 +178,75 @@ public class ProfessorView extends VerticalLayout {
         telefone.setPrefixComponent(VaadinIcon.PHONE.create());
         telefone.setValue(professor.getTelefone() != null ? professor.getTelefone() : "");
 
-        NumberField valorHora = new NumberField("Taxa horária (€/hora)");
+        NumberField valorHora = new NumberField("€/hora — aula regular");
         valorHora.setWidthFull();
         valorHora.setMin(0);
         valorHora.setMax(200);
         valorHora.setStep(0.5);
         valorHora.setPrefixComponent(VaadinIcon.EURO.create());
-        valorHora.setHelperText("Valor usado no cálculo de rentabilidade por turma");
         valorHora.setValue(professor.getValorHoraAula());
 
-        FormLayout form = new FormLayout(nome, email, telefone, valorHora);
+        // --- Remuneração (sobrepõe o estúdio) ---
+        Studio studio = TenantContext.getCurrentStudio();
+
+        H4 secRemun = new H4("Remuneração");
+        secRemun.getStyle().set("margin", "12px 0 0 0");
+        Span remunHint = new Span(studio != null
+                ? "Deixa \"Herdar do estúdio\" para usar: " + remuneracaoService.descricaoEfetiva(null, studio)
+                : "Deixa \"Herdar do estúdio\" para usar a configuração do estúdio.");
+        remunHint.getStyle().set("font-size", "12px").set("color", "#888");
+
+        final String HERDAR = "— Herdar do estúdio —";
+        ComboBox<String> tipoRemun = new ComboBox<>("Tipo de remuneração");
+        tipoRemun.setItems(HERDAR, "HORA", "PERCENTAGEM");
+        tipoRemun.setItemLabelGenerator(t -> switch (t) {
+            case "HORA" -> "Valor por hora (€/h)";
+            case "PERCENTAGEM" -> "Percentagem da mensalidade (%)";
+            default -> HERDAR;
+        });
+        tipoRemun.setWidthFull();
+        tipoRemun.setValue(professor.getTipoRemuneracao() == null || professor.getTipoRemuneracao().isBlank()
+                ? HERDAR : professor.getTipoRemuneracao());
+
+        NumberField valorEnsaio = new NumberField("€/hora — ensaio");
+        valorEnsaio.setValue(professor.getValorHoraEnsaio());
+        valorEnsaio.setMin(0);
+        NumberField valorPrivada = new NumberField("€/hora — privada / workshop");
+        valorPrivada.setValue(professor.getValorHoraPrivada());
+        valorPrivada.setMin(0);
+
+        NumberField perc1x = new NumberField("% — 1x/sem");
+        perc1x.setValue(professor.getPerc1x());
+        NumberField perc2x = new NumberField("% — 2x/sem");
+        perc2x.setValue(professor.getPerc2x());
+        NumberField perc3x = new NumberField("% — 3x/sem");
+        perc3x.setValue(professor.getPerc3x());
+        NumberField percOutras = new NumberField("% — outras");
+        percOutras.setValue(professor.getPercOutras());
+        for (NumberField f : new NumberField[] { perc1x, perc2x, perc3x, percOutras }) {
+            f.setMin(0);
+            f.setMax(100);
+        }
+
+        FormLayout grupoHora = new FormLayout(valorHora, valorEnsaio, valorPrivada);
+        grupoHora.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
+        FormLayout grupoPerc = new FormLayout(perc1x, perc2x, perc3x, percOutras);
+        grupoPerc.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
+
+        Runnable ajustar = () -> {
+            String tipoEfetivo = HERDAR.equals(tipoRemun.getValue())
+                    ? (studio != null ? studio.getTipoRemuneracaoProf() : "HORA")
+                    : tipoRemun.getValue();
+            boolean hora = !"PERCENTAGEM".equals(tipoEfetivo);
+            // €/hora regular é sempre relevante (fallback do modo percentagem); só oculta ensaio/privada e %
+            valorEnsaio.setVisible(hora);
+            valorPrivada.setVisible(hora);
+            grupoPerc.setVisible(!hora);
+        };
+        tipoRemun.addValueChangeListener(e -> ajustar.run());
+        ajustar.run();
+
+        FormLayout form = new FormLayout(nome, email, telefone);
         form.setWidthFull();
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
@@ -192,6 +260,13 @@ public class ProfessorView extends VerticalLayout {
             professor.setEmail(email.getValue().trim());
             professor.setTelefone(telefone.getValue().trim());
             professor.setValorHoraAula(valorHora.getValue() != null ? valorHora.getValue() : 25.0);
+            professor.setTipoRemuneracao(HERDAR.equals(tipoRemun.getValue()) ? null : tipoRemun.getValue());
+            professor.setValorHoraEnsaio(valorEnsaio.getValue());
+            professor.setValorHoraPrivada(valorPrivada.getValue());
+            professor.setPerc1x(perc1x.getValue());
+            professor.setPerc2x(perc2x.getValue());
+            professor.setPerc3x(perc3x.getValue());
+            professor.setPercOutras(percOutras.getValue());
             if (professor.getStudio() == null) {
                 professor.setStudio(pt.studioflow.config.TenantContext.getCurrentStudio());
             }
@@ -208,7 +283,7 @@ public class ProfessorView extends VerticalLayout {
         Button cancelar = new Button("Cancelar", e -> dialog.close());
         cancelar.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
-        dialog.add(form);
+        dialog.add(form, secRemun, remunHint, tipoRemun, grupoHora, grupoPerc);
         dialog.getFooter().add(cancelar, guardar);
         dialog.open();
     }

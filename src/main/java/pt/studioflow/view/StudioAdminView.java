@@ -293,17 +293,67 @@ public class StudioAdminView extends VerticalLayout {
         H4 secRemun = new H4("Remuneração de Professores");
         secRemun.getStyle().set("margin", "16px 0 4px 0");
 
+        Span remunHint = new Span("Valores por defeito do estúdio. Cada professor pode sobrepô-los na página Professores.");
+        remunHint.getStyle().set("font-size", "12px").set("color", "#888");
+
         ComboBox<String> tipoRemun = new ComboBox<>("Tipo de remuneração");
         tipoRemun.setItems("HORA", "PERCENTAGEM");
-        tipoRemun.setItemLabelGenerator(t -> "HORA".equals(t) ? "Valor por hora (€/h)" : "Percentagem da aula (%)");
+        tipoRemun.setItemLabelGenerator(t -> "HORA".equals(t) ? "Valor por hora (€/h)" : "Percentagem da mensalidade (%)");
         tipoRemun.setValue(studio.getTipoRemuneracaoProf() != null ? studio.getTipoRemuneracaoProf() : "HORA");
         tipoRemun.setWidthFull();
 
-        NumberField valorRemun = new NumberField("Valor");
+        // --- Grupo HORA (€/h por tipo de atividade) ---
+        NumberField valorRemun = new NumberField("€/hora — aula regular");
         valorRemun.setValue(studio.getValorRemuneracaoProf() != null ? studio.getValorRemuneracaoProf() : 0.0);
-        valorRemun.setWidthFull();
-        valorRemun.setHelperText("€/hora ou % consoante o tipo selecionado");
         valorRemun.setMin(0);
+
+        NumberField valorEnsaio = new NumberField("€/hora — ensaio");
+        valorEnsaio.setValue(studio.getValorHoraEnsaioProf());
+        valorEnsaio.setMin(0);
+        valorEnsaio.setHelperText("Vazio = usa o valor da aula regular");
+
+        NumberField valorPrivada = new NumberField("€/hora — privada / workshop");
+        valorPrivada.setValue(studio.getValorHoraPrivadaProf());
+        valorPrivada.setMin(0);
+        valorPrivada.setHelperText("Vazio = usa o valor da aula regular");
+
+        FormLayout grupoHora = new FormLayout(valorRemun, valorEnsaio, valorPrivada);
+        grupoHora.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
+        grupoHora.setWidthFull();
+
+        // --- Grupo PERCENTAGEM (% por frequência semanal) ---
+        NumberField perc1x = new NumberField("% — aluno 1x/semana");
+        perc1x.setValue(studio.getPercProf1x());
+        perc1x.setMin(0);
+        perc1x.setMax(100);
+
+        NumberField perc2x = new NumberField("% — aluno 2x/semana");
+        perc2x.setValue(studio.getPercProf2x());
+        perc2x.setMin(0);
+        perc2x.setMax(100);
+
+        NumberField perc3x = new NumberField("% — aluno 3x/semana");
+        perc3x.setValue(studio.getPercProf3x());
+        perc3x.setMin(0);
+        perc3x.setMax(100);
+
+        NumberField percOutras = new NumberField("% — outras frequências");
+        percOutras.setValue(studio.getPercProfOutras());
+        percOutras.setMin(0);
+        percOutras.setMax(100);
+        percOutras.setHelperText("Usada quando a frequência do aluno não tem valor próprio. Ensaios/privadas são sempre pagos à hora.");
+
+        FormLayout grupoPerc = new FormLayout(perc1x, perc2x, perc3x, percOutras);
+        grupoPerc.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
+        grupoPerc.setWidthFull();
+
+        Runnable ajustarVisibilidadeRemun = () -> {
+            boolean hora = !"PERCENTAGEM".equals(tipoRemun.getValue());
+            grupoHora.setVisible(hora);
+            grupoPerc.setVisible(!hora);
+        };
+        tipoRemun.addValueChangeListener(e -> ajustarVisibilidadeRemun.run());
+        ajustarVisibilidadeRemun.run();
 
         // --- Módulos ativos ---
         H4 secModulos = new H4("Módulos Ativos");
@@ -347,7 +397,7 @@ public class StudioAdminView extends VerticalLayout {
                 logoSection, form,
                 secCampos, camposGroup,
                 secFat, faturacaoAuto,
-                secRemun, tipoRemun, valorRemun,
+                secRemun, remunHint, tipoRemun, grupoHora, grupoPerc,
                 secModulos, modulosGroup,
                 secIdiomas, idiomasGroup);
         content.setPadding(false);
@@ -388,9 +438,15 @@ public class StudioAdminView extends VerticalLayout {
             studio.setCamposAluno(camposGroup.getValue().stream()
                     .map(CampoAluno::name).collect(Collectors.joining(",")));
 
-            // Remuneração de professores
+            // Remuneração de professores (valores por defeito do estúdio)
             studio.setTipoRemuneracaoProf(tipoRemun.getValue());
             studio.setValorRemuneracaoProf(valorRemun.getValue());
+            studio.setValorHoraEnsaioProf(valorEnsaio.getValue());
+            studio.setValorHoraPrivadaProf(valorPrivada.getValue());
+            studio.setPercProf1x(perc1x.getValue());
+            studio.setPercProf2x(perc2x.getValue());
+            studio.setPercProf3x(perc3x.getValue());
+            studio.setPercProfOutras(percOutras.getValue());
 
             // Módulos
             String modulosStr = modulosGroup.getValue().stream()

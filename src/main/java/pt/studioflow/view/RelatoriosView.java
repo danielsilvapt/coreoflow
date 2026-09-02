@@ -22,6 +22,7 @@ import com.vaadin.flow.component.ClickEvent;
 import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -39,8 +40,10 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
 import jakarta.annotation.security.RolesAllowed;
+import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.*;
 import pt.studioflow.repository.*;
+import pt.studioflow.service.RemuneracaoService;
 import pt.studioflow.util.WhatsAppUtil;
 
 import java.awt.Color;
@@ -71,19 +74,24 @@ public class RelatoriosView extends VerticalLayout {
         private final MensalidadeRepository mensalidadeRepository;
         private final RegistoHorasRepository registoHorasRepository;
         private final ProfessorRepository professorRepository;
+        private final AulaRepository aulaRepository;
+        private final RemuneracaoService remuneracaoService;
 
         private final Color LARANJA_DANCE = new Color(255, 140, 0);
         private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         public RelatoriosView(AlunoRepository alunoRepository, TurmaRepository turmaRepository,
                         AlunoTurmaRepository alunoTurmaRepository, MensalidadeRepository mensalidadeRepository,
-                        RegistoHorasRepository registoHorasRepository, ProfessorRepository professorRepository) {
+                        RegistoHorasRepository registoHorasRepository, ProfessorRepository professorRepository,
+                        AulaRepository aulaRepository, RemuneracaoService remuneracaoService) {
                 this.alunoRepository = alunoRepository;
                 this.turmaRepository = turmaRepository;
                 this.alunoTurmaRepository = alunoTurmaRepository;
                 this.mensalidadeRepository = mensalidadeRepository;
                 this.registoHorasRepository = registoHorasRepository;
                 this.professorRepository = professorRepository;
+                this.aulaRepository = aulaRepository;
+                this.remuneracaoService = remuneracaoService;
 
                 setSizeFull();
                 setPadding(false);
@@ -139,64 +147,157 @@ public class RelatoriosView extends VerticalLayout {
                 return card;
         }
 
-        // --- 1. RELATÓRIO PROFESSORES (COM EMAIL) ---
-        private void abrirRelatorioProfessores() {
-                YearMonth mesAlvo = YearMonth.now().minusMonths(1);
-                String nomeMes = mesAlvo.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt"));
-                List<Map<String, Object>> dados = obterDadosPagamentos(mesAlvo);
+        // --- HELPERS DE PERÍODO / REMUNERAÇÃO ---
 
-                Grid<Map<String, Object>> grid = new Grid<>();
-                grid.setItems(dados);
+        private String fmtEuro(double v) {
+                return String.format("%.2f €", v);
+        }
 
-                grid.addComponentColumn(m -> {
-                        // 1. Criar o botão
-                        Button btnEmail = new Button(VaadinIcon.ENVELOPE.create());
-                        btnEmail.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        private String mesLabel(YearMonth m) {
+                return m.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")) + " " + m.getYear();
+        }
 
-                        // 2. Configurar a ação do clique
-                        btnEmail.addClickListener(e -> {
-                                // Obter o nome (String) que está no mapa
-                                String nomeProfessor = m.get("prof").toString();
+        private ComboBox<YearMonth> criarSeletorMes(YearMonth inicial) {
+                ComboBox<YearMonth> cb = new ComboBox<>("Mês");
+                YearMonth base = YearMonth.now();
+                List<YearMonth> opcoes = new ArrayList<>();
+                for (int i = -24; i <= 12; i++) opcoes.add(base.plusMonths(i));
+                cb.setItems(opcoes);
+                cb.setItemLabelGenerator(this::mesLabel);
+                cb.setAllowCustomValue(false);
+                cb.setWidth("240px");
+                cb.setValue(inicial);
+                return cb;
+        }
 
-                                // Buscar o e-mail na base de dados pelo nome
-                                // Nota: Certifica-te que o professorRepository está disponível na View
-                                String emailProf = professorRepository.findByNome(nomeProfessor)
-                                                .map(Professor::getEmail)
-                                                .orElse(""); // Se não encontrar, fica vazio
-
-                                String pNome = nomeProfessor.split(" ")[0];
-                                String valor = String.format("%.2f", (Double) m.get("total"));
-                                String assunto = "Pagamento de Aulas - " + nomeMes;
-
-                                String corpo = String.format(
-                                                "Olá %s,\n\nA fim de podermos efetuar a transferência bancária referente às aulas do mês de %s, solicitamos o envio do recibo no valor de %s€.\n\nObrigada,\n\n---\n*** Mensagem enviada a partir do Plataforma CoreoFlow ***",
-                                                pNome, nomeMes, valor);
-
-                                String mailto = "mailto:" + emailProf + "?subject="
-                                                + URLEncoder.encode(assunto, StandardCharsets.UTF_8).replace("+", "%20")
-                                                + "&body="
-                                                + URLEncoder.encode(corpo, StandardCharsets.UTF_8).replace("+", "%20");
-
-                                getUI().ifPresent(ui -> ui.getPage().open(mailto, "_self"));
-                        });
-
-                        // 3. IMPORTANTE: Retornar o componente para a Grid
-                        return btnEmail;
-                }).setHeader("Enviar E-mail");
-
-                grid.addColumn(m -> m.get("prof")).setHeader("Professor");
-                grid.addColumn(m -> String.format("%.2f €", m.get("total"))).setHeader("Total").getStyle().set(
-                                "font-weight",
-                                "bold");
-
-                List<String[]> rows = dados.stream()
-                                .map(m -> new String[] { m.get("prof").toString(),
-                                                String.format("%.2f €", m.get("base")),
-                                                String.format("%.2f €", m.get("bonus")),
-                                                String.format("%.2f €", m.get("total")) })
+        private RemuneracaoService.Dados carregarDadosRemuneracao(Studio studio) {
+                List<AlunoTurma> inscricoes = alunoTurmaRepository.findAll().stream()
+                                .filter(at -> at.getTurma() != null && (studio == null
+                                                || (at.getTurma().getStudio() != null
+                                                                && at.getTurma().getStudio().getId().equals(studio.getId()))))
                                 .collect(Collectors.toList());
-                configurarDialogComGrid("Pagamentos Profs - " + nomeMes, grid, rows,
-                                new String[] { "Professor", "Horas/Ens.", "Bónus", "Total" });
+                return new RemuneracaoService.Dados()
+                                .registos(studio != null ? registoHorasRepository.findAllByStudio(studio)
+                                                : registoHorasRepository.findAll())
+                                .mensalidades(studio != null ? mensalidadeRepository.findAllByStudio(studio)
+                                                : mensalidadeRepository.findAll())
+                                .inscricoes(inscricoes)
+                                .aulas(studio != null ? aulaRepository.findByTurmaStudio(studio)
+                                                : aulaRepository.findAll());
+        }
+
+        private HorizontalLayout linhaDownloads(String titulo, String[] headers, List<String[]> rows) {
+                Anchor pdf = new Anchor(gerarPDFGenerico(titulo, LARANJA_DANCE, headers, rows), "");
+                pdf.getElement().setAttribute("download", true);
+                Button btnPdf = new Button("Download PDF", VaadinIcon.DOWNLOAD.create());
+                btnPdf.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                btnPdf.getStyle().set("background-color", "#FF8C00");
+                pdf.add(btnPdf);
+
+                Anchor xls = new Anchor(gerarExcelGenerico(titulo, LARANJA_DANCE, headers, rows), "");
+                xls.getElement().setAttribute("download", true);
+                Button btnXls = new Button("Download Excel", VaadinIcon.DOWNLOAD.create());
+                btnXls.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                btnXls.getStyle().set("background-color", "#FF8C00");
+                xls.add(btnXls);
+
+                return new HorizontalLayout(pdf, xls);
+        }
+
+        // --- 1. RELATÓRIO PAGAMENTOS A PROFESSORES (com seletor de mês) ---
+        private void abrirRelatorioProfessores() {
+                Studio studio = TenantContext.getCurrentStudio();
+                List<Professor> professores = studio != null ? professorRepository.findAllByStudio(studio)
+                                : professorRepository.findAll();
+                List<Turma> turmas = studio != null ? turmaRepository.findAllByStudio(studio)
+                                : turmaRepository.findAll();
+                RemuneracaoService.Dados dados = carregarDadosRemuneracao(studio);
+
+                Dialog d = new Dialog();
+                d.setHeaderTitle("Pagamentos a Professores");
+                d.setWidth("950px");
+                d.setHeight("650px");
+
+                ComboBox<YearMonth> seletor = criarSeletorMes(YearMonth.now().minusMonths(1));
+                Div container = new Div();
+                container.setWidthFull();
+                container.getStyle().set("flex-grow", "1").set("overflow", "auto");
+
+                Runnable render = () -> {
+                        container.removeAll();
+                        YearMonth mes = seletor.getValue();
+                        String nomeMes = mesLabel(mes);
+                        boolean previsto = remuneracaoService.ehFuturo(mes);
+                        List<RemuneracaoService.LinhaPagamento> linhas = remuneracaoService
+                                        .pagamentosPorProfessor(professores, turmas, mes, dados);
+
+                        Grid<RemuneracaoService.LinhaPagamento> grid = new Grid<>();
+                        grid.setItems(linhas);
+                        grid.addComponentColumn(l -> botaoEmailPagamento(l, nomeMes)).setHeader("E-mail").setAutoWidth(true);
+                        grid.addColumn(RemuneracaoService.LinhaPagamento::nome).setHeader("Professor");
+                        grid.addColumn(l -> l.modo() == TipoRemuneracao.PERCENTAGEM ? "% mensalidade" : "€/hora")
+                                        .setHeader("Modo").setAutoWidth(true);
+                        grid.addColumn(l -> fmtEuro(l.base()))
+                                        .setHeader("Aulas/Base").setAutoWidth(true);
+                        grid.addColumn(l -> fmtEuro(l.ensaios())).setHeader("Ensaios").setAutoWidth(true);
+                        grid.addColumn(l -> fmtEuro(l.privadas())).setHeader("Privadas/WS").setAutoWidth(true);
+                        grid.addColumn(l -> fmtEuro(l.total())).setHeader("Total");
+                        grid.addThemeVariants(GridVariant.LUMO_COMPACT, GridVariant.LUMO_ROW_STRIPES);
+                        grid.setSizeFull();
+
+                        String[] headers = { "Professor", "Modo", "Aulas/Base", "Ensaios", "Privadas/WS", "Total" };
+                        List<String[]> rows = linhas.stream()
+                                        .map(l -> new String[] { l.nome(),
+                                                        l.modo() == TipoRemuneracao.PERCENTAGEM ? "% mensalidade" : "€/hora",
+                                                        fmtEuro(l.base()), fmtEuro(l.ensaios()), fmtEuro(l.privadas()),
+                                                        fmtEuro(l.total()) })
+                                        .collect(Collectors.toList());
+                        double totalGeral = linhas.stream().mapToDouble(RemuneracaoService.LinhaPagamento::total).sum();
+                        rows.add(new String[] { "TOTAL", "", "", "", "", fmtEuro(totalGeral) });
+
+                        String tituloExport = "Pagamentos Profs - " + nomeMes + (previsto ? " (previsao)" : "");
+
+                        Span aviso = new Span(previsto
+                                        ? "⚠️ Mês futuro — estimativa a partir das inscrições ativas e das aulas agendadas."
+                                        : "Valores reais do mês selecionado (registos de horas + mensalidades).");
+                        aviso.getStyle().set("font-size", "12px").set("color", previsto ? "#e65100" : "#888");
+
+                        VerticalLayout v = new VerticalLayout(aviso, grid, linhaDownloads(tituloExport, headers, rows));
+                        v.setSizeFull();
+                        v.setPadding(false);
+                        v.expand(grid);
+                        container.add(v);
+                };
+                seletor.addValueChangeListener(e -> render.run());
+                render.run();
+
+                VerticalLayout wrap = new VerticalLayout(seletor, container);
+                wrap.setSizeFull();
+                wrap.expand(container);
+                d.add(wrap);
+                d.getFooter().add(new Button("Fechar", e -> d.close()));
+                d.open();
+        }
+
+        private Button botaoEmailPagamento(RemuneracaoService.LinhaPagamento l, String nomeMes) {
+                Button btnEmail = new Button(VaadinIcon.ENVELOPE.create());
+                btnEmail.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+                btnEmail.addClickListener(e -> {
+                        String emailProf = l.professor() != null && l.professor().getEmail() != null
+                                        ? l.professor().getEmail() : "";
+                        String pNome = l.nome().split(" ")[0];
+                        String valor = String.format("%.2f", l.total());
+                        String assunto = "Pagamento de Aulas - " + nomeMes;
+                        String corpo = String.format(
+                                        "Olá %s,\n\nA fim de podermos efetuar a transferência bancária referente às aulas do mês de %s, solicitamos o envio do recibo no valor de %s€.\n\nObrigada,\n\n---\n*** Mensagem enviada a partir da Plataforma CoreoFlow ***",
+                                        pNome, nomeMes, valor);
+                        String mailto = "mailto:" + emailProf + "?subject="
+                                        + URLEncoder.encode(assunto, StandardCharsets.UTF_8).replace("+", "%20")
+                                        + "&body="
+                                        + URLEncoder.encode(corpo, StandardCharsets.UTF_8).replace("+", "%20");
+                        getUI().ifPresent(ui -> ui.getPage().open(mailto, "_self"));
+                });
+                return btnEmail;
         }
 
         // --- 2. RELATÓRIO ALUNOS POR TURMA (ESPAÇAMENTO CORRIGIDO) ---
@@ -530,49 +631,77 @@ public class RelatoriosView extends VerticalLayout {
                                 new String[] { "Aluno", "Telemóvel", "Email", "Total" });
         }
 
+        // --- 3. RELATÓRIO RENTABILIDADE MENSAL (com seletor de mês) ---
         private void abrirRelatorioRentabilidade() {
-                YearMonth mes = YearMonth.now();
-                pt.studioflow.model.Studio _sRent = pt.studioflow.config.TenantContext.getCurrentStudio();
-                java.util.List<Mensalidade> _mensRent = _sRent != null ? mensalidadeRepository.findAllByStudio(_sRent) : mensalidadeRepository.findAll();
-                List<Map<String, Object>> dados = (_sRent != null ? turmaRepository.findAllByStudio(_sRent) : turmaRepository.findAll()).stream().map(t -> {
-                        double rec = _mensRent.stream()
-                                        .filter(m -> m.getTurma() != null && m.getTurma().getId().equals(t.getId())
-                                                        && m.getMes().getValue() == mes.getMonthValue()
-                                                        && m.getAno() == mes.getYear())
-                                        .mapToDouble(Mensalidade::getValor).sum();
-                        double custo = (_sRent != null ? registoHorasRepository.findAllByStudio(_sRent) : registoHorasRepository.findAll()).stream().filter(
-                                        r -> r.getProfessor().equalsIgnoreCase(
-                                                        t.getProfessor() != null ? t.getProfessor().getNome() : "")
-                                                        && r.getAno() == mes.getYear()
-                                                        && r.getMesNumero() == mes.getMonthValue()
-                                                        && !r.getTipoAtividade().equalsIgnoreCase("ENSAIO"))
-                                        .mapToDouble(r -> (Duration.between(r.getInicio(), r.getFim()).toMinutes()
-                                                        / 60.0)
-                                                        * (r.getProfessor().equalsIgnoreCase("Helena Cação") ? 15.0
-                                                                        : r.getProfessor().equalsIgnoreCase(
-                                                                                        "Leonor Ribeiro") ? 20.0
-                                                                                                        : 25.0))
-                                        .sum();
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("turma", t.getDescricao());
-                        map.put("rec", rec);
-                        map.put("custo", custo);
-                        map.put("saldo", rec - custo);
-                        return map;
-                }).sorted((m1, m2) -> Double.compare((double) m2.get("saldo"), (double) m1.get("saldo")))
-                                .collect(Collectors.toList());
-                Grid<Map<String, Object>> grid = new Grid<>();
-                grid.setItems(dados);
-                grid.addColumn(m -> m.get("turma")).setHeader("Turma");
-                grid.addColumn(m -> String.format("%.2f €", m.get("saldo"))).setHeader("Saldo");
-                List<String[]> rows = dados.stream()
-                                .map(m -> new String[] { m.get("turma").toString(),
-                                                String.format("%.2f €", m.get("rec")),
-                                                String.format("%.2f €", m.get("custo")),
-                                                String.format("%.2f €", m.get("saldo")) })
-                                .collect(Collectors.toList());
-                configurarDialogComGrid("Rentabilidade", grid, rows,
-                                new String[] { "Turma", "Receita", "Custo Prof", "Saldo Final" });
+                Studio studio = TenantContext.getCurrentStudio();
+                List<Turma> turmas = studio != null ? turmaRepository.findAllByStudio(studio)
+                                : turmaRepository.findAll();
+                RemuneracaoService.Dados dados = carregarDadosRemuneracao(studio);
+
+                Dialog d = new Dialog();
+                d.setHeaderTitle("Rentabilidade Mensal");
+                d.setWidth("950px");
+                d.setHeight("650px");
+
+                ComboBox<YearMonth> seletor = criarSeletorMes(YearMonth.now().minusMonths(1));
+                Div container = new Div();
+                container.setWidthFull();
+                container.getStyle().set("flex-grow", "1").set("overflow", "auto");
+
+                Runnable render = () -> {
+                        container.removeAll();
+                        YearMonth mes = seletor.getValue();
+                        boolean previsto = remuneracaoService.ehFuturo(mes);
+                        Map<Long, double[]> rent = remuneracaoService.rentabilidadePorTurma(turmas, mes, dados);
+
+                        List<Turma> ordenadas = turmas.stream()
+                                        .filter(t -> {
+                                                double[] x = rent.get(t.getId());
+                                                return x != null && (x[0] != 0 || x[1] != 0);
+                                        })
+                                        .sorted((a, b) -> Double.compare(rent.get(b.getId())[2], rent.get(a.getId())[2]))
+                                        .collect(Collectors.toList());
+
+                        Grid<Turma> grid = new Grid<>();
+                        grid.setItems(ordenadas);
+                        grid.addColumn(Turma::getDescricao).setHeader("Turma");
+                        grid.addColumn(t -> fmtEuro(rent.get(t.getId())[0])).setHeader("Receita").setAutoWidth(true);
+                        grid.addColumn(t -> fmtEuro(rent.get(t.getId())[1])).setHeader("Custo Prof").setAutoWidth(true);
+                        grid.addColumn(t -> fmtEuro(rent.get(t.getId())[2])).setHeader("Saldo").setAutoWidth(true);
+                        grid.addThemeVariants(GridVariant.LUMO_COMPACT, GridVariant.LUMO_ROW_STRIPES);
+                        grid.setSizeFull();
+
+                        String[] headers = { "Turma", "Receita", "Custo Prof", "Saldo Final" };
+                        List<String[]> rows = ordenadas.stream()
+                                        .map(t -> new String[] { t.getDescricao(),
+                                                        fmtEuro(rent.get(t.getId())[0]), fmtEuro(rent.get(t.getId())[1]),
+                                                        fmtEuro(rent.get(t.getId())[2]) })
+                                        .collect(Collectors.toList());
+                        double tRec = ordenadas.stream().mapToDouble(t -> rent.get(t.getId())[0]).sum();
+                        double tCusto = ordenadas.stream().mapToDouble(t -> rent.get(t.getId())[1]).sum();
+                        rows.add(new String[] { "TOTAL", fmtEuro(tRec), fmtEuro(tCusto), fmtEuro(tRec - tCusto) });
+
+                        Span aviso = new Span(previsto
+                                        ? "⚠️ Mês futuro — previsão: receita das inscrições ativas menos custo estimado do professor."
+                                        : "Valores reais do mês selecionado.");
+                        aviso.getStyle().set("font-size", "12px").set("color", previsto ? "#e65100" : "#888");
+
+                        String tituloExport = "Rentabilidade - " + mesLabel(mes) + (previsto ? " (previsao)" : "");
+                        VerticalLayout v = new VerticalLayout(aviso, grid, linhaDownloads(tituloExport, headers, rows));
+                        v.setSizeFull();
+                        v.setPadding(false);
+                        v.expand(grid);
+                        container.add(v);
+                };
+                seletor.addValueChangeListener(e -> render.run());
+                render.run();
+
+                VerticalLayout wrap = new VerticalLayout(seletor, container);
+                wrap.setSizeFull();
+                wrap.expand(container);
+                d.add(wrap);
+                d.getFooter().add(new Button("Fechar", e -> d.close()));
+                d.open();
         }
 
         private void abrirRelatorioSeguros() {
@@ -607,35 +736,6 @@ public class RelatoriosView extends VerticalLayout {
                         map.put("total", div.stream().mapToDouble(Mensalidade::getValor).sum());
                         return map;
                 }).filter(Objects::nonNull).collect(Collectors.toList());
-        }
-
-        private List<Map<String, Object>> obterDadosPagamentos(YearMonth mes) {
-                Map<String, Double> pag = new HashMap<>();
-                Map<String, Integer> alu = new HashMap<>();
-                pt.studioflow.model.Studio _sPagReg = pt.studioflow.config.TenantContext.getCurrentStudio();
-                (_sPagReg != null ? registoHorasRepository.findAllByStudio(_sPagReg) : registoHorasRepository.findAll()).stream()
-                                .filter(r -> r.getAno() == mes.getYear() && r.getMesNumero() == mes.getMonthValue())
-                                .forEach(r -> {
-                                        double h = (Duration.between(r.getInicio(), r.getFim()).toMinutes() / 60.0);
-                                        double vh = r.getTipoAtividade().equalsIgnoreCase("ENSAIO") ? 10.0 : 25.0;
-                                        if (!r.getTipoAtividade().equalsIgnoreCase("ENSAIO")) {
-                                                if (r.getProfessor().equalsIgnoreCase("Helena Cação"))
-                                                        vh = 15.0;
-                                                else if (r.getProfessor().equalsIgnoreCase("Leonor Ribeiro"))
-                                                        vh = 20.0;
-                                        }
-                                        pag.put(r.getProfessor(), pag.getOrDefault(r.getProfessor(), 0.0) + h * vh);
-                                        alu.merge(r.getProfessor(), 1, Integer::sum);
-                                });
-                List<Map<String, Object>> result = new ArrayList<>();
-                pag.forEach((prof, val) -> {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("prof", prof);
-                        map.put("total", val);
-                        map.put("aulas", alu.getOrDefault(prof, 0));
-                        result.add(map);
-                });
-                return result;
         }
 
         private String formatarNome(String nome) {

@@ -48,6 +48,7 @@ public class DashboardView extends Div {
         private final RegistoHorasRepository registoHorasRepository;
         private final MarcacaoSalaRepository marcacaoSalaRepository;
         private final pt.studioflow.service.DashboardService dashboardService;
+        private final pt.studioflow.service.RemuneracaoService remuneracaoService;
 
         public DashboardView(
                         AlunoRepository alunoRepository,
@@ -60,7 +61,8 @@ public class DashboardView extends Div {
                         ProfessorRepository professorRepository,
                         RegistoHorasRepository registoHorasRepository,
                         MarcacaoSalaRepository marcacaoSalaRepository,
-                        pt.studioflow.service.DashboardService dashboardService) {
+                        pt.studioflow.service.DashboardService dashboardService,
+                        pt.studioflow.service.RemuneracaoService remuneracaoService) {
 
                 this.alunoRepository = alunoRepository;
                 this.turmaRepository = turmaRepository;
@@ -73,6 +75,7 @@ public class DashboardView extends Div {
                 this.registoHorasRepository = registoHorasRepository;
                 this.marcacaoSalaRepository = marcacaoSalaRepository;
                 this.dashboardService = dashboardService;
+                this.remuneracaoService = remuneracaoService;
 
                 boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
@@ -238,6 +241,40 @@ public class DashboardView extends Div {
                                 vTotal.getStyle().set("border-top", "1px solid #f0f0f0").set("margin-top", "10px");
 
                                 vA.add(vTotal);
+
+                                // --- Valor estimado a receber (conforme modo de remuneração efetivo) ---
+                                Professor profLogado = (studio != null
+                                                ? professorRepository.findAllByStudio(studio)
+                                                : professorRepository.findAll()).stream()
+                                                .filter(p -> normalizar(p.getNome()).contains(busca))
+                                                .findFirst().orElse(null);
+                                if (profLogado != null) {
+                                        List<Turma> turmasProf = turmas.stream()
+                                                        .filter(t -> t.getProfessor() != null
+                                                                        && t.getProfessor().getId().equals(profLogado.getId()))
+                                                        .collect(Collectors.toList());
+                                        pt.studioflow.service.RemuneracaoService.Dados dRem = dadosRemuneracao(
+                                                        studio, todasMensalidades, todasAulas);
+                                        double aReceber = remuneracaoService
+                                                        .pagamentosPorProfessor(java.util.List.of(profLogado), turmasProf,
+                                                                        mesAtual, dRem)
+                                                        .stream()
+                                                        .mapToDouble(pt.studioflow.service.RemuneracaoService.LinhaPagamento::total)
+                                                        .sum();
+                                        Span valorSpan = new Span(String.format("%.2f €", aReceber));
+                                        valorSpan.getStyle().set("font-size", "26px").set("font-weight", "800")
+                                                        .set("color", "#2e7d32").set("display", "block")
+                                                        .set("margin-top", "10px");
+                                        Span labelValor = new Span("VALOR ESTIMADO A RECEBER");
+                                        labelValor.getStyle().set("font-size", "10px").set("color", "#95a5a6")
+                                                        .set("font-weight", "bold");
+                                        VerticalLayout vValor = new VerticalLayout(valorSpan, labelValor);
+                                        vValor.setAlignItems(FlexComponent.Alignment.CENTER);
+                                        vValor.setPadding(false);
+                                        vValor.setSpacing(false);
+                                        vA.add(vValor);
+                                }
+
                                 gridLayout.add(criarCard("Atividade de "
                                                 + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")),
                                                 VaadinIcon.CHART, vA));
@@ -462,31 +499,30 @@ public class DashboardView extends Div {
 
         private Map<String, Double> calcularRentabilidadeMap(List<Turma> turmas, List<Mensalidade> mens,
                         List<Aula> aulas, YearMonth mes) {
+                Studio studio = TenantContext.getCurrentStudio();
+                pt.studioflow.service.RemuneracaoService.Dados d = dadosRemuneracao(studio, mens, aulas);
+                Map<Long, double[]> rent = remuneracaoService.rentabilidadePorTurma(turmas, mes, d);
                 Map<String, Double> res = new HashMap<>();
                 for (Turma t : turmas) {
-                        double r = mens.stream()
-                                        .filter(m -> m.getMes().getValue() == mes.getMonthValue()
-                                                        && m.getAno() == mes.getYear() && m.getTurma() != null
-                                                        && m.getTurma().getId().equals(t.getId()))
-                                        .mapToDouble(Mensalidade::getValor).sum();
-                        double c = 0;
-                        List<Aula> aT = aulas.stream()
-                                        .filter(a -> a.getTurma() != null && a.getTurma().getId().equals(t.getId()))
-                                        .toList();
-                        // Usar taxa real do professor (campo valorHoraAula), sem hardcodes por nome
-                        double vH = t.getProfessor() != null ? t.getProfessor().getValorHoraAula() : 25.0;
-                        for (Aula au : aT) {
-                                long dias = 0;
-                                for (int i = 1; i <= mes.lengthOfMonth(); i++)
-                                        if (mes.atDay(i).getDayOfWeek() == au.getDia())
-                                                dias++;
-                                c += (dias * (Duration.between(au.getHoraInicio(), au.getHoraFim()).toMinutes() / 60.0)
-                                                * vH);
-                        }
-                        if (r > 0 || c > 0)
-                                res.put(t.getDescricao(), r - c);
+                        double[] x = rent.get(t.getId());
+                        if (x != null && (x[0] != 0 || x[1] != 0))
+                                res.put(t.getDescricao(), x[2]);
                 }
                 return res;
+        }
+
+        private pt.studioflow.service.RemuneracaoService.Dados dadosRemuneracao(Studio studio,
+                        List<Mensalidade> mens, List<Aula> aulas) {
+                return new pt.studioflow.service.RemuneracaoService.Dados()
+                                .mensalidades(mens)
+                                .aulas(aulas)
+                                .registos(studio != null ? registoHorasRepository.findAllByStudio(studio)
+                                                : registoHorasRepository.findAll())
+                                .inscricoes(alunoTurmaRepository.findAll().stream()
+                                                .filter(at -> at.getTurma() != null && (studio == null
+                                                                || (at.getTurma().getStudio() != null && at.getTurma()
+                                                                                .getStudio().getId().equals(studio.getId()))))
+                                                .collect(Collectors.toList()));
         }
 
         private void abrirModalRentabilidadeDetalhada(Map<String, Double> lucros, List<Turma> turmas,
