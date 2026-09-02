@@ -94,14 +94,10 @@ public class CRMView extends VerticalLayout {
                 .collect(Collectors.toList());
 
         grid.setItems(lista);
-        grid.addColumn(Aluno::getNomeCompleto).setHeader("Aluno").setAutoWidth(true);
-        grid.addColumn(a -> a.getDataNascimento().getDayOfMonth() + " de " + 
-                a.getDataNascimento().getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")))
-                .setHeader("Dia").setSortable(true);
-        grid.addColumn(Aluno::getTelemovel).setHeader("Contacto");
 
         grid.addComponentColumn(a -> {
             Button whatsappBtn = new Button("Parabéns", new Icon(VaadinIcon.CHAT));
+            whatsappBtn.getStyle().set("color", "#25D366");
             whatsappBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_PRIMARY);
             whatsappBtn.addClickListener(e -> {
                 String mensagem = "Olá " + a.getNomeCompleto().split(" ")[0] + "! A CoreoFlow deseja-te um dia de aniversário fantástico, com muita dança e alegria!";
@@ -109,6 +105,12 @@ public class CRMView extends VerticalLayout {
             });
             return whatsappBtn;
         }).setHeader("Ação");
+
+        grid.addColumn(Aluno::getNomeCompleto).setHeader("Aluno").setAutoWidth(true);
+        grid.addColumn(a -> a.getDataNascimento().getDayOfMonth() + " de " +
+                a.getDataNascimento().getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")))
+                .setHeader("Dia").setSortable(true);
+        grid.addColumn(Aluno::getTelemovel).setHeader("Contacto");
 
         grid.setSizeFull();
         containerConteudo.add(grid);
@@ -134,16 +136,10 @@ public class CRMView extends VerticalLayout {
 
         Grid<Aluno> grid = new Grid<>(Aluno.class, false);
         grid.setItems(listaRisco);
-        grid.addColumn(Aluno::getNomeCompleto).setHeader("Aluno").setAutoWidth(true);
-        grid.addColumn(a -> {
-            return todasPresencas.stream()
-                    .filter(p -> p.getAluno().getId().equals(a.getId()))
-                    .map(Presenca::getData).max(LocalDate::compareTo)
-                    .map(Object::toString).orElse("Nunca apareceu");
-        }).setHeader("Última Aula").setSortable(true);
 
         grid.addComponentColumn(a -> {
-            Button recuperarBtn = new Button("Contactar", new Icon(VaadinIcon.PHONE));
+            Button recuperarBtn = new Button("Contactar", new Icon(VaadinIcon.CHAT));
+            recuperarBtn.getStyle().set("color", "#25D366");
             recuperarBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
             recuperarBtn.addClickListener(e -> {
                 String mensagem = "Olá " + a.getNomeCompleto().split(" ")[0] + "! Temos sentido a tua falta nas aulas da CoreoFlow. Está tudo bem contigo? Esperamos ver-te em breve!";
@@ -151,6 +147,14 @@ public class CRMView extends VerticalLayout {
             });
             return recuperarBtn;
         }).setHeader("Recuperação");
+
+        grid.addColumn(Aluno::getNomeCompleto).setHeader("Aluno").setAutoWidth(true);
+        grid.addColumn(a -> {
+            return todasPresencas.stream()
+                    .filter(p -> p.getAluno().getId().equals(a.getId()))
+                    .map(Presenca::getData).max(LocalDate::compareTo)
+                    .map(Object::toString).orElse("Nunca apareceu");
+        }).setHeader("Última Aula").setSortable(true);
 
         grid.setSizeFull();
         containerConteudo.add(grid);

@@ -118,6 +118,26 @@ public class TurmaView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_NO_BORDER);
         grid.getStyle().set("flex-grow", "1").set("margin", "12px 16px");
 
+        grid.addComponentColumn(turma -> {
+            Button edit = new Button("Editar", new Icon(VaadinIcon.EDIT));
+            edit.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+            edit.addClickListener(e -> {
+                try {
+                    Turma completa = turmaRepository.findByIdCompleto(turma.getId());
+                    turmaForm.abrirFormulario(completa);
+                } catch (Exception ex) {
+                    Notification.show("Erro ao carregar turma: " + ex.getMessage())
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
+            });
+
+            Button delete = new Button(new Icon(VaadinIcon.TRASH));
+            delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+            delete.addClickListener(e -> confirmarEliminacao(turma));
+
+            return new HorizontalLayout(edit, delete);
+        }).setHeader("Ações").setAutoWidth(true);
+
         grid.addColumn(Turma::getCodigo).setHeader("Código").setWidth("80px").setFlexGrow(0).setSortable(true);
 
         grid.addComponentColumn(t -> {
@@ -167,26 +187,6 @@ public class TurmaView extends VerticalLayout {
                     : criarBadge("Inativa", "#ffebee", "#c62828");
             return badge;
         }).setHeader("Estado").setWidth("90px").setFlexGrow(0);
-
-        grid.addComponentColumn(turma -> {
-            Button edit = new Button("Editar", new Icon(VaadinIcon.EDIT));
-            edit.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-            edit.addClickListener(e -> {
-                try {
-                    Turma completa = turmaRepository.findByIdCompleto(turma.getId());
-                    turmaForm.abrirFormulario(completa);
-                } catch (Exception ex) {
-                    Notification.show("Erro ao carregar turma: " + ex.getMessage())
-                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                }
-            });
-
-            Button delete = new Button(new Icon(VaadinIcon.TRASH));
-            delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-            delete.addClickListener(e -> confirmarEliminacao(turma));
-
-            return new HorizontalLayout(edit, delete);
-        }).setHeader("Ações").setAutoWidth(true);
     }
 
     private Span criarBadge(String texto, String bg, String cor) {

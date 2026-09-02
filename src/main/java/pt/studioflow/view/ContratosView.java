@@ -58,6 +58,18 @@ public class ContratosView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
+        grid.addComponentColumn(c -> {
+            Button ver = new Button(VaadinIcon.EYE.create(), e -> verContrato(c));
+            ver.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            ver.getElement().setProperty("title", "Ver contrato");
+
+            Button del = new Button(VaadinIcon.TRASH.create(), e -> {
+                contratoRepo.delete(c); atualizar();
+            });
+            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            return new HorizontalLayout(ver, del);
+        }).setHeader("Ações").setAutoWidth(true);
+
         grid.addColumn(c -> c.getAluno().getNomeCompleto()).setHeader("Aluno").setFlexGrow(2).setSortable(true);
         grid.addColumn(c -> c.getTipo() + " · " + c.getAnoLetivo()).setHeader("Contrato").setFlexGrow(1);
         grid.addColumn(c -> c.getDataGeracao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
@@ -73,18 +85,6 @@ public class ContratosView extends VerticalLayout {
         grid.addColumn(c -> c.getDataAssinatura() != null
                 ? c.getDataAssinatura().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "—")
                 .setHeader("Data Assinatura").setAutoWidth(true);
-
-        grid.addComponentColumn(c -> {
-            Button ver = new Button(VaadinIcon.EYE.create(), e -> verContrato(c));
-            ver.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            ver.getElement().setProperty("title", "Ver contrato");
-
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> {
-                contratoRepo.delete(c); atualizar();
-            });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            return new HorizontalLayout(ver, del);
-        }).setHeader("Ações").setAutoWidth(true);
 
         return grid;
     }

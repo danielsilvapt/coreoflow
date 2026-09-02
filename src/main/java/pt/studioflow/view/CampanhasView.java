@@ -75,6 +75,30 @@ public class CampanhasView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
+        grid.addComponentColumn(c -> {
+            HorizontalLayout actions = new HorizontalLayout();
+            if (c.getEstado() == Campanha.Estado.RASCUNHO) {
+                Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(c));
+                editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                Button enviar = new Button("Enviar", VaadinIcon.PAPERPLANE.create(),
+                        e -> confirmarEnvio(c));
+                enviar.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+                enviar.getStyle().set("background-color", ViewUtils.corPrimaria());
+                actions.add(editar, enviar);
+            } else {
+                Span dataEnvio = new Span(c.getDataEnvio() != null
+                        ? c.getDataEnvio().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")) : "");
+                dataEnvio.getStyle().set("font-size", "11px").set("color", "#888");
+                actions.add(dataEnvio);
+            }
+            Button del = new Button(VaadinIcon.TRASH.create(), e -> {
+                campanhaRepo.delete(c); atualizar();
+            });
+            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            actions.add(del);
+            return actions;
+        }).setHeader("Ações").setAutoWidth(true);
+
         grid.addColumn(c -> c.getDataCriacao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
                 .setHeader("Data").setAutoWidth(true).setSortable(true);
         grid.addColumn(Campanha::getTitulo).setHeader("Título").setFlexGrow(2);
@@ -106,30 +130,6 @@ public class CampanhasView extends VerticalLayout {
                     enviada ? "#e8f5e9" : "#fff3e0",
                     enviada ? "#27AE60" : "#E67E22");
         }).setHeader("Estado").setAutoWidth(true);
-
-        grid.addComponentColumn(c -> {
-            HorizontalLayout actions = new HorizontalLayout();
-            if (c.getEstado() == Campanha.Estado.RASCUNHO) {
-                Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(c));
-                editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-                Button enviar = new Button("Enviar", VaadinIcon.PAPERPLANE.create(),
-                        e -> confirmarEnvio(c));
-                enviar.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
-                enviar.getStyle().set("background-color", ViewUtils.corPrimaria());
-                actions.add(editar, enviar);
-            } else {
-                Span dataEnvio = new Span(c.getDataEnvio() != null
-                        ? c.getDataEnvio().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")) : "");
-                dataEnvio.getStyle().set("font-size", "11px").set("color", "#888");
-                actions.add(dataEnvio);
-            }
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> {
-                campanhaRepo.delete(c); atualizar();
-            });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            actions.add(del);
-            return actions;
-        }).setHeader("Ações").setAutoWidth(true);
 
         return grid;
     }

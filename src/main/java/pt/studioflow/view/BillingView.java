@@ -81,6 +81,23 @@ public class BillingView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
+        grid.addComponentColumn(f -> {
+            if (f.getEstado() == FaturaStudio.Estado.PENDENTE || f.getEstado() == FaturaStudio.Estado.VENCIDA) {
+                Button pagar = new Button("Marcar Paga", e -> {
+                    f.setEstado(FaturaStudio.Estado.PAGA);
+                    f.setDataPagamento(LocalDate.now());
+                    faturaRepo.save(f);
+                    atualizar();
+                    Notification.show("Fatura marcada como paga")
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                });
+                pagar.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_SMALL);
+                return pagar;
+            }
+            return new Span(f.getDataPagamento() != null
+                    ? f.getDataPagamento().toString() : "");
+        }).setHeader("Ação").setAutoWidth(true);
+
         grid.addColumn(f -> f.getStudio().getNome()).setHeader("Estúdio").setFlexGrow(1).setSortable(true);
         grid.addColumn(f -> f.getPlano() != null ? f.getPlano().getNome() : "—").setHeader("Plano").setAutoWidth(true);
         grid.addColumn(f -> Month.of(f.getMes()).getDisplayName(TextStyle.SHORT, new Locale("pt"))
@@ -100,23 +117,6 @@ public class BillingView extends VerticalLayout {
                     .set("font-size","11px").set("font-weight","600");
             return b;
         }).setHeader("Estado").setAutoWidth(true);
-
-        grid.addComponentColumn(f -> {
-            if (f.getEstado() == FaturaStudio.Estado.PENDENTE || f.getEstado() == FaturaStudio.Estado.VENCIDA) {
-                Button pagar = new Button("Marcar Paga", e -> {
-                    f.setEstado(FaturaStudio.Estado.PAGA);
-                    f.setDataPagamento(LocalDate.now());
-                    faturaRepo.save(f);
-                    atualizar();
-                    Notification.show("Fatura marcada como paga")
-                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                });
-                pagar.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_SMALL);
-                return pagar;
-            }
-            return new Span(f.getDataPagamento() != null
-                    ? f.getDataPagamento().toString() : "");
-        }).setHeader("Ação").setAutoWidth(true);
 
         return grid;
     }

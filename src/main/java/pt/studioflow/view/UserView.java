@@ -78,21 +78,6 @@ public class UserView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
-        grid.addColumn(User::getUsername)
-                .setHeader("Username").setAutoWidth(true);
-
-        grid.addColumn(User::getFirstName)
-                .setHeader("Primeiro Nome").setAutoWidth(true);
-
-        grid.addColumn(User::getEmail)
-                .setHeader("E-mail").setAutoWidth(true);
-
-        grid.addColumn(User::getRole)
-                .setHeader("Perfil").setAutoWidth(true);
-
-        grid.addColumn(u -> u.getStudio() != null ? u.getStudio().getNome() : "—")
-                .setHeader("Estúdio").setAutoWidth(true).setSortable(true);
-
         grid.addComponentColumn(user -> {
             Button editar = new Button(new Icon(VaadinIcon.EDIT));
             editar.getElement().setProperty("title", "Editar");
@@ -121,6 +106,21 @@ public class UserView extends VerticalLayout {
             actions.setSpacing(true);
             return actions;
         }).setHeader("Ações").setAutoWidth(true).setFlexGrow(0);
+
+        grid.addColumn(User::getUsername)
+                .setHeader("Username").setAutoWidth(true);
+
+        grid.addColumn(User::getFirstName)
+                .setHeader("Primeiro Nome").setAutoWidth(true);
+
+        grid.addColumn(User::getEmail)
+                .setHeader("E-mail").setAutoWidth(true);
+
+        grid.addColumn(User::getRole)
+                .setHeader("Perfil").setAutoWidth(true);
+
+        grid.addColumn(u -> u.getStudio() != null ? u.getStudio().getNome() : "—")
+                .setHeader("Estúdio").setAutoWidth(true).setSortable(true);
 
         return grid;
     }

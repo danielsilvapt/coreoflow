@@ -86,6 +86,14 @@ public class PlanoAulasView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
+        grid.addComponentColumn(o -> {
+            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(o));
+            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            Button del = new Button(VaadinIcon.TRASH.create(), e -> { ocorrenciaRepo.delete(o); atualizar(); });
+            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            return new HorizontalLayout(editar, del);
+        }).setHeader("Ações").setAutoWidth(true);
+
         grid.addColumn(o -> o.getData().format(DateTimeFormatter.ofPattern("EEE dd/MM/yyyy",
                         new java.util.Locale("pt"))))
                 .setHeader("Data").setAutoWidth(true).setSortable(true);
@@ -117,14 +125,6 @@ public class PlanoAulasView extends VerticalLayout {
             s.getStyle().set("font-size", "12px").set("color", "#888");
             return s;
         }).setHeader("Alunos").setAutoWidth(true);
-
-        grid.addComponentColumn(o -> {
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(o));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> { ocorrenciaRepo.delete(o); atualizar(); });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            return new HorizontalLayout(editar, del);
-        }).setHeader("Ações").setAutoWidth(true);
 
         return grid;
     }
