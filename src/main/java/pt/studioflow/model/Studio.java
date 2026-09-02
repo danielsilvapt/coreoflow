@@ -78,10 +78,35 @@ public class Studio {
     private String tipoRemuneracaoProf = "HORA";
 
     /**
-     * Valor de referência: €/hora se HORA, ou % se PERCENTAGEM.
+     * Valor de referência quando HORA: €/hora de aula regular.
+     * Quando PERCENTAGEM, é ignorado (usam-se os campos percProf*).
      */
     @Column(name = "valor_remuneracao_prof")
     private Double valorRemuneracaoProf = 0.0;
+
+    /** €/hora pago em ensaios (fallback: valorRemuneracaoProf). */
+    @Column(name = "valor_hora_ensaio_prof")
+    private Double valorHoraEnsaioProf;
+
+    /** €/hora pago em aulas privadas/workshops (fallback: valorRemuneracaoProf). */
+    @Column(name = "valor_hora_privada_prof")
+    private Double valorHoraPrivadaProf;
+
+    /** Percentagem da mensalidade paga ao professor por alunos com 1x/semana. */
+    @Column(name = "perc_prof_1x")
+    private Double percProf1x;
+
+    /** Percentagem da mensalidade paga ao professor por alunos com 2x/semana. */
+    @Column(name = "perc_prof_2x")
+    private Double percProf2x;
+
+    /** Percentagem da mensalidade paga ao professor por alunos com 3x/semana. */
+    @Column(name = "perc_prof_3x")
+    private Double percProf3x;
+
+    /** Percentagem usada para frequências sem valor próprio (fallback). */
+    @Column(name = "perc_prof_outras")
+    private Double percProfOutras;
 
     // =====================================================
     // CONFIGURAÇÕES DE MENSALIDADES (por estúdio)
@@ -272,6 +297,24 @@ public class Studio {
 
     public Double getValorRemuneracaoProf() { return valorRemuneracaoProf; }
     public void setValorRemuneracaoProf(Double valorRemuneracaoProf) { this.valorRemuneracaoProf = valorRemuneracaoProf; }
+
+    public Double getValorHoraEnsaioProf() { return valorHoraEnsaioProf; }
+    public void setValorHoraEnsaioProf(Double v) { this.valorHoraEnsaioProf = v; }
+
+    public Double getValorHoraPrivadaProf() { return valorHoraPrivadaProf; }
+    public void setValorHoraPrivadaProf(Double v) { this.valorHoraPrivadaProf = v; }
+
+    public Double getPercProf1x() { return percProf1x; }
+    public void setPercProf1x(Double v) { this.percProf1x = v; }
+
+    public Double getPercProf2x() { return percProf2x; }
+    public void setPercProf2x(Double v) { this.percProf2x = v; }
+
+    public Double getPercProf3x() { return percProf3x; }
+    public void setPercProf3x(Double v) { this.percProf3x = v; }
+
+    public Double getPercProfOutras() { return percProfOutras; }
+    public void setPercProfOutras(Double v) { this.percProfOutras = v; }
 
     /** Verifica se um campo do aluno está ativo. Nulo/vazio = todos ativos. */
     public boolean hasCampo(CampoAluno campo) {
