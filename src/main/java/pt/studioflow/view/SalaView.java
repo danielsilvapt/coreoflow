@@ -59,16 +59,16 @@ public class SalaView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
+        grid.addComponentColumn(this::criarBotoesLinha)
+                .setHeader("Ações")
+                .setAutoWidth(true);
+
         grid.addColumn(Sala::getNome)
                 .setHeader("Nome")
                 .setAutoWidth(true);
 
         grid.addColumn(Sala::getCor)
                 .setHeader("Cor")
-                .setAutoWidth(true);
-
-        grid.addComponentColumn(this::criarBotoesLinha)
-                .setHeader("Ações")
                 .setAutoWidth(true);
 
         return grid;

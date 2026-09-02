@@ -80,25 +80,6 @@ public class InqueritosView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
-        grid.addColumn(Inquerito::getTitulo).setHeader("Título").setFlexGrow(2).setSortable(true);
-        grid.addColumn(i -> i.getAnoLetivo() != null ? i.getAnoLetivo() : "—").setHeader("Ano").setAutoWidth(true);
-        grid.addComponentColumn(i -> {
-            String[] cfg = switch (i.getEstado()) {
-                case RASCUNHO -> new String[]{"#fff3e0","#E67E22","Rascunho"};
-                case ENVIADO  -> new String[]{"#e3f2fd","#1976D2","Enviado"};
-                case FECHADO  -> new String[]{"#e8f5e9","#27AE60","Fechado"};
-            };
-            Span b = new Span(cfg[2]);
-            b.getStyle().set("background",cfg[0]).set("color",cfg[1])
-                    .set("padding","2px 8px").set("border-radius","10px")
-                    .set("font-size","11px").set("font-weight","600");
-            return b;
-        }).setHeader("Estado").setAutoWidth(true);
-        grid.addColumn(i -> i.getRespostasCount() + " respostas").setHeader("Respostas").setAutoWidth(true);
-        grid.addColumn(i -> i.getDataEnvio() != null
-                ? i.getDataEnvio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "—")
-                .setHeader("Enviado em").setAutoWidth(true);
-
         grid.addComponentColumn(i -> {
             HorizontalLayout actions = new HorizontalLayout();
             if (i.getEstado() == Inquerito.Estado.RASCUNHO) {
@@ -134,6 +115,25 @@ public class InqueritosView extends VerticalLayout {
             actions.add(del);
             return actions;
         }).setHeader("Ações").setAutoWidth(true);
+
+        grid.addColumn(Inquerito::getTitulo).setHeader("Título").setFlexGrow(2).setSortable(true);
+        grid.addColumn(i -> i.getAnoLetivo() != null ? i.getAnoLetivo() : "—").setHeader("Ano").setAutoWidth(true);
+        grid.addComponentColumn(i -> {
+            String[] cfg = switch (i.getEstado()) {
+                case RASCUNHO -> new String[]{"#fff3e0","#E67E22","Rascunho"};
+                case ENVIADO  -> new String[]{"#e3f2fd","#1976D2","Enviado"};
+                case FECHADO  -> new String[]{"#e8f5e9","#27AE60","Fechado"};
+            };
+            Span b = new Span(cfg[2]);
+            b.getStyle().set("background",cfg[0]).set("color",cfg[1])
+                    .set("padding","2px 8px").set("border-radius","10px")
+                    .set("font-size","11px").set("font-weight","600");
+            return b;
+        }).setHeader("Estado").setAutoWidth(true);
+        grid.addColumn(i -> i.getRespostasCount() + " respostas").setHeader("Respostas").setAutoWidth(true);
+        grid.addColumn(i -> i.getDataEnvio() != null
+                ? i.getDataEnvio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "—")
+                .setHeader("Enviado em").setAutoWidth(true);
 
         return grid;
     }

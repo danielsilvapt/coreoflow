@@ -83,6 +83,17 @@ public class AvaliacoesView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
+        grid.addComponentColumn(a -> {
+            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(a));
+            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            Button del = new Button(VaadinIcon.TRASH.create(), e -> {
+                avaliacaoRepo.delete(a);
+                atualizar();
+            });
+            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            return new HorizontalLayout(editar, del);
+        }).setHeader("Ações").setAutoWidth(true);
+
         grid.addColumn(a -> a.getDataAvaliacao().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
                 .setHeader("Data").setAutoWidth(true).setSortable(true);
         grid.addColumn(a -> a.getAluno() != null ? a.getAluno().getNomeCompleto() : "—")
@@ -114,17 +125,6 @@ public class AvaliacoesView extends VerticalLayout {
             s.getStyle().set("font-weight", "700").set("color", "#F39C12");
             return s;
         }).setHeader("Média").setAutoWidth(true);
-
-        grid.addComponentColumn(a -> {
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(a));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> {
-                avaliacaoRepo.delete(a);
-                atualizar();
-            });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            return new HorizontalLayout(editar, del);
-        }).setHeader("Ações").setAutoWidth(true);
 
         return grid;
     }

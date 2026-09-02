@@ -147,10 +147,6 @@ public class RelatoriosView extends VerticalLayout {
 
                 Grid<Map<String, Object>> grid = new Grid<>();
                 grid.setItems(dados);
-                grid.addColumn(m -> m.get("prof")).setHeader("Professor");
-                grid.addColumn(m -> String.format("%.2f €", m.get("total"))).setHeader("Total").getStyle().set(
-                                "font-weight",
-                                "bold");
 
                 grid.addComponentColumn(m -> {
                         // 1. Criar o botão
@@ -187,6 +183,11 @@ public class RelatoriosView extends VerticalLayout {
                         // 3. IMPORTANTE: Retornar o componente para a Grid
                         return btnEmail;
                 }).setHeader("Enviar E-mail");
+
+                grid.addColumn(m -> m.get("prof")).setHeader("Professor");
+                grid.addColumn(m -> String.format("%.2f €", m.get("total"))).setHeader("Total").getStyle().set(
+                                "font-weight",
+                                "bold");
 
                 List<String[]> rows = dados.stream()
                                 .map(m -> new String[] { m.get("prof").toString(),
@@ -504,8 +505,6 @@ public class RelatoriosView extends VerticalLayout {
                 List<Map<String, Object>> dados = obterDadosDevedores();
                 Grid<Map<String, Object>> grid = new Grid<>();
                 grid.setItems(dados);
-                grid.addColumn(m -> m.get("nome")).setHeader("Aluno");
-                grid.addColumn(m -> String.format("%.2f €", m.get("total"))).setHeader("Total");
                 grid.addComponentColumn(m -> {
                         Button b = new Button(VaadinIcon.CHAT.create(), e -> {
                                 String pNome = m.get("nome").toString().split(" ")[0];
@@ -517,9 +516,12 @@ public class RelatoriosView extends VerticalLayout {
                                                 .open(WhatsAppUtil.gerarLinkMensagem(m.get("telemovel").toString(),
                                                                 msg), "_blank"));
                         });
+                        b.getStyle().set("color", "#25D366");
                         b.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_SMALL);
                         return b;
                 }).setHeader("WhatsApp");
+                grid.addColumn(m -> m.get("nome")).setHeader("Aluno");
+                grid.addColumn(m -> String.format("%.2f €", m.get("total"))).setHeader("Total");
                 List<String[]> rows = dados.stream()
                                 .map(m -> new String[] { m.get("nome").toString(), m.get("telemovel").toString(),
                                                 m.get("email").toString(), String.format("%.2f €", m.get("total")) })

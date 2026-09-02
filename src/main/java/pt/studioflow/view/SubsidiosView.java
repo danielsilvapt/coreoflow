@@ -57,6 +57,14 @@ public class SubsidiosView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
+        grid.addComponentColumn(s -> {
+            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(s));
+            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            Button del = new Button(VaadinIcon.TRASH.create(), e -> { subsidioRepo.delete(s); atualizar(); });
+            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            return new HorizontalLayout(editar, del);
+        }).setHeader("Ações").setAutoWidth(true);
+
         grid.addColumn(s -> s.getAluno().getNomeCompleto()).setHeader("Aluno").setFlexGrow(2).setSortable(true);
         grid.addColumn(SubsidioAluno::getEntidade).setHeader("Entidade").setAutoWidth(true);
         grid.addColumn(s -> s.getDescricaoApoio() != null ? s.getDescricaoApoio() : "—")
@@ -78,13 +86,6 @@ public class SubsidiosView extends VerticalLayout {
             b.getStyle().set("color", s.isAtivo() ? "#27AE60" : "#888").set("font-weight", "600");
             return b;
         }).setHeader("Estado").setAutoWidth(true);
-        grid.addComponentColumn(s -> {
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(s));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> { subsidioRepo.delete(s); atualizar(); });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            return new HorizontalLayout(editar, del);
-        }).setHeader("Ações").setAutoWidth(true);
 
         return grid;
     }

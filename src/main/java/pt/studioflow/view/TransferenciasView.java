@@ -146,6 +146,47 @@ public class TransferenciasView extends VerticalLayout {
         grid.getStyle().set("border-radius", "12px").set("box-shadow", "0 4px 12px rgba(0,0,0,0.04)");
         grid.setSizeFull();
 
+        grid.addComponentColumn(t -> {
+            HorizontalLayout acoes = new HorizontalLayout();
+            acoes.getStyle().set("flex-wrap", "wrap").set("gap", "4px");
+
+            boolean podeAssinar = "AGUARDA_ASSINATURAS".equals(t.getEstado())
+                    || "AGUARDA_UMA_ASSINATURA".equals(t.getEstado());
+
+            if (podeAssinar && !userEmailLogado.isBlank()) {
+                if (userEmailLogado.equalsIgnoreCase(TenantContext.getCurrentStudio().getEmailAssinante1()) && t.getAssinadoPor1() == null) {
+                    Button b = new Button("Marcar como assinado", e -> processarCorridaAssinatura(t, 1));
+                    b.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_SUCCESS);
+                    acoes.add(b);
+                }
+                if (userEmailLogado.equalsIgnoreCase(TenantContext.getCurrentStudio().getEmailAssinante2()) && t.getAssinadoPor2() == null) {
+                    Button b = new Button("Marcar como assinado", e -> processarCorridaAssinatura(t, 2));
+                    b.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_SUCCESS);
+                    acoes.add(b);
+                }
+            }
+
+            if ("AGUARDA_PAGAMENTO".equals(t.getEstado())
+                    && (userEmailLogado.equalsIgnoreCase(TenantContext.getCurrentStudio().getEmailCriadorTransferencias()) || usernameLogado.contains("admin"))) {
+                Button bComp = new Button("Anexar Comprovativo", e -> abrirDialogAnexarComprovativo(t));
+                bComp.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
+                acoes.add(bComp);
+            }
+
+            return acoes;
+        }).setHeader("Ações Disponíveis").setAutoWidth(true);
+
+        grid.addComponentColumn(t -> {
+            if (t.getNomeFicheiroComprovativo() != null && !t.getNomeFicheiroComprovativo().isBlank()) {
+                Button btnVer = new Button(new Icon(VaadinIcon.EYE));
+                btnVer.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+                btnVer.getElement().setProperty("title", "Ver Comprovativo");
+                btnVer.addClickListener(e -> abrirDialogVerComprovativo(t));
+                return btnVer;
+            }
+            return new Span("-");
+        }).setHeader("Comprovativo").setAutoWidth(true);
+
         grid.addColumn(t -> t.getUrgencia()).setHeader("Prioridade").setAutoWidth(true);
         grid.addColumn(t -> t.getCategoria()).setHeader("Categoria").setAutoWidth(true);
         grid.addColumn(t -> t.getDescricao()).setHeader("Descrição / Beneficiário").setAutoWidth(true);
@@ -178,47 +219,6 @@ public class TransferenciasView extends VerticalLayout {
             }
             return badge;
         }).setHeader("Estado").setAutoWidth(true);
-
-        grid.addComponentColumn(t -> {
-            if (t.getNomeFicheiroComprovativo() != null && !t.getNomeFicheiroComprovativo().isBlank()) {
-                Button btnVer = new Button(new Icon(VaadinIcon.EYE));
-                btnVer.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-                btnVer.getElement().setProperty("title", "Ver Comprovativo");
-                btnVer.addClickListener(e -> abrirDialogVerComprovativo(t));
-                return btnVer;
-            }
-            return new Span("-");
-        }).setHeader("Comprovativo").setAutoWidth(true);
-
-        grid.addComponentColumn(t -> {
-            HorizontalLayout acoes = new HorizontalLayout();
-            acoes.getStyle().set("flex-wrap", "wrap").set("gap", "4px");
-
-            boolean podeAssinar = "AGUARDA_ASSINATURAS".equals(t.getEstado())
-                    || "AGUARDA_UMA_ASSINATURA".equals(t.getEstado());
-
-            if (podeAssinar && !userEmailLogado.isBlank()) {
-                if (userEmailLogado.equalsIgnoreCase(TenantContext.getCurrentStudio().getEmailAssinante1()) && t.getAssinadoPor1() == null) {
-                    Button b = new Button("Marcar como assinado", e -> processarCorridaAssinatura(t, 1));
-                    b.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_SUCCESS);
-                    acoes.add(b);
-                }
-                if (userEmailLogado.equalsIgnoreCase(TenantContext.getCurrentStudio().getEmailAssinante2()) && t.getAssinadoPor2() == null) {
-                    Button b = new Button("Marcar como assinado", e -> processarCorridaAssinatura(t, 2));
-                    b.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_SUCCESS);
-                    acoes.add(b);
-                }
-            }
-
-            if ("AGUARDA_PAGAMENTO".equals(t.getEstado())
-                    && (userEmailLogado.equalsIgnoreCase(TenantContext.getCurrentStudio().getEmailCriadorTransferencias()) || usernameLogado.contains("admin"))) {
-                Button bComp = new Button("Anexar Comprovativo", e -> abrirDialogAnexarComprovativo(t));
-                bComp.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
-                acoes.add(bComp);
-            }
-
-            return acoes;
-        }).setHeader("Ações Disponíveis").setAutoWidth(true);
 
         add(grid);
     }

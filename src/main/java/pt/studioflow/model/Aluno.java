@@ -100,6 +100,10 @@ public class Aluno {
     @Column(name = "data_inscricao_renovacao")
     private LocalDate dataInscricaoRenovacao;
 
+    /** Data em que a inscrição original do aluno foi validada/ativada — preenchida uma única vez. */
+    @Column(name = "data_inscricao")
+    private LocalDate dataInscricao;
+
     @Column(name = "divida")
     private int divida; // Sim ou Não
 
@@ -310,6 +314,14 @@ public class Aluno {
 
     public void setDataInscricaoRenovacao(LocalDate dataInscricaoRenovacao) {
         this.dataInscricaoRenovacao = dataInscricaoRenovacao;
+    }
+
+    public LocalDate getDataInscricao() {
+        return dataInscricao;
+    }
+
+    public void setDataInscricao(LocalDate dataInscricao) {
+        this.dataInscricao = dataInscricao;
     }
 
     public boolean isDivida() {

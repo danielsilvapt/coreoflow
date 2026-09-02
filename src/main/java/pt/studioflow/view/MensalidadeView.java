@@ -221,6 +221,9 @@ public class MensalidadeView extends VerticalLayout {
         grid.setHeightFull();
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_ROW_STRIPES);
 
+        grid.addComponentColumn(this::criarAcoesModernas).setHeader("Ações").setWidth("180px").setFlexGrow(0)
+                .setFrozen(true);
+
         grid.addColumn(m -> m == null ? 0
                 : m.getAno() + "/" + m.getMes().getDisplayName(TextStyle.SHORT, new Locale("pt", "PT")))
                 .setHeader("Período").setAutoWidth(true).setSortable(true);
@@ -249,8 +252,6 @@ public class MensalidadeView extends VerticalLayout {
         grid.addComponentColumn(this::criarSelectDesconto).setHeader("Desconto").setAutoWidth(true);
         grid.addComponentColumn(this::criarCampoValor).setHeader("Valor").setAutoWidth(true);
         grid.addComponentColumn(this::criarBadgeEstadoAlternante).setHeader("Estado").setAutoWidth(true);
-        grid.addComponentColumn(this::criarAcoesModernas).setHeader("Ações").setWidth("180px").setFlexGrow(0)
-                .setFrozenToEnd(true);
     }
 
     private Component criarSelectDesconto(Mensalidade m) {

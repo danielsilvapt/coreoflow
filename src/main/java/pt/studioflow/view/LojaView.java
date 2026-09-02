@@ -66,6 +66,14 @@ public class LojaView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
         grid.setSizeFull();
 
+        grid.addComponentColumn(p -> {
+            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialogProduto(p, grid));
+            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            Button del = new Button(VaadinIcon.TRASH.create(), e -> { produtoRepo.delete(p); atualizarProdutos(grid); });
+            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            return new HorizontalLayout(editar, del);
+        }).setHeader("Ações").setAutoWidth(true);
+
         grid.addColumn(ProdutoLoja::getNome).setHeader("Nome").setFlexGrow(2).setSortable(true);
         grid.addColumn(ProdutoLoja::getCategoria).setHeader("Categoria").setAutoWidth(true);
         grid.addColumn(p -> String.format("%.2f €", p.getPreco())).setHeader("Preço").setAutoWidth(true);
@@ -81,13 +89,6 @@ public class LojaView extends VerticalLayout {
             b.getStyle().set("color", p.isAtivo() ? "#27AE60" : "#E74C3C").set("font-weight", "600");
             return b;
         }).setHeader("Estado").setAutoWidth(true);
-        grid.addComponentColumn(p -> {
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialogProduto(p, grid));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> { produtoRepo.delete(p); atualizarProdutos(grid); });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            return new HorizontalLayout(editar, del);
-        }).setHeader("Ações").setAutoWidth(true);
 
         atualizarProdutos(grid);
         layout.add(ViewUtils.toolbar(ViewUtils.botaoNovo("Novo Produto", e -> abrirDialogProduto(null, grid))), grid);
