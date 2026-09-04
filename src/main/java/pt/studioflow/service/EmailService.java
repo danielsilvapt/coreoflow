@@ -5,10 +5,12 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import pt.studioflow.config.AsyncEmailConfig;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Convite;
 import pt.studioflow.model.Professor;
@@ -69,6 +71,7 @@ public class EmailService {
                 mailSender.send(mimeMessage);
         }
 
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailAprovacaoSala(String destinatario, String nomeProfessor, String sala, String data,
                         String horaInicio, String horaFim) {
                 try {
@@ -113,6 +116,7 @@ public class EmailService {
                 }
         }
 
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void notificarAdminNovoPedido(String nomeProfessor, String tipo, String turma, String sala, String data,
                         String horaInicio, String horaFim, String observacoes) {
                 try {
@@ -164,6 +168,7 @@ public class EmailService {
                 }
         }
 
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailRecusaSala(String destinatario, String nomeProfessor, String sala, String data,
                         String horaInicio, String horaFim) {
                 try {
@@ -268,6 +273,7 @@ public class EmailService {
                 }
         }
 
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void notificarProfessorConfirmacao(Aluno aluno, Convite convite, Professor professor) {
                 try {
                         MimeMessage message = mailSender.createMimeMessage();
@@ -302,6 +308,7 @@ public class EmailService {
                 }
         }
 
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacao(Aluno aluno) {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
@@ -333,6 +340,7 @@ public class EmailService {
                 }
         }
 
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacaoRenovacao(Aluno aluno) {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
@@ -361,6 +369,7 @@ public class EmailService {
         }
 
         /** Email de confirmação enviado diretamente ao candidato após submeter um pedido (inscrição ou renovação). */
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailConfirmacaoCandidato(Aluno aluno, String nomeEstudio) {
                 if (aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
                 try {
@@ -384,6 +393,7 @@ public class EmailService {
         }
 
         /** Email enviado ao aluno quando a renovação de matrícula é aprovada na validação. */
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailAprovacaoRenovacao(Aluno aluno) {
                 if (aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
                 try {
@@ -407,6 +417,7 @@ public class EmailService {
                 }
         }
 
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacaoExperimental(Aluno aluno, Turma turma) {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
@@ -438,6 +449,7 @@ public class EmailService {
                 }
         }
 
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacaoProfessor(String emailDestinatario, Aluno aluno, String assunto,
                         String corpo) {
                 try {

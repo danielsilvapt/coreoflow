@@ -65,6 +65,13 @@ public class Studio {
     private String camposAluno;
 
     /**
+     * Cards do Dashboard (KPIs do ADMIN) ativos — lista separada por vírgulas dos valores
+     * de DashboardCard. Nulo ou vazio = todos os cards ativos (retrocompatibilidade).
+     */
+    @Column(name = "dashboard_cards_ativos", columnDefinition = "TEXT")
+    private String dashboardCardsAtivos;
+
+    /**
      * Faturação automática Vendus ao marcar mensalidade como Faturado.
      * Requer vendusApiKey configurado.
      */
@@ -289,6 +296,9 @@ public class Studio {
     public String getCamposAluno() { return camposAluno; }
     public void setCamposAluno(String camposAluno) { this.camposAluno = camposAluno; }
 
+    public String getDashboardCardsAtivos() { return dashboardCardsAtivos; }
+    public void setDashboardCardsAtivos(String dashboardCardsAtivos) { this.dashboardCardsAtivos = dashboardCardsAtivos; }
+
     public boolean isFaturacaoAutomatica() { return Boolean.TRUE.equals(faturacaoAutomatica); }
     public void setFaturacaoAutomatica(boolean faturacaoAutomatica) { this.faturacaoAutomatica = faturacaoAutomatica; }
 
@@ -333,6 +343,15 @@ public class Studio {
         if (modulosAtivos == null || modulosAtivos.isBlank()) return true;
         for (String m : modulosAtivos.split(",")) {
             if (m.trim().equals(modulo.name())) return true;
+        }
+        return false;
+    }
+
+    /** Verifica se um card do Dashboard está ativo. Nulo/vazio = todos ativos (retrocompatibilidade). */
+    public boolean hasDashboardCard(DashboardCard card) {
+        if (dashboardCardsAtivos == null || dashboardCardsAtivos.isBlank()) return true;
+        for (String c : dashboardCardsAtivos.split(",")) {
+            if (c.trim().equals(card.name())) return true;
         }
         return false;
     }
