@@ -52,7 +52,7 @@ public class ProfessorView extends VerticalLayout {
         Div tituloWrapper = new Div();
         tituloWrapper.getStyle().set("padding", "20px 20px 0 20px");
         H2 titulo = new H2("Gestão de Professores");
-        titulo.getStyle().set("margin", "0");
+        titulo.getStyle().set("margin-top", "0");
         tituloWrapper.add(titulo);
 
         add(tituloWrapper, criarToolbar(), configurarGrid());

@@ -327,18 +327,48 @@ public class DashboardView extends Div {
                                 gridLayout.add(criarCardAniversarios(anivs));
                         }
 
+                        LocalDate inicioAnoLetivo = LocalDate.of(
+                                        hoje.getMonthValue() >= 9 ? hoje.getYear() : hoje.getYear() - 1, 9, 1);
+
                         if (cardAtivo.test(DashboardCard.NOVOS_ALUNOS)) {
-                                List<Aluno> novos = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
-                                                && YearMonth.from(a.getDataInscricaoRenovacao()).equals(mesAtual)).toList();
-                                Div cNovos = criarCard("Novos Alunos", VaadinIcon.STAR,
-                                                valorGrande(String.valueOf(novos.size()), "#FFD700"));
-                                cNovos.addClickListener(e -> abrirModalNovosAlunos(novos));
-                                gridLayout.add(cNovos);
+                                LocalDate inicioMes = mesAtual.atDay(1);
+                                // Contagem de "Novos Alunos" arranca em 1 de agosto (época de inscrições),
+                                // um mês antes do início oficial do Ano Letivo usado nas Renovações.
+                                LocalDate inicioContagemNovosAlunos = LocalDate.of(
+                                                hoje.getMonthValue() >= 8 ? hoje.getYear() : hoje.getYear() - 1, 8, 1);
+
+                                // "Novo aluno" = teve inscrição/renovação registada no período E não tinha
+                                // presenças antes do início do período (senão é apenas uma renovação de
+                                // um aluno já existente, não um aluno novo).
+                                Set<Long> alunosComPresencaAntesDoMes = todasPresencas.stream()
+                                                .filter(p -> p.getAluno() != null && p.getData() != null
+                                                                && p.getData().isBefore(inicioMes))
+                                                .map(p -> p.getAluno().getId()).collect(Collectors.toSet());
+                                Set<Long> alunosComPresencaAntesDaContagemAnoLetivo = todasPresencas.stream()
+                                                .filter(p -> p.getAluno() != null && p.getData() != null
+                                                                && p.getData().isBefore(inicioContagemNovosAlunos))
+                                                .map(p -> p.getAluno().getId()).collect(Collectors.toSet());
+
+                                List<Aluno> novosMes = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
+                                                && YearMonth.from(a.getDataInscricaoRenovacao()).equals(mesAtual)
+                                                && !alunosComPresencaAntesDoMes.contains(a.getId())).toList();
+                                Div cNovosMes = criarCard(
+                                                "Novos Alunos (" + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")) + ")",
+                                                VaadinIcon.STAR, valorGrande(String.valueOf(novosMes.size()), "#FFD700"));
+                                cNovosMes.addClickListener(e -> abrirModalNovosAlunos(novosMes,
+                                                "Novos Alunos — " + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt"))));
+                                gridLayout.add(cNovosMes);
+
+                                List<Aluno> novosAnoLetivo = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
+                                                && !a.getDataInscricaoRenovacao().isBefore(inicioContagemNovosAlunos)
+                                                && !alunosComPresencaAntesDaContagemAnoLetivo.contains(a.getId())).toList();
+                                Div cNovosAno = criarCard("Novos Alunos (Ano Letivo)", VaadinIcon.CALENDAR,
+                                                valorGrande(String.valueOf(novosAnoLetivo.size()), "#FFA000"));
+                                cNovosAno.addClickListener(e -> abrirModalNovosAlunos(novosAnoLetivo, "Novos Alunos — Ano Letivo"));
+                                gridLayout.add(cNovosAno);
                         }
 
                         if (studio != null && cardAtivo.test(DashboardCard.RENOVACOES)) {
-                                LocalDate inicioAnoLetivo = LocalDate.of(
-                                                hoje.getMonthValue() >= 9 ? hoje.getYear() : hoje.getYear() - 1, 9, 1);
                                 gridLayout.add(criarCardRenovacoes(todosAlunos, inicioAnoLetivo));
                         }
 
@@ -852,9 +882,9 @@ public class DashboardView extends Div {
                 d.open();
         }
 
-        private void abrirModalNovosAlunos(List<Aluno> a) {
+        private void abrirModalNovosAlunos(List<Aluno> a, String titulo) {
                 Dialog d = new Dialog();
-                d.setHeaderTitle("Novos Alunos");
+                d.setHeaderTitle(titulo);
                 Grid<Aluno> g = new Grid<>(Aluno.class, false);
                 g.setItems(a);
                 g.addColumn(Aluno::getNomeCompleto).setHeader("Nome");

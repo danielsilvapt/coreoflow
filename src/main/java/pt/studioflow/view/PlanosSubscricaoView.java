@@ -9,6 +9,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -48,7 +49,11 @@ public class PlanosSubscricaoView extends VerticalLayout {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        add(ViewUtils.toolbar(ViewUtils.botaoNovo("Novo Plano", e -> abrirDialogPlano(null))),
+
+        H2 titulo = new H2("Planos de Subscrição");
+        titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
+
+        add(titulo, ViewUtils.toolbar(ViewUtils.botaoNovo("Novo Plano", e -> abrirDialogPlano(null))),
             criarGrid());
         atualizar();
     }

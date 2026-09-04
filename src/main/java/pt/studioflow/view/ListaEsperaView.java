@@ -9,6 +9,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -51,7 +52,10 @@ public class ListaEsperaView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
-        add(criarToolbar(), criarGrid());
+        H2 titulo = new H2("Lista de Espera");
+        titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
+
+        add(titulo, criarToolbar(), criarGrid());
         atualizar();
     }
 

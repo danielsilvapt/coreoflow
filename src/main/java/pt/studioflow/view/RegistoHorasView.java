@@ -171,7 +171,7 @@ public class RegistoHorasView extends VerticalLayout {
         header.setJustifyContentMode(JustifyContentMode.BETWEEN);
 
         H2 titulo = new H2("Registo de Atividade");
-        titulo.getStyle().set("margin", "0");
+        titulo.getStyle().set("margin-top", "0");
 
         Button btnNovo = ViewUtils.botaoNovo("Novo Lançamento", e -> prepararNovoRegisto());
         btnNovo.getStyle().set("height", "50px");
@@ -525,10 +525,14 @@ public class RegistoHorasView extends VerticalLayout {
         observacoesArea.clear();
         turmaComboDialog.clear();
         turmaComboDialog.setEnabled(false);
+        inicioPicker.clear();
+        fimPicker.clear();
+        tipoComboDialog.clear();
         List<Professor> ps = getProfessoresDoStudio();
         profComboDialog.setItems(ps);
         ps.stream().filter(x -> normalizar(x.getNome()).contains(normalizar(getFirstNameFromDatabase()))).findFirst()
                 .ifPresent(profComboDialog::setValue);
+        registoDialog.open();
     }
 
     private void prepararEdicao(RegistoHoras r) {

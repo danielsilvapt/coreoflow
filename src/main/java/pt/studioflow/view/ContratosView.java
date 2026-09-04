@@ -44,7 +44,11 @@ public class ContratosView extends VerticalLayout {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        add(ViewUtils.toolbar(ViewUtils.botaoNovo("Gerar Contrato", e -> abrirGerador())),
+
+        H2 titulo = new H2("Contratos Digitais");
+        titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
+
+        add(titulo, ViewUtils.toolbar(ViewUtils.botaoNovo("Gerar Contrato", e -> abrirGerador())),
             criarGrid());
         atualizar();
     }

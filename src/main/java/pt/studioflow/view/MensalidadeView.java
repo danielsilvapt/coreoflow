@@ -70,6 +70,8 @@ public class MensalidadeView extends VerticalLayout {
     private final ComboBox<Object> anoFilter = new ComboBox<>("Ano");
     private final ComboBox<Object> mesFilter = new ComboBox<>("Mês");
     private final ComboBox<Object> estadoFilter = new ComboBox<>("Estado");
+    private final Button btnFaturarTodos = new Button("Faturar Todos", VaadinIcon.FILE_TEXT.create());
+    private List<Mensalidade> ultimaFiltragem = new ArrayList<>();
 
     public MensalidadeView(MensalidadeRepository mensalidadeRepository,
             TurmaRepository turmaRepository,
@@ -170,8 +172,12 @@ public class MensalidadeView extends VerticalLayout {
     }
 
     private Component criarToolbarFiltros() {
+        btnFaturarTodos.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        btnFaturarTodos.setVisible(false);
+        btnFaturarTodos.addClickListener(e -> confirmarFaturarTodos());
+
         HorizontalLayout layout = new HorizontalLayout(nomeAlunoFilter, turmaFilter, anoFilter, mesFilter,
-                estadoFilter);
+                estadoFilter, btnFaturarTodos);
         layout.addClassName("filter-bar");
         layout.setWidthFull();
         layout.setAlignItems(Alignment.END);
@@ -505,7 +511,43 @@ public class MensalidadeView extends VerticalLayout {
                 .collect(Collectors.toList());
 
         grid.setItems(filtradas);
-        updateStats(filtradas); 
+        updateStats(filtradas);
+
+        ultimaFiltragem = filtradas;
+        boolean turmaEspecifica = turmaFilter.getValue() instanceof Turma;
+        boolean mesEspecifico = mesFilter.getValue() != null && !mesFilter.getValue().equals("Todos");
+        long porFaturar = filtradas.stream().filter(m -> m.getEstado() == EstadoMensalidade.POR_EMITIR).count();
+
+        btnFaturarTodos.setVisible(turmaEspecifica && mesEspecifico);
+        btnFaturarTodos.setText("Faturar Todos (" + porFaturar + ")");
+        btnFaturarTodos.setEnabled(porFaturar > 0);
+    }
+
+    private void confirmarFaturarTodos() {
+        List<Mensalidade> porFaturar = ultimaFiltragem.stream()
+                .filter(m -> m.getEstado() == EstadoMensalidade.POR_EMITIR)
+                .collect(Collectors.toList());
+        if (porFaturar.isEmpty())
+            return;
+
+        String turmaDescricao = (turmaFilter.getValue() instanceof Turma t) ? t.getDescricao() : "";
+        String mesDescricao = mesFilter.getValue() != null ? mesFilter.getValue().toString() : "";
+
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Faturar Todos");
+        dialog.add(new Span("Marcar como Faturado " + porFaturar.size() + " mensalidade(s) de "
+                + turmaDescricao + " (" + mesDescricao + ")?"));
+        Button confirmar = new Button("Faturar Todos", e -> {
+            porFaturar.forEach(m -> m.setEstado(EstadoMensalidade.FATURADO));
+            mensalidadeRepository.saveAll(porFaturar);
+            updateList();
+            dialog.close();
+            Notification.show(porFaturar.size() + " mensalidade(s) marcada(s) como Faturado")
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        });
+        confirmar.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
+        dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), confirmar);
+        dialog.open();
     }
 
     private void confirmarFaturacao(Mensalidade m) {
