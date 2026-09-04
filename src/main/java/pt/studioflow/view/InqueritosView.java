@@ -15,6 +15,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -28,9 +29,13 @@ import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.InqueritoRepository;
 import pt.studioflow.repository.RespostaInqueritoRepository;
 import pt.studioflow.service.EmailService;
+import pt.studioflow.util.InqueritoPerguntas;
+import pt.studioflow.util.InqueritoPerguntas.Pergunta;
+import pt.studioflow.util.InqueritoPerguntas.Tipo;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -40,17 +45,19 @@ import java.util.stream.Collectors;
 @RolesAllowed("ADMIN")
 public class InqueritosView extends VerticalLayout {
 
-    // Perguntas padrão do inquérito de satisfação
-    private static final String PERGUNTAS_PADRAO = """
-            [
-              {"id":"q1","texto":"Como avalia as instalações?","tipo":"ESCALA"},
-              {"id":"q2","texto":"Como avalia os professores?","tipo":"ESCALA"},
-              {"id":"q3","texto":"Como avalia a organização do estúdio?","tipo":"ESCALA"},
-              {"id":"q4","texto":"Como avalia a relação qualidade/preço?","tipo":"ESCALA"},
-              {"id":"q5","texto":"Recomendaria o estúdio a amigos?","tipo":"ESCALA"},
-              {"id":"q6","texto":"O que podemos melhorar?","tipo":"TEXTO"}
-            ]
-            """;
+    /** Base pública onde o InqueritosView expõe o link de resposta (ver ResponderInqueritoView). */
+    private static final String BASE_URL_PUBLICA = "https://app.coreoflow.me/inquerito";
+
+    // Perguntas sugeridas para um novo inquérito (o utilizador pode editar/remover/adicionar antes de criar)
+    private static List<Pergunta> perguntasSugeridas() {
+        return new ArrayList<>(List.of(
+                new Pergunta("q1", "Como avalia as instalações?", Tipo.ESCALA),
+                new Pergunta("q2", "Como avalia os professores?", Tipo.ESCALA),
+                new Pergunta("q3", "Como avalia a organização do estúdio?", Tipo.ESCALA),
+                new Pergunta("q4", "Como avalia a relação qualidade/preço?", Tipo.ESCALA),
+                new Pergunta("q5", "Recomendaria o estúdio a amigos?", Tipo.ESCALA),
+                new Pergunta("q6", "O que podemos melhorar?", Tipo.TEXTO)));
+    }
 
     private final InqueritoRepository inqueritoRepo;
     private final RespostaInqueritoRepository respostaRepo;
@@ -70,7 +77,7 @@ public class InqueritosView extends VerticalLayout {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        add(ViewUtils.toolbar(ViewUtils.botaoNovo("Novo Inquérito", e -> abrirDialogCriar())),
+        add(ViewUtils.toolbar(ViewUtils.botaoNovo("Novo Inquérito", e -> abrirDialogFormulario(null))),
             criarGrid());
         atualizar();
     }
@@ -83,13 +90,18 @@ public class InqueritosView extends VerticalLayout {
         grid.addComponentColumn(i -> {
             HorizontalLayout actions = new HorizontalLayout();
             if (i.getEstado() == Inquerito.Estado.RASCUNHO) {
+                Button editar = new Button("Editar", VaadinIcon.EDIT.create(),
+                        e -> abrirDialogFormulario(i));
+                editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
                 Button enviar = new Button("Enviar", VaadinIcon.PAPERPLANE.create(),
                         e -> confirmarEnvio(i));
                 enviar.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
                 enviar.getStyle().set("background-color", ViewUtils.corPrimaria());
-                actions.add(enviar);
+                actions.add(editar, enviar);
             }
             if (i.getEstado() == Inquerito.Estado.ENVIADO) {
+                Button link = new Button("Link", VaadinIcon.LINK.create(), e -> mostrarLink(i));
+                link.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
                 Button fechar = new Button("Fechar", e -> {
                     i.setEstado(Inquerito.Estado.FECHADO);
                     i.setDataFecho(LocalDate.now());
@@ -100,7 +112,7 @@ public class InqueritosView extends VerticalLayout {
                 Button resultados = new Button("Resultados", VaadinIcon.BAR_CHART.create(),
                         e -> verResultados(i));
                 resultados.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-                actions.add(fechar, resultados);
+                actions.add(link, fechar, resultados);
             }
             if (i.getEstado() == Inquerito.Estado.FECHADO) {
                 Button resultados = new Button("Resultados", VaadinIcon.BAR_CHART.create(),
@@ -159,10 +171,12 @@ public class InqueritosView extends VerticalLayout {
                     .collect(Collectors.toList());
             if (!emails.isEmpty()) {
                 try {
+                    String link = linkPublico(inquerito);
                     String corpo = "Olá!\n\nGostaríamos de conhecer a sua opinião sobre "
                             + (studio != null ? studio.getNome() : "o nosso estúdio") + ".\n\n"
                             + "Por favor responda ao nosso inquérito de satisfação "
-                            + inquerito.getTitulo() + ".\n\n"
+                            + inquerito.getTitulo() + ":\n\n"
+                            + "<a href='" + link + "'>" + link + "</a>\n\n"
                             + "Obrigado pela sua participação!\n";
                     emailService.enviarEmailParaLista(null, emails, inquerito.getTitulo(), corpo);
                 } catch (Exception ex) {
@@ -178,6 +192,28 @@ public class InqueritosView extends VerticalLayout {
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         });
         cd.open();
+    }
+
+    private String linkPublico(Inquerito inquerito) {
+        return BASE_URL_PUBLICA + "?id=" + inquerito.getId();
+    }
+
+    private void mostrarLink(Inquerito inquerito) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Link do Inquérito");
+        dialog.setWidth("440px");
+
+        Span info = new Span("Partilha este link com os alunos (ex: WhatsApp) para responderem ao inquérito.");
+        info.getStyle().set("font-size", "12px").set("color", "#666");
+
+        TextField campo = new TextField();
+        campo.setWidthFull();
+        campo.setValue(linkPublico(inquerito));
+        campo.setReadOnly(true);
+
+        dialog.add(new VerticalLayout(info, campo));
+        dialog.getFooter().add(new Button("Fechar", e -> dialog.close()));
+        dialog.open();
     }
 
     private void verResultados(Inquerito inquerito) {
@@ -260,42 +296,123 @@ public class InqueritosView extends VerticalLayout {
         try { Integer.parseInt(s.trim()); return true; } catch (Exception e) { return false; }
     }
 
-    private void abrirDialogCriar() {
+    /** Uma linha editável do formulário de perguntas: texto + tipo de resposta. */
+    private record PerguntaLinha(TextField texto, Select<Tipo> tipo) {
+    }
+
+    /**
+     * Abre o formulário de criação (existente == null) ou edição (RASCUNHO) de um
+     * inquérito, com editor de perguntas: adicionar, remover e escolher o tipo de
+     * resposta (escala 1-5 ou texto livre) de cada uma.
+     */
+    private void abrirDialogFormulario(Inquerito existente) {
+        boolean edicao = existente != null;
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Novo Inquérito de Satisfação");
-        dialog.setWidth("440px");
+        dialog.setHeaderTitle(edicao ? "Editar Inquérito" : "Novo Inquérito de Satisfação");
+        dialog.setWidth("560px");
 
         TextField titulo = new TextField("Título");
         titulo.setWidthFull();
-        titulo.setValue("Inquérito de Satisfação " + LocalDate.now().getYear());
-
         TextField anoLetivo = new TextField("Ano Letivo");
         anoLetivo.setWidthFull();
-        int ano = LocalDate.now().getYear();
-        anoLetivo.setValue((LocalDate.now().getMonthValue() >= 9 ? ano : ano-1) + "/"
-                + (LocalDate.now().getMonthValue() >= 9 ? ano+1 : ano));
 
-        Span info = new Span("Serão incluídas 5 perguntas de escala (1-5) e 1 campo de texto livre.");
-        info.getStyle().set("font-size","12px").set("color","#666");
+        if (edicao) {
+            titulo.setValue(existente.getTitulo() != null ? existente.getTitulo() : "");
+            anoLetivo.setValue(existente.getAnoLetivo() != null ? existente.getAnoLetivo() : "");
+        } else {
+            titulo.setValue("Inquérito de Satisfação " + LocalDate.now().getYear());
+            int ano = LocalDate.now().getYear();
+            anoLetivo.setValue((LocalDate.now().getMonthValue() >= 9 ? ano : ano - 1) + "/"
+                    + (LocalDate.now().getMonthValue() >= 9 ? ano + 1 : ano));
+        }
 
-        Button criar = new Button("Criar", e -> {
+        Span perguntasLabel = new Span("Perguntas");
+        perguntasLabel.getStyle().set("font-weight", "600").set("font-size", "13px");
+
+        VerticalLayout listaPerguntas = new VerticalLayout();
+        listaPerguntas.setPadding(false);
+        listaPerguntas.setSpacing(true);
+        listaPerguntas.setWidthFull();
+
+        List<PerguntaLinha> linhas = new ArrayList<>();
+
+        List<Pergunta> iniciais = edicao ? InqueritoPerguntas.parse(existente.getPerguntas()) : List.of();
+        if (iniciais.isEmpty()) iniciais = perguntasSugeridas();
+        for (Pergunta p : iniciais) {
+            adicionarLinhaPergunta(listaPerguntas, linhas, p.texto(), p.tipo());
+        }
+
+        Button adicionar = new Button("+ Adicionar pergunta", e ->
+                adicionarLinhaPergunta(listaPerguntas, linhas, "", Tipo.ESCALA));
+        adicionar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+        Button salvar = new Button(edicao ? "Guardar" : "Criar", e -> {
             if (titulo.isEmpty()) { Notification.show("Título obrigatório"); return; }
-            Inquerito i = new Inquerito();
+            List<Pergunta> perguntas = new ArrayList<>();
+            int idx = 1;
+            for (PerguntaLinha linha : linhas) {
+                String texto = linha.texto().getValue().trim();
+                if (texto.isBlank()) continue;
+                perguntas.add(new Pergunta("q" + idx++, texto, linha.tipo().getValue()));
+            }
+            if (perguntas.isEmpty()) {
+                Notification.show("Adiciona pelo menos uma pergunta.")
+                        .addThemeVariants(NotificationVariant.LUMO_WARNING);
+                return;
+            }
+            Inquerito i = edicao ? existente : new Inquerito();
             i.setTitulo(titulo.getValue().trim());
             i.setAnoLetivo(anoLetivo.getValue().trim());
-            i.setPerguntas(PERGUNTAS_PADRAO);
-            i.setStudio(TenantContext.getCurrentStudio());
+            i.setPerguntas(InqueritoPerguntas.toJson(perguntas));
+            if (!edicao) i.setStudio(TenantContext.getCurrentStudio());
             inqueritoRepo.save(i);
             atualizar();
             dialog.close();
-            Notification.show("Inquérito criado! Edita e envia quando estiveres pronto.")
+            Notification.show(edicao ? "Inquérito atualizado!"
+                            : "Inquérito criado! Edita e envia quando estiveres pronto.")
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         });
-        criar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        salvar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        dialog.add(new FormLayout(titulo, anoLetivo, info));
-        dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), criar);
+        VerticalLayout conteudo = new VerticalLayout(
+                new FormLayout(titulo, anoLetivo), perguntasLabel, listaPerguntas, adicionar);
+        conteudo.setPadding(false);
+        conteudo.setSpacing(true);
+
+        dialog.add(new com.vaadin.flow.component.orderedlayout.Scroller(conteudo));
+        dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), salvar);
         dialog.open();
+    }
+
+    private void adicionarLinhaPergunta(VerticalLayout container, List<PerguntaLinha> linhas,
+            String texto, Tipo tipo) {
+        TextField campoTexto = new TextField();
+        campoTexto.setPlaceholder("Escreve a pergunta...");
+        campoTexto.setValue(texto);
+        campoTexto.setWidthFull();
+
+        Select<Tipo> campoTipo = new Select<>();
+        campoTipo.setItems(Tipo.ESCALA, Tipo.TEXTO);
+        campoTipo.setItemLabelGenerator(t -> t == Tipo.ESCALA ? "Escala (1-5)" : "Texto livre");
+        campoTipo.setValue(tipo);
+        campoTipo.setWidth("150px");
+
+        PerguntaLinha linha = new PerguntaLinha(campoTexto, campoTipo);
+        linhas.add(linha);
+
+        HorizontalLayout row = new HorizontalLayout(campoTexto, campoTipo);
+        row.setWidthFull();
+        row.setFlexGrow(1, campoTexto);
+        row.setAlignItems(FlexComponent.Alignment.CENTER);
+
+        Button remover = new Button(VaadinIcon.CLOSE_SMALL.create(), e -> {
+            linhas.remove(linha);
+            container.remove(row);
+        });
+        remover.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
+        row.add(remover);
+
+        container.add(row);
     }
 
     private void atualizar() {
