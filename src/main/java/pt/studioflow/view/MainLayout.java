@@ -596,7 +596,7 @@ public class MainLayout extends AppLayout {
                                         else if (hasRole(auth, "ROLE_ADMIN"))
                                                 UI.getCurrent().navigate(DashboardView.class);
                                         else if (hasRole(auth, "ROLE_PROF"))
-                                                UI.getCurrent().navigate(PresencasView.class);
+                                                UI.getCurrent().navigate(DashboardView.class);
                                         else if (hasRole(auth, "ROLE_ALUNO"))
                                                 UI.getCurrent().navigate(PortalAlunoView.class);
                                 }
