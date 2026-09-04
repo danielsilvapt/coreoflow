@@ -10,11 +10,14 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.NativeLabel;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.data.binder.Binder;
+import org.springframework.dao.DataIntegrityViolationException;
 import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Modalidade;
 import pt.studioflow.model.Professor;
@@ -141,7 +144,14 @@ public class TurmaForm extends Dialog {
             if (turmaAtual.getStudio() == null) {
                 turmaAtual.setStudio(TenantContext.getCurrentStudio());
             }
-            turmaRepository.save(turmaAtual);
+            try {
+                turmaRepository.save(turmaAtual);
+            } catch (DataIntegrityViolationException e) {
+                Notification.show("Já existe uma turma com o código \"" + turmaAtual.getCodigo() + "\". Escolhe outro código.",
+                        4000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
             turmaView.updateList();
             close();
         }

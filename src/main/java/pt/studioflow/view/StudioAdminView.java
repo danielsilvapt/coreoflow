@@ -145,6 +145,11 @@ public class StudioAdminView extends VerticalLayout {
             logoPreview.setAlt(studio.getNome());
         }
 
+        ColorPickerField corPrimaria = new ColorPickerField("Cor Primária",
+                studio.getCorPrimaria() != null ? studio.getCorPrimaria() : "#4A90E2");
+        ColorPickerField corSecundaria = new ColorPickerField("Cor Secundária",
+                studio.getCorSecundaria() != null ? studio.getCorSecundaria() : "#2D3436");
+
         // Guardar o logo path temporariamente durante o upload
         final String[] pendingLogoPath = { studio.getLogoPath() };
 
@@ -165,8 +170,17 @@ public class StudioAdminView extends VerticalLayout {
                 pendingLogoPath[0] = path;
                 logoPreview.setSrc(path + "?t=" + System.currentTimeMillis());
                 logoPreview.getStyle().set("display", "block");
-                Notification.show("Logo carregado — guarda o estúdio para confirmar")
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+                String[] coresSugeridas = logoUploadService.sugerirCores(path);
+                if (coresSugeridas != null) {
+                    corPrimaria.setValue(coresSugeridas[0]);
+                    corSecundaria.setValue(coresSugeridas[1]);
+                    Notification.show("Logo carregado — cores sugeridas a partir do logotipo, ajusta se quiseres")
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                } else {
+                    Notification.show("Logo carregado — guarda o estúdio para confirmar")
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                }
             } catch (Exception ex) {
                 Notification.show("Erro ao guardar logo: " + ex.getMessage())
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -197,11 +211,6 @@ public class StudioAdminView extends VerticalLayout {
 
         TextField email = new TextField("Email de Contacto");
         email.setValue(studio.getEmailContacto() != null ? studio.getEmailContacto() : "");
-
-        ColorPickerField corPrimaria = new ColorPickerField("Cor Primária",
-                studio.getCorPrimaria() != null ? studio.getCorPrimaria() : "#4A90E2");
-        ColorPickerField corSecundaria = new ColorPickerField("Cor Secundária",
-                studio.getCorSecundaria() != null ? studio.getCorSecundaria() : "#2D3436");
 
         TextField vendusApiKey = new TextField("Chave API Vendus");
         vendusApiKey.setValue(studio.getVendusApiKey() != null ? studio.getVendusApiKey() : "");
