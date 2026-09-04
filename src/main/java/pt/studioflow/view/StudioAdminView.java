@@ -27,6 +27,7 @@ import jakarta.annotation.security.RolesAllowed;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.textfield.NumberField;
 import pt.studioflow.model.CampoAluno;
+import pt.studioflow.model.DashboardCard;
 import pt.studioflow.model.Idioma;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.StudioModulo;
@@ -382,6 +383,29 @@ public class StudioAdminView extends VerticalLayout {
         }
         modulosGroup.setValue(selecionados);
 
+        // --- Cards do Dashboard ---
+        H4 secDashboard = new H4("Cards do Dashboard");
+        secDashboard.getStyle().set("margin", "12px 0 4px 0");
+
+        CheckboxGroup<DashboardCard> dashboardCardsGroup = new CheckboxGroup<>();
+        dashboardCardsGroup.setLabel("Seleciona os cards de KPI visíveis no Dashboard do administrador");
+        dashboardCardsGroup.setItems(DashboardCard.values());
+        dashboardCardsGroup.setItemLabelGenerator(DashboardCard::getLabel);
+        dashboardCardsGroup.addThemeVariants(CheckboxGroupVariant.LUMO_VERTICAL);
+        dashboardCardsGroup.setWidthFull();
+
+        Set<DashboardCard> dashboardCardsSel;
+        if (studio.getDashboardCardsAtivos() == null || studio.getDashboardCardsAtivos().isBlank()) {
+            dashboardCardsSel = new HashSet<>(Arrays.asList(DashboardCard.values()));
+        } else {
+            dashboardCardsSel = Arrays.stream(studio.getDashboardCardsAtivos().split(","))
+                    .map(String::trim)
+                    .filter(s -> { try { DashboardCard.valueOf(s); return true; } catch (Exception ex) { return false; } })
+                    .map(DashboardCard::valueOf)
+                    .collect(Collectors.toSet());
+        }
+        dashboardCardsGroup.setValue(dashboardCardsSel);
+
         // --- Idiomas do formulário público ---
         H4 secIdiomas = new H4("Idiomas do Formulário Público");
         secIdiomas.getStyle().set("margin", "12px 0 4px 0");
@@ -400,6 +424,7 @@ public class StudioAdminView extends VerticalLayout {
                 secFat, faturacaoAuto,
                 secRemun, remunHint, tipoRemun, grupoHora, grupoPerc,
                 secModulos, modulosGroup,
+                secDashboard, dashboardCardsGroup,
                 secIdiomas, idiomasGroup);
         content.setPadding(false);
         content.setSpacing(true);
@@ -453,6 +478,10 @@ public class StudioAdminView extends VerticalLayout {
             String modulosStr = modulosGroup.getValue().stream()
                     .map(StudioModulo::name).collect(Collectors.joining(","));
             studio.setModulosAtivos(modulosStr);
+
+            // Cards do Dashboard
+            studio.setDashboardCardsAtivos(dashboardCardsGroup.getValue().stream()
+                    .map(DashboardCard::name).collect(Collectors.joining(",")));
 
             // Idiomas
             studio.setIdiomasDisponiveis(idiomasGroup.getValue().stream()

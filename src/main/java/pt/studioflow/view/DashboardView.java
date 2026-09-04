@@ -7,6 +7,7 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -22,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.*;
 import pt.studioflow.repository.*;
+import pt.studioflow.util.LogoUrl;
 
 import com.vaadin.flow.component.grid.GridVariant;
 import java.time.Duration;
@@ -122,6 +124,11 @@ public class DashboardView extends Div {
                 String login = SecurityContextHolder.getContext().getAuthentication().getName();
                 String firstNameBD = userRepository.findByPrincipalName(login).map(User::getFirstName).orElse("");
                 String busca = normalizar(firstNameBD);
+
+                // --- 0. BOAS-VINDAS (ADMIN): logo, saudação e atalhos inteligentes ---
+                if (isAdmin && studio != null) {
+                        gridLayout.add(criarCardBoasVindas(studio, firstNameBD, todosAlunos, todasPresencas, hoje));
+                }
 
                 // --- 1. ÁREA PESSOAL & PROFESSOR ---
                 if (isProf || isAluno) {
@@ -300,135 +307,283 @@ public class DashboardView extends Div {
                         }
                 }
 
-                // --- CARDS KPI ADMIN (12 CARDS) ---
+                // --- CARDS KPI ADMIN ---
+                // Cada estúdio escolhe, na Gestão de Estúdios (SuperAdmin), que cards mostrar aqui.
                 if (isAdmin) {
-                        Div cAtivos = criarCard("Alunos Ativos", VaadinIcon.USERS,
-                                        valorGrande(String.valueOf(todosAlunos.stream().filter(Aluno::isAtivo).count()),
-                                                        "#1976d2"));
-                        cAtivos.addClickListener(e -> abrirModalAlocacaoPorTurma(turmas));
-                        gridLayout.add(cAtivos);
+                        java.util.function.Predicate<DashboardCard> cardAtivo = c -> studio == null || studio.hasDashboardCard(c);
 
-                        List<Aluno> anivs = todosAlunos.stream().filter(a -> a.getDataNascimento() != null
-                                        && a.getDataNascimento().getMonth() == hoje.getMonth()
-                                        && a.getDataNascimento().getDayOfMonth() == hoje.getDayOfMonth()).toList();
-                        gridLayout.add(criarCardAniversarios(anivs));
+                        if (cardAtivo.test(DashboardCard.ALUNOS_ATIVOS)) {
+                                Div cAtivos = criarCard("Alunos Ativos", VaadinIcon.USERS,
+                                                valorGrande(String.valueOf(todosAlunos.stream().filter(Aluno::isAtivo).count()),
+                                                                "#1976d2"));
+                                cAtivos.addClickListener(e -> abrirModalAlocacaoPorTurma(turmas));
+                                gridLayout.add(cAtivos);
+                        }
 
-                        LocalDate inicioMes = mesAtual.atDay(1);
+                        if (cardAtivo.test(DashboardCard.ANIVERSARIOS)) {
+                                List<Aluno> anivs = todosAlunos.stream().filter(a -> a.getDataNascimento() != null
+                                                && a.getDataNascimento().getMonth() == hoje.getMonth()
+                                                && a.getDataNascimento().getDayOfMonth() == hoje.getDayOfMonth()).toList();
+                                gridLayout.add(criarCardAniversarios(anivs));
+                        }
+
                         LocalDate inicioAnoLetivo = LocalDate.of(
                                         hoje.getMonthValue() >= 9 ? hoje.getYear() : hoje.getYear() - 1, 9, 1);
-                        // Contagem de "Novos Alunos" arranca em 1 de agosto (época de inscrições),
-                        // um mês antes do início oficial do Ano Letivo usado nas Renovações.
-                        LocalDate inicioContagemNovosAlunos = LocalDate.of(
-                                        hoje.getMonthValue() >= 8 ? hoje.getYear() : hoje.getYear() - 1, 8, 1);
 
-                        // "Novo aluno" = teve inscrição/renovação registada no período E não tinha
-                        // presenças antes do início do período (senão é apenas uma renovação de
-                        // um aluno já existente, não um aluno novo).
-                        Set<Long> alunosComPresencaAntesDoMes = todasPresencas.stream()
-                                        .filter(p -> p.getAluno() != null && p.getData() != null
-                                                        && p.getData().isBefore(inicioMes))
-                                        .map(p -> p.getAluno().getId()).collect(Collectors.toSet());
-                        Set<Long> alunosComPresencaAntesDaContagemAnoLetivo = todasPresencas.stream()
-                                        .filter(p -> p.getAluno() != null && p.getData() != null
-                                                        && p.getData().isBefore(inicioContagemNovosAlunos))
-                                        .map(p -> p.getAluno().getId()).collect(Collectors.toSet());
+                        if (cardAtivo.test(DashboardCard.NOVOS_ALUNOS)) {
+                                LocalDate inicioMes = mesAtual.atDay(1);
+                                // Contagem de "Novos Alunos" arranca em 1 de agosto (época de inscrições),
+                                // um mês antes do início oficial do Ano Letivo usado nas Renovações.
+                                LocalDate inicioContagemNovosAlunos = LocalDate.of(
+                                                hoje.getMonthValue() >= 8 ? hoje.getYear() : hoje.getYear() - 1, 8, 1);
 
-                        List<Aluno> novosMes = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
-                                        && YearMonth.from(a.getDataInscricaoRenovacao()).equals(mesAtual)
-                                        && !alunosComPresencaAntesDoMes.contains(a.getId())).toList();
-                        Div cNovosMes = criarCard(
-                                        "Novos Alunos (" + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")) + ")",
-                                        VaadinIcon.STAR, valorGrande(String.valueOf(novosMes.size()), "#FFD700"));
-                        cNovosMes.addClickListener(e -> abrirModalNovosAlunos(novosMes,
-                                        "Novos Alunos — " + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt"))));
-                        gridLayout.add(cNovosMes);
+                                // "Novo aluno" = teve inscrição/renovação registada no período E não tinha
+                                // presenças antes do início do período (senão é apenas uma renovação de
+                                // um aluno já existente, não um aluno novo).
+                                Set<Long> alunosComPresencaAntesDoMes = todasPresencas.stream()
+                                                .filter(p -> p.getAluno() != null && p.getData() != null
+                                                                && p.getData().isBefore(inicioMes))
+                                                .map(p -> p.getAluno().getId()).collect(Collectors.toSet());
+                                Set<Long> alunosComPresencaAntesDaContagemAnoLetivo = todasPresencas.stream()
+                                                .filter(p -> p.getAluno() != null && p.getData() != null
+                                                                && p.getData().isBefore(inicioContagemNovosAlunos))
+                                                .map(p -> p.getAluno().getId()).collect(Collectors.toSet());
 
-                        List<Aluno> novosAnoLetivo = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
-                                        && !a.getDataInscricaoRenovacao().isBefore(inicioContagemNovosAlunos)
-                                        && !alunosComPresencaAntesDaContagemAnoLetivo.contains(a.getId())).toList();
-                        Div cNovosAno = criarCard("Novos Alunos (Ano Letivo)", VaadinIcon.CALENDAR,
-                                        valorGrande(String.valueOf(novosAnoLetivo.size()), "#FFA000"));
-                        cNovosAno.addClickListener(e -> abrirModalNovosAlunos(novosAnoLetivo, "Novos Alunos — Ano Letivo"));
-                        gridLayout.add(cNovosAno);
+                                List<Aluno> novosMes = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
+                                                && YearMonth.from(a.getDataInscricaoRenovacao()).equals(mesAtual)
+                                                && !alunosComPresencaAntesDoMes.contains(a.getId())).toList();
+                                Div cNovosMes = criarCard(
+                                                "Novos Alunos (" + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")) + ")",
+                                                VaadinIcon.STAR, valorGrande(String.valueOf(novosMes.size()), "#FFD700"));
+                                cNovosMes.addClickListener(e -> abrirModalNovosAlunos(novosMes,
+                                                "Novos Alunos — " + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt"))));
+                                gridLayout.add(cNovosMes);
 
-                        if (studio != null) {
+                                List<Aluno> novosAnoLetivo = todosAlunos.stream().filter(a -> a.getDataInscricaoRenovacao() != null
+                                                && !a.getDataInscricaoRenovacao().isBefore(inicioContagemNovosAlunos)
+                                                && !alunosComPresencaAntesDaContagemAnoLetivo.contains(a.getId())).toList();
+                                Div cNovosAno = criarCard("Novos Alunos (Ano Letivo)", VaadinIcon.CALENDAR,
+                                                valorGrande(String.valueOf(novosAnoLetivo.size()), "#FFA000"));
+                                cNovosAno.addClickListener(e -> abrirModalNovosAlunos(novosAnoLetivo, "Novos Alunos — Ano Letivo"));
+                                gridLayout.add(cNovosAno);
+                        }
+
+                        if (studio != null && cardAtivo.test(DashboardCard.RENOVACOES)) {
                                 gridLayout.add(criarCardRenovacoes(todosAlunos, inicioAnoLetivo));
                         }
 
-                        LocalDate lR = hoje.minusDays(15);
-                        List<Aluno> risco = todosAlunos.stream().filter(Aluno::isAtivo).filter(a -> {
-                                Optional<LocalDate> up = todasPresencas.stream()
-                                                .filter(p -> p.getAluno().getId().equals(a.getId()))
-                                                .map(Presenca::getData).max(LocalDate::compareTo);
-                                return up.map(d -> d.isBefore(lR)).orElse(true);
-                        }).toList();
-                        Div cRisco = criarCard("Alunos em Risco", VaadinIcon.WARNING,
-                                        valorGrande(String.valueOf(risco.size()), "#e65100"));
-                        cRisco.addClickListener(e -> abrirModalAlunosRisco(risco));
-                        gridLayout.add(cRisco);
+                        if (cardAtivo.test(DashboardCard.ALUNOS_RISCO)) {
+                                LocalDate lR = hoje.minusDays(15);
+                                List<Aluno> risco = todosAlunos.stream().filter(Aluno::isAtivo).filter(a -> {
+                                        Optional<LocalDate> up = todasPresencas.stream()
+                                                        .filter(p -> p.getAluno().getId().equals(a.getId()))
+                                                        .map(Presenca::getData).max(LocalDate::compareTo);
+                                        return up.map(d -> d.isBefore(lR)).orElse(true);
+                                }).toList();
+                                Div cRisco = criarCard("Alunos em Risco", VaadinIcon.WARNING,
+                                                valorGrande(String.valueOf(risco.size()), "#e65100"));
+                                cRisco.addClickListener(e -> abrirModalAlunosRisco(risco));
+                                gridLayout.add(cRisco);
+                        }
 
-                        List<Aluno> segs = todosAlunos.stream().filter(Aluno::isAtivo)
-                                        .filter(a -> a.getDataExpiracaoSeguro() != null
-                                                        && a.getDataExpiracaoSeguro().isBefore(hoje))
-                                        .toList();
-                        gridLayout.add(criarCardSeguro(segs));
+                        if (cardAtivo.test(DashboardCard.SEGUROS_EXPIRADOS)) {
+                                List<Aluno> segs = todosAlunos.stream().filter(Aluno::isAtivo)
+                                                .filter(a -> a.getDataExpiracaoSeguro() != null
+                                                                && a.getDataExpiracaoSeguro().isBefore(hoje))
+                                                .toList();
+                                gridLayout.add(criarCardSeguro(segs));
+                        }
 
-                        long tP = todasPresencas.stream().filter(
-                                        p -> p.getData() != null && YearMonth.from(p.getData()).equals(mesAtual))
-                                        .count();
-                        double pA = calcularPercentagemAssiduidade(turmas, todasAulas, tP, mesAtual);
-                        Div cA = criarCard("Assiduidade Global", VaadinIcon.CHECK_SQUARE_O,
-                                        criarAssiduidadeContent(pA, tP));
-                        cA.addClickListener(e -> abrirModalAssiduidadePorTurma(turmas, todasAulas, todasPresencas, mesAtual));
-                        gridLayout.add(cA);
+                        if (cardAtivo.test(DashboardCard.ASSIDUIDADE_GLOBAL)) {
+                                long tP = todasPresencas.stream().filter(
+                                                p -> p.getData() != null && YearMonth.from(p.getData()).equals(mesAtual))
+                                                .count();
+                                double pA = calcularPercentagemAssiduidade(turmas, todasAulas, tP, mesAtual);
+                                Div cA = criarCard("Assiduidade Global", VaadinIcon.CHECK_SQUARE_O,
+                                                criarAssiduidadeContent(pA, tP));
+                                cA.addClickListener(e -> abrirModalAssiduidadePorTurma(turmas, todasAulas, todasPresencas, mesAtual));
+                                gridLayout.add(cA);
+                        }
 
-                        double vPrev = todasMensalidades.stream()
-                                        .filter(m -> m.getAno() == mesAtual.getYear()
-                                                        && m.getMes().getValue() == mesAtual.getMonthValue())
-                                        .mapToDouble(Mensalidade::getValor).sum();
-                        Div cP = criarCard("Previsão Mensal", VaadinIcon.MONEY,
-                                        valorGrande(String.format("%.2f €", vPrev), "#607d8b"));
-                        cP.addClickListener(e -> abrirModalPrevisaoPorTurma(turmas, todasMensalidades, mesAtual));
-                        gridLayout.add(cP);
+                        if (cardAtivo.test(DashboardCard.PREVISAO_MENSAL)) {
+                                double vPrev = todasMensalidades.stream()
+                                                .filter(m -> m.getAno() == mesAtual.getYear()
+                                                                && m.getMes().getValue() == mesAtual.getMonthValue())
+                                                .mapToDouble(Mensalidade::getValor).sum();
+                                Div cP = criarCard("Previsão Mensal", VaadinIcon.MONEY,
+                                                valorGrande(String.format("%.2f €", vPrev), "#607d8b"));
+                                cP.addClickListener(e -> abrirModalPrevisaoPorTurma(turmas, todasMensalidades, mesAtual));
+                                gridLayout.add(cP);
+                        }
 
-                        double vPa = todasMensalidades.stream()
-                                        .filter(m -> m.getEstado() == EstadoMensalidade.PAGO
-                                                        && m.getAno() == mesAtual.getYear()
-                                                        && m.getMes().getValue() == mesAtual.getMonthValue())
-                                        .mapToDouble(Mensalidade::getValor).sum();
-                        gridLayout.add(criarCard("Total Pago", VaadinIcon.MONEY,
-                                        valorGrande(String.format("%.2f €", vPa), "#2e7d32")));
+                        if (cardAtivo.test(DashboardCard.TOTAL_PAGO)) {
+                                double vPa = todasMensalidades.stream()
+                                                .filter(m -> m.getEstado() == EstadoMensalidade.PAGO
+                                                                && m.getAno() == mesAtual.getYear()
+                                                                && m.getMes().getValue() == mesAtual.getMonthValue())
+                                                .mapToDouble(Mensalidade::getValor).sum();
+                                gridLayout.add(criarCard("Total Pago", VaadinIcon.MONEY,
+                                                valorGrande(String.format("%.2f €", vPa), "#2e7d32")));
+                        }
 
-                        double vDM = todasMensalidades.stream()
-                                        .filter(m -> m.getEstado() == EstadoMensalidade.FATURADO
-                                                        && m.getAno() == mesAtual.getYear()
-                                                        && m.getMes().getValue() == mesAtual.getMonthValue())
-                                        .mapToDouble(Mensalidade::getValor).sum();
-                        gridLayout.add(criarCard("Dívida do Mês", VaadinIcon.CLOCK,
-                                        valorGrande(String.format("%.2f €", vDM), "#d32f2f")));
+                        if (cardAtivo.test(DashboardCard.DIVIDA_MES)) {
+                                double vDM = todasMensalidades.stream()
+                                                .filter(m -> m.getEstado() == EstadoMensalidade.FATURADO
+                                                                && m.getAno() == mesAtual.getYear()
+                                                                && m.getMes().getValue() == mesAtual.getMonthValue())
+                                                .mapToDouble(Mensalidade::getValor).sum();
+                                gridLayout.add(criarCard("Dívida do Mês", VaadinIcon.CLOCK,
+                                                valorGrande(String.format("%.2f €", vDM), "#d32f2f")));
+                        }
 
-                        double vDT = todasMensalidades.stream().filter(m -> m.getEstado() == EstadoMensalidade.FATURADO)
-                                        .mapToDouble(Mensalidade::getValor).sum();
-                        Div cDT = criarCard("Dívida Total", VaadinIcon.COINS,
-                                        valorGrande(String.format("%.2f €", vDT), "#c62828"));
-                        cDT.addClickListener(e -> abrirModalDividaHistorica(todasMensalidades));
-                        gridLayout.add(cDT);
+                        if (cardAtivo.test(DashboardCard.DIVIDA_TOTAL)) {
+                                double vDT = todasMensalidades.stream().filter(m -> m.getEstado() == EstadoMensalidade.FATURADO)
+                                                .mapToDouble(Mensalidade::getValor).sum();
+                                Div cDT = criarCard("Dívida Total", VaadinIcon.COINS,
+                                                valorGrande(String.format("%.2f €", vDT), "#c62828"));
+                                cDT.addClickListener(e -> abrirModalDividaHistorica(todasMensalidades));
+                                gridLayout.add(cDT);
+                        }
 
-                        Div cMod = criarCard("Modalidades", VaadinIcon.BAR_CHART, criarGraficoModalidades(turmas, 4));
-                        cMod.addClickListener(e -> abrirModalSimples("Ranking", criarGraficoModalidades(turmas, 100)));
-                        gridLayout.add(cMod);
+                        if (cardAtivo.test(DashboardCard.MODALIDADES)) {
+                                Div cMod = criarCard("Modalidades", VaadinIcon.BAR_CHART, criarGraficoModalidades(turmas, 4));
+                                cMod.addClickListener(e -> abrirModalSimples("Ranking", criarGraficoModalidades(turmas, 100)));
+                                gridLayout.add(cMod);
+                        }
 
-                        Map<String, Double> lucros = calcularRentabilidadeMap(turmas, todasMensalidades, todasAulas,
-                                        mesAtual);
-                        double totalL = lucros.values().stream().mapToDouble(v -> v).sum();
-                        Div cRent = criarCard("Rentabilidade", VaadinIcon.CHART_LINE, valorGrande(
-                                        String.format("%.2f €", totalL), totalL >= 0 ? "#2e7d32" : "#d32f2f"));
-                        cRent.addClickListener(e -> abrirModalRentabilidadeDetalhada(lucros, turmas, todasMensalidades,
-                                        mesAtual));
-                        gridLayout.add(cRent);
+                        if (cardAtivo.test(DashboardCard.RENTABILIDADE)) {
+                                Map<String, Double> lucros = calcularRentabilidadeMap(turmas, todasMensalidades, todasAulas,
+                                                mesAtual);
+                                double totalL = lucros.values().stream().mapToDouble(v -> v).sum();
+                                Div cRent = criarCard("Rentabilidade", VaadinIcon.CHART_LINE, valorGrande(
+                                                String.format("%.2f €", totalL), totalL >= 0 ? "#2e7d32" : "#d32f2f"));
+                                cRent.addClickListener(e -> abrirModalRentabilidadeDetalhada(lucros, turmas, todasMensalidades,
+                                                mesAtual));
+                                gridLayout.add(cRent);
+                        }
                 }
 
                 add(gridLayout);
+        }
+
+        // --- CARD DE BOAS-VINDAS (ADMIN) ---
+
+        private Div criarCardBoasVindas(Studio studio, String firstName, List<Aluno> todosAlunos,
+                        List<Presenca> todasPresencas, LocalDate hoje) {
+                Div card = new Div();
+                card.getStyle()
+                                .set("padding", "22px 26px")
+                                .set("border-radius", "16px")
+                                .set("background", "linear-gradient(135deg, " + corOuDefault(studio.getCorPrimaria(), "#4A90E2")
+                                                + ", " + corOuDefault(studio.getCorSecundaria(), "#2D3436") + ")")
+                                .set("color", "white")
+                                .set("grid-column", "1 / -1")
+                                .set("box-shadow", "0 4px 15px rgba(0,0,0,0.15)")
+                                .set("display", "flex")
+                                .set("flex-direction", "column")
+                                .set("gap", "16px");
+
+                HorizontalLayout topo = new HorizontalLayout();
+                topo.setWidthFull();
+                topo.setAlignItems(FlexComponent.Alignment.CENTER);
+                topo.getStyle().set("gap", "18px").set("flex-wrap", "wrap");
+
+                if (studio.getLogoPath() != null && !studio.getLogoPath().isBlank()) {
+                        Image logo = new Image(LogoUrl.comVersao(studio.getLogoPath()), studio.getNome());
+                        logo.setHeight("56px");
+                        logo.getStyle().set("object-fit", "contain").set("background", "white")
+                                        .set("border-radius", "10px").set("padding", "6px");
+                        topo.add(logo);
+                }
+
+                VerticalLayout texto = new VerticalLayout();
+                texto.setPadding(false);
+                texto.setSpacing(false);
+                texto.getStyle().set("gap", "4px").set("min-width", "220px");
+
+                Span titulo = new Span(saudacaoPeloRelogio()
+                                + (firstName != null && !firstName.isBlank() ? ", " + firstName : "") + "! 👋");
+                titulo.getStyle().set("font-size", "22px").set("font-weight", "800");
+
+                Span sub = new Span("Aqui tens um resumo rápido do " + studio.getNome() + " para hoje.");
+                sub.getStyle().set("font-size", "13px").set("opacity", "0.9");
+
+                texto.add(titulo, sub);
+                topo.add(texto);
+                topo.expand(texto);
+                card.add(topo);
+
+                // --- Atalhos rápidos inteligentes: sempre úteis + contextuais consoante o estado do estúdio ---
+                HorizontalLayout acoes = new HorizontalLayout();
+                acoes.getStyle().set("flex-wrap", "wrap").set("gap", "10px");
+
+                acoes.add(botaoAcaoRapida("➕ Novo Aluno", null, e -> getUI().ifPresent(ui -> ui.navigate("alunos"))));
+                acoes.add(botaoAcaoRapida("🪄 Aula Experimental", null, e -> getUI().ifPresent(ui -> ui.navigate("presencas"))));
+
+                long pendentesRenovacao = dashboardService.countRenovacoesPendentes(todosAlunos);
+                if (pendentesRenovacao > 0) {
+                        acoes.add(botaoAcaoRapida("🔔 " + pendentesRenovacao + " renovação(ões) por validar", "#e65100",
+                                        e -> getUI().ifPresent(ui -> ui.navigate("validar-inscricoes"))));
+                }
+
+                long aniversariantesHoje = todosAlunos.stream().filter(a -> a.getDataNascimento() != null
+                                && a.getDataNascimento().getMonth() == hoje.getMonth()
+                                && a.getDataNascimento().getDayOfMonth() == hoje.getDayOfMonth()).count();
+                if (aniversariantesHoje > 0) {
+                        acoes.add(botaoAcaoRapida("🎂 " + aniversariantesHoje + " aniversário(s) hoje", "#e91e63",
+                                        e -> getUI().ifPresent(ui -> ui.navigate("crm"))));
+                }
+
+                long segurosExpirados = todosAlunos.stream().filter(Aluno::isAtivo)
+                                .filter(a -> a.getDataExpiracaoSeguro() != null && a.getDataExpiracaoSeguro().isBefore(hoje))
+                                .count();
+                if (segurosExpirados > 0) {
+                        acoes.add(botaoAcaoRapida("⚠️ " + segurosExpirados + " seguro(s) expirado(s)", "#c62828",
+                                        e -> getUI().ifPresent(ui -> ui.navigate("alunos"))));
+                }
+
+                LocalDate limiteRisco = hoje.minusDays(15);
+                long alunosRisco = todosAlunos.stream().filter(Aluno::isAtivo).filter(a -> {
+                        Optional<LocalDate> ultima = todasPresencas.stream()
+                                        .filter(p -> p.getAluno().getId().equals(a.getId()))
+                                        .map(Presenca::getData).max(LocalDate::compareTo);
+                        return ultima.map(d -> d.isBefore(limiteRisco)).orElse(true);
+                }).count();
+                if (alunosRisco > 0) {
+                        acoes.add(botaoAcaoRapida("📉 " + alunosRisco + " aluno(s) em risco", "#e65100",
+                                        e -> getUI().ifPresent(ui -> ui.navigate("crm"))));
+                }
+
+                acoes.add(botaoAcaoRapida("💬 Comunicação", null, e -> getUI().ifPresent(ui -> ui.navigate("comunicacao"))));
+
+                card.add(acoes);
+                return card;
+        }
+
+        private Button botaoAcaoRapida(String texto, String corDestaque,
+                        com.vaadin.flow.component.ComponentEventListener<com.vaadin.flow.component.ClickEvent<Button>> listener) {
+                Button b = new Button(texto, listener);
+                b.getStyle()
+                                .set("background", corDestaque != null ? corDestaque : "rgba(255,255,255,0.18)")
+                                .set("color", "white")
+                                .set("border-radius", "20px")
+                                .set("font-weight", "600")
+                                .set("font-size", "12.5px")
+                                .set("padding", "6px 14px")
+                                .set("border", "none")
+                                .set("cursor", "pointer");
+                return b;
+        }
+
+        private String saudacaoPeloRelogio() {
+                int hora = java.time.LocalTime.now().getHour();
+                if (hora < 12) return "Bom dia";
+                if (hora < 20) return "Boa tarde";
+                return "Boa noite";
+        }
+
+        private String corOuDefault(String cor, String def) {
+                return (cor != null && !cor.isBlank()) ? cor : def;
         }
 
         // --- MODAIS E AUXILIARES (PROTEÇÕES DE LIMITE INCLUÍDAS) ---

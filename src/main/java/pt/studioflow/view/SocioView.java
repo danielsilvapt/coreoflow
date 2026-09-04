@@ -44,7 +44,9 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
 
 import jakarta.annotation.security.RolesAllowed;
+import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Aluno;
+import pt.studioflow.model.Studio;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
 
@@ -76,7 +78,7 @@ public class SocioView extends VerticalLayout {
         this.alunoRepository = alunoRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
         this.socioForm = new AlunoForm(alunoRepository, alunoTurmaRepository);
-        this.socioForm.setOnSaveCallback(this::aplicarFiltros);
+        this.socioForm.setOnSaveCallback(this::updateList);
 
         setSizeFull();
         setPadding(false);
@@ -101,6 +103,18 @@ public class SocioView extends VerticalLayout {
         add(header, criarStatsCards(), grid);
 
         configureGrid();
+        updateList();
+    }
+
+    /** Carrega do repositório os alunos marcados como sócio (isSocio()) do estúdio atual. */
+    private void updateList() {
+        Studio studio = TenantContext.getCurrentStudio();
+        List<Aluno> socios = (studio != null ? alunoRepository.findAllByStudio(studio) : alunoRepository.findAll())
+                .stream()
+                .filter(Aluno::isSocio)
+                .collect(Collectors.toList());
+        dataProvider = new ListDataProvider<>(socios);
+        grid.setDataProvider(dataProvider);
         aplicarFiltros();
     }
 
@@ -364,6 +378,6 @@ public class SocioView extends VerticalLayout {
     }
 
     private void vincularAtualizacaoAoFechar() {
-        this.getUI().ifPresent(ui -> ui.access(this::aplicarFiltros));
+        this.getUI().ifPresent(ui -> ui.access(this::updateList));
     }
 }
