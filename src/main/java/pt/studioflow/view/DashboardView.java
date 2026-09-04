@@ -588,11 +588,18 @@ public class DashboardView extends Div {
 
         // --- MODAIS E AUXILIARES (PROTEÇÕES DE LIMITE INCLUÍDAS) ---
 
+        /** Tamanho uniforme para todas as popups abertas a partir dos cards do dashboard. */
+        private void aplicarTamanhoPadraoModal(Dialog d) {
+                d.setWidth("900px");
+                d.setMaxWidth("95vw");
+                d.setHeight("80vh");
+                d.setMaxHeight("90vh");
+        }
+
         private void abrirModalAlocacaoPorTurma(List<Turma> turmas) {
                 Dialog d = new Dialog();
                 d.setHeaderTitle("Alocação por Turma");
-                d.setWidth("900px");
-                d.setHeight("85vh");
+                aplicarTamanhoPadraoModal(d);
                 List<TurmaOcupacaoDTO> dados = turmas.stream().map(
                                 t -> new TurmaOcupacaoDTO(t.getDescricao(), alunoTurmaRepository.findByTurma(t).size()))
                                 .sorted(Comparator.comparingInt(TurmaOcupacaoDTO::getQuantidade).reversed()).toList();
@@ -628,8 +635,7 @@ public class DashboardView extends Div {
         private void abrirModalSeguros(List<Aluno> alunos) {
                 Dialog d = new Dialog();
                 d.setHeaderTitle("Seguros Expirados");
-                d.setWidth("1000px");
-                d.setHeight("80vh");
+                aplicarTamanhoPadraoModal(d);
                 Grid<Aluno> g = new Grid<>(Aluno.class, false);
                 g.setItems(alunos);
                 g.addColumn(Aluno::getNomeCompleto).setHeader("Nome").setSortable(true);
@@ -644,8 +650,7 @@ public class DashboardView extends Div {
         private void abrirModalAlunosRisco(List<Aluno> alunos) {
                 Dialog d = new Dialog();
                 d.setHeaderTitle("Alunos em Risco");
-                d.setWidth("900px");
-                d.setHeight("80vh");
+                aplicarTamanhoPadraoModal(d);
                 Grid<Aluno> g = new Grid<>(Aluno.class, false);
                 g.setItems(alunos);
                 g.addColumn(Aluno::getNomeCompleto).setHeader("Nome").setSortable(true);
@@ -662,7 +667,7 @@ public class DashboardView extends Div {
         private void abrirModalPrevisaoPorTurma(List<Turma> turmas, List<Mensalidade> todasM, YearMonth mesRef) {
                 Dialog d = new Dialog();
                 d.setHeaderTitle("Previsão: " + mesRef.getMonth());
-                d.setWidth("800px");
+                aplicarTamanhoPadraoModal(d);
                 Map<String, Double> prev = new HashMap<>();
                 for (Turma t : turmas) {
                         double s = todasM.stream().filter(m -> m.getAno() == mesRef.getYear()
@@ -677,6 +682,7 @@ public class DashboardView extends Div {
                                 .toList());
                 g.addColumn(Map.Entry::getKey).setHeader("Turma");
                 g.addColumn(e -> String.format("%.2f €", e.getValue())).setHeader("Previsto");
+                g.setSizeFull();
                 d.add(g);
                 d.open();
         }
@@ -713,7 +719,7 @@ public class DashboardView extends Div {
                         List<Mensalidade> todasM, YearMonth mes) {
                 Dialog d = new Dialog();
                 d.setHeaderTitle("Lucro Real por Turma");
-                d.setWidth("950px");
+                aplicarTamanhoPadraoModal(d);
                 Grid<String> g = new Grid<>();
                 g.setItems(lucros.keySet().stream().sorted((a, b) -> lucros.get(b).compareTo(lucros.get(a))).toList());
                 g.addColumn(n -> n).setHeader("Turma");
@@ -724,6 +730,7 @@ public class DashboardView extends Div {
                                                 .mapToDouble(Mensalidade::getValor).sum()))
                                 .setHeader("Receita");
                 g.addColumn(n -> String.format("%.2f€", lucros.get(n))).setHeader("Lucro");
+                g.setSizeFull();
                 d.add(g);
                 d.open();
         }
@@ -821,6 +828,7 @@ public class DashboardView extends Div {
         private void abrirModalSimples(String t, com.vaadin.flow.component.Component c) {
                 Dialog d = new Dialog();
                 d.setHeaderTitle(t);
+                aplicarTamanhoPadraoModal(d);
                 d.add(c);
                 d.open();
         }
@@ -850,7 +858,6 @@ public class DashboardView extends Div {
                 content.add(linhaTopo, pb, legenda);
 
                 Div card = criarCard("Renovações", VaadinIcon.REFRESH, content);
-                card.getStyle().set("grid-column", "1 / -1");
                 card.addClickListener(e -> abrirModalRenovacoesPendentes(alunosDoStudio));
                 return card;
         }
@@ -860,7 +867,7 @@ public class DashboardView extends Div {
 
                 Dialog d = new Dialog();
                 d.setHeaderTitle("Renovações Pendentes de Validação");
-                d.setWidth("650px");
+                aplicarTamanhoPadraoModal(d);
 
                 if (pendentes.isEmpty()) {
                         d.add(new Span("Não há pedidos de renovação por validar."));
@@ -873,6 +880,7 @@ public class DashboardView extends Div {
                                                         .collect(Collectors.joining(", "))
                                         : "—").setHeader("Turma Atual").setFlexGrow(2);
                         g.addColumn(Aluno::getDataInscricaoRenovacao).setHeader("Pedido em");
+                        g.setSizeFull();
                         d.add(g);
 
                         Button btnIr = new Button("Ir para Validação de Inscrições",
@@ -885,9 +893,11 @@ public class DashboardView extends Div {
         private void abrirModalNovosAlunos(List<Aluno> a, String titulo) {
                 Dialog d = new Dialog();
                 d.setHeaderTitle(titulo);
+                aplicarTamanhoPadraoModal(d);
                 Grid<Aluno> g = new Grid<>(Aluno.class, false);
                 g.setItems(a);
                 g.addColumn(Aluno::getNomeCompleto).setHeader("Nome");
+                g.setSizeFull();
                 d.add(g);
                 d.open();
         }
@@ -895,8 +905,7 @@ public class DashboardView extends Div {
         private void abrirModalDividaHistorica(List<Mensalidade> mens) {
                 Dialog d = new Dialog();
                 d.setHeaderTitle("📊 Histórico de Dívidas por Mês");
-                d.setWidth("750px");
-                d.setHeight("80vh");
+                aplicarTamanhoPadraoModal(d);
 
                 // Agrupar dívidas FATURADO por mês/ano
                 record ChaveMes(int ano, int mes) {}
@@ -958,8 +967,7 @@ public class DashboardView extends Div {
                 Dialog d = new Dialog();
                 d.setHeaderTitle("📋 Assiduidade por Turma — " +
                         mes.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")) + " " + mes.getYear());
-                d.setWidth("850px");
-                d.setHeight("80vh");
+                aplicarTamanhoPadraoModal(d);
 
                 record AssiduidadeTurmaDTO(String turma, String professor, long presencas, long esperadas, double pct) {}
 
