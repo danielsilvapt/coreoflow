@@ -4,6 +4,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Div;
@@ -43,6 +44,7 @@ public class TurmaForm extends Dialog {
     private TextField codigo = new TextField("Código");
     private TextField descricao = new TextField("Descrição");
     private ComboBox<Professor> professor = new ComboBox<>("Professor");
+    private MultiSelectComboBox<Professor> coProfessores = new MultiSelectComboBox<>("Co-professores (opcional)");
     private ComboBox<Modalidade> modalidade = new ComboBox<>("Modalidade");
     private ComboBox<Sala> sala = new ComboBox<>("Sala");
 
@@ -70,8 +72,13 @@ public class TurmaForm extends Dialog {
 
         // Configurar as ComboBoxes
         Studio studio = TenantContext.getCurrentStudio();
-        professor.setItems(studio != null ? professorRepository.findAllByStudio(studio) : professorRepository.findAll());
+        var professores = studio != null ? professorRepository.findAllByStudio(studio) : professorRepository.findAll();
+        professor.setItems(professores);
         professor.setItemLabelGenerator(Professor::getNome);
+
+        coProfessores.setItems(professores);
+        coProfessores.setItemLabelGenerator(Professor::getNome);
+        coProfessores.setHelperText("Professores adicionais com acesso à turma (o principal continua a ser o responsável)");
 
         modalidade.setItems(studio != null ? modalidadeRepository.findAllByStudio(studio) : modalidadeRepository.findAll());
         modalidade.setItemLabelGenerator(Modalidade::getDescricao);
@@ -91,16 +98,20 @@ public class TurmaForm extends Dialog {
         googleDriveFolderId.setClearButtonVisible(true);
 
         // Configurar o Binder
+        binder.forField(coProfessores).bind(
+                t -> t.getCoProfessores() == null ? java.util.Set.of() : t.getCoProfessores(),
+                (t, v) -> t.setCoProfessores(new java.util.LinkedHashSet<>(v)));
         binder.bindInstanceFields(this);
         binder.bind(cor, Turma::getCor, Turma::setCor);
 
         // Montar o Layout
         FormLayout formLayout = new FormLayout();
-        formLayout.add(codigo, descricao, professor, modalidade, sala, cor, ativo, whatsappGroupLink, googleDriveFolderId);
+        formLayout.add(codigo, descricao, professor, modalidade, sala, coProfessores, cor, ativo, whatsappGroupLink, googleDriveFolderId);
 
         formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("500px", 2));
 
         // Colocamos os links de largura total para facilitar a visualização
+        formLayout.setColspan(coProfessores, 2);
         formLayout.setColspan(whatsappGroupLink, 2);
         formLayout.setColspan(googleDriveFolderId, 2);
         formLayout.setColspan(cor, 1);

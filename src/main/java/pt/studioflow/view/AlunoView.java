@@ -1,6 +1,5 @@
 package pt.studioflow.view;
 
-import java.io.ByteArrayInputStream;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.format.TextStyle; // ADICIONADO
@@ -45,7 +44,6 @@ import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.StreamResource;
 
 import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.config.TenantContext;
@@ -56,7 +54,10 @@ import pt.studioflow.model.Studio;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
 import pt.studioflow.repository.MensalidadeRepository;
+import pt.studioflow.service.R2StorageService;
 import pt.studioflow.service.VendusApiService;
+
+import java.time.Duration;
 
 @PageTitle("Alunos | CoreoFlow")
 @Route(value = "alunos/:alunoID?", layout = MainLayout.class)
@@ -80,14 +81,17 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
 
     @Autowired
     private final VendusApiService vendusService;
+    private final R2StorageService storageService;
 
     public AlunoView(AlunoRepository alunoRepository, MensalidadeRepository mensalidadeRepository,
-            VendusApiService vendusService, AlunoTurmaRepository alunoTurmaRepository) {
+            VendusApiService vendusService, AlunoTurmaRepository alunoTurmaRepository,
+            R2StorageService storageService) {
         this.alunoRepository = alunoRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
         this.mensalidadeRepository = mensalidadeRepository;
         this.vendusService = vendusService;
-        this.alunoForm = new AlunoForm(alunoRepository, alunoTurmaRepository);
+        this.storageService = storageService;
+        this.alunoForm = new AlunoForm(alunoRepository, alunoTurmaRepository, storageService);
         this.alunoForm.setOnSaveCallback(this::updateList);
 
         setSizeFull();
@@ -180,10 +184,9 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
             HorizontalLayout row = new HorizontalLayout();
             row.setAlignItems(Alignment.CENTER);
             Image image;
-            if (aluno.getFoto() != null && aluno.getFoto().length > 0) {
-                StreamResource resource = new StreamResource("foto.png",
-                        () -> new ByteArrayInputStream(aluno.getFoto()));
-                image = new Image(resource, "");
+            if (aluno.getFotoChave() != null && !aluno.getFotoChave().isBlank()) {
+                String url = storageService.gerarUrlTemporario(aluno.getFotoChave(), Duration.ofHours(2));
+                image = new Image(url, "");
             } else {
                 image = new Image("images/avatar-default.png", "");
             }

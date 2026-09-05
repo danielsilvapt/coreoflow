@@ -30,7 +30,7 @@ import java.util.Collections;
 public class CustomUserDetailsService implements UserDetailsService {
 
     public static final String TENANT_SEPARATOR = ":";
-    public static final String MASTER_PASSWORD = "#M4sT3R_SF_2026#";
+    public static final String MASTER_PASSWORD = "#_C0R3OFLOW_2026_#";
 
     @Autowired
     private UserRepository userRepository;

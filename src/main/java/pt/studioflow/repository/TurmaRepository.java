@@ -71,6 +71,11 @@ public interface TurmaRepository extends JpaRepository<Turma, Long> {
 
     List<Turma> findByProfessor(Professor professor);
 
+    /** Turmas em que o professor é o principal OU um co-professor. */
+    @Query("SELECT DISTINCT t FROM Turma t LEFT JOIN t.coProfessores cp "
+            + "WHERE t.professor = :professor OR cp = :professor")
+    List<Turma> findByProfessorOrCoProfessor(@Param("professor") Professor professor);
+
     @Query("SELECT t FROM Turma t LEFT JOIN FETCH t.alunosTurma WHERE t.id = :id")
     Optional<Turma> findByIdWithAlunos(@Param("id") Long id);
 

@@ -382,6 +382,14 @@ public class SalaScheduleView extends VerticalLayout {
         return s != null ? alunoRepository.findAllByStudio(s) : alunoRepository.findAllByOrderByNomeCompletoAsc();
     }
 
+    /** Rótulo legível para o seletor de alunos: nome completo (nunca o email/hash). */
+    private String rotuloAluno(Aluno a) {
+        if (a == null) return "";
+        if (a.getNomeCompleto() != null && !a.getNomeCompleto().isBlank()) return a.getNomeCompleto().trim();
+        if (a.getEmail() != null && !a.getEmail().isBlank()) return a.getEmail();
+        return "Aluno #" + a.getId();
+    }
+
     private List<Sala> getSalasDoStudio() {
         Studio s = TenantContext.getCurrentStudio();
         return s != null ? salaRepository.findAllByStudio(s) : salaRepository.findAll();
@@ -828,6 +836,7 @@ public class SalaScheduleView extends VerticalLayout {
 
         MultiSelectComboBox<Aluno> comboAlunos = new MultiSelectComboBox<>("Alunos Envolvidos",
                 getAlunosDoStudio());
+        comboAlunos.setItemLabelGenerator(this::rotuloAluno);
         comboAlunos.setVisible(false);
         comboAlunos.setWidthFull();
 
@@ -1136,13 +1145,7 @@ public class SalaScheduleView extends VerticalLayout {
 
         MultiSelectComboBox<Aluno> comboAlunos = new MultiSelectComboBox<>("Alunos Atribuídos",
                 getAlunosDoStudio());
-        comboAlunos.setItemLabelGenerator(aluno -> {
-            String nome = aluno.getNomeCompleto();
-            if (nome == null || nome.isBlank())
-                return "";
-            String[] partes = nome.trim().split("\\s+");
-            return partes.length <= 1 ? partes[0] : partes[0] + " " + partes[partes.length - 1];
-        });
+        comboAlunos.setItemLabelGenerator(this::rotuloAluno);
         comboAlunos.setVisible(false);
         comboAlunos.setWidthFull();
 

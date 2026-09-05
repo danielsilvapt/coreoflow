@@ -43,6 +43,7 @@ import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.StudioRepository;
 import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.service.EmailService;
+import pt.studioflow.service.R2StorageService;
 import pt.studioflow.service.TranslationService;
 
 import java.io.ByteArrayInputStream;
@@ -73,12 +74,15 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
     private final Div resumoPagamento = new Div();
 
     private byte[] fotoBytesTemporaria = null;
+    private String fotoMimeTypeTemporaria = null;
     private Studio studioAtual = null;
     private final BuildProperties buildProperties;
+    private final R2StorageService storageService;
 
     public InscricaoPublicaView(AlunoRepository alunoRepository, TurmaRepository turmaRepository,
             EmailService emailService, StudioRepository studioRepository, BuildProperties buildProperties,
-            MensalidadeConfig mensalidadeConfig, TranslationService translationService) {
+            MensalidadeConfig mensalidadeConfig, TranslationService translationService,
+            R2StorageService storageService) {
         this.alunoRepository = alunoRepository;
         this.turmaRepository = turmaRepository;
         this.emailService = emailService;
@@ -86,6 +90,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         this.buildProperties = buildProperties;
         this.mensalidadeConfig = mensalidadeConfig;
         this.translationService = translationService;
+        this.storageService = storageService;
     }
 
     @Override
@@ -169,6 +174,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         uploadFoto.addSucceededListener(event -> {
             try {
                 fotoBytesTemporaria = buffer.getInputStream().readAllBytes();
+                fotoMimeTypeTemporaria = event.getMIMEType();
 
                 StreamResource resource = new StreamResource("preview.png",
                         () -> new ByteArrayInputStream(fotoBytesTemporaria));
@@ -444,8 +450,22 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
                 return;
             }
             if (fotoBytesTemporaria != null) {
-                novo.setFoto(fotoBytesTemporaria);
+                String chave = "alunos/" + (studioAtual != null ? studioAtual.getSlug() : "sem-estudio")
+                        + "/" + java.util.UUID.randomUUID() + ".jpg";
+                try {
+                    storageService.upload(chave, fotoMimeTypeTemporaria != null ? fotoMimeTypeTemporaria : "image/jpeg",
+                            new ByteArrayInputStream(fotoBytesTemporaria), fotoBytesTemporaria.length);
+                    novo.setFotoChave(chave);
+                } catch (Exception ex) {
+                    Notification.show("Erro ao guardar a foto, mas a inscrição vai continuar sem ela.", 4000,
+                            Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_WARNING);
+                }
             }
+            // Adulto/Criança automático a partir da data de nascimento (< 18 anos = Criança)
+            if (novo.getDataNascimento() != null) {
+                novo.setCrianca(java.time.Period.between(novo.getDataNascimento(), LocalDate.now()).getYears() < 18);
+            }
+
             novo.setStatus(Aluno.AlunoStatus.PENDENTE);
             novo.setAtivo(false);
             novo.setCarimboDataHora(java.time.LocalDate.now());

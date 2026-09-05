@@ -45,6 +45,10 @@ import pt.studioflow.model.CampoAluno;
 import pt.studioflow.model.Studio;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
+import pt.studioflow.service.R2StorageService;
+
+import java.time.Duration;
+import java.util.UUID;
 
 // Adicionada a Rota e Segurança
 @Route(value = "aluno", layout = MainLayout.class)
@@ -53,6 +57,7 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
 
     private final AlunoRepository alunoRepository;
     private final AlunoTurmaRepository alunoTurmaRepository;
+    private final R2StorageService storageService;
     private Aluno alunoAtual;
     private final Binder<Aluno> binder = new Binder<>(Aluno.class);
 
@@ -92,12 +97,16 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
 
     private final Image imagePreview = new Image();
     private byte[] fotoBytes;
+    private String fotoMimeType;
+    private boolean fotoAlterada;
 
     private final Grid<AlunoTurma> gridTurmas = new Grid<>(AlunoTurma.class, false);
 
-    public AlunoForm(AlunoRepository alunoRepository, AlunoTurmaRepository alunoTurmaRepository) {
+    public AlunoForm(AlunoRepository alunoRepository, AlunoTurmaRepository alunoTurmaRepository,
+            R2StorageService storageService) {
         this.alunoRepository = alunoRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
+        this.storageService = storageService;
 
         binder.bindInstanceFields(this);
 
@@ -175,6 +184,15 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
                         aluno -> aluno.isCrianca() ? "Criança" : "Adulto",
                         (aluno, valor) -> aluno.setCrianca("Criança".equals(valor)));
 
+        // Preenche automaticamente Adulto/Criança a partir da data de nascimento
+        // (< 18 anos = Criança). Só quando o utilizador mexe no campo, para não
+        // sobrepor o valor guardado ao abrir um aluno existente. Continua editável.
+        dataNascimento.addValueChangeListener(ev -> {
+            if (!ev.isFromClient() || ev.getValue() == null) return;
+            boolean crianca = java.time.Period.between(ev.getValue(), java.time.LocalDate.now()).getYears() < 18;
+            criancaCombo.setValue(crianca ? "Criança" : "Adulto");
+        });
+
         binder.forField(numeroContribuinte)
                 .asRequired("Insira o Nº de Contribuinte")
                 .bind(Aluno::getNumeroContribuinte, Aluno::setNumeroContribuinte);
@@ -230,6 +248,8 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         upload.addSucceededListener(e -> {
             try {
                 fotoBytes = toByteArray(buffer.getInputStream());
+                fotoMimeType = e.getMIMEType();
+                fotoAlterada = true;
                 imagePreview.setSrc(getImageSrc(fotoBytes));
             } catch (IOException ex) {
                 Notification.show("Erro ao carregar imagem");
@@ -413,12 +433,13 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         // 2. Binder e Foto
         binder.setBean(alunoAtual);
 
-        if (alunoAtual.getFoto() != null) {
-            fotoBytes = alunoAtual.getFoto();
-            imagePreview.setSrc(getImageSrc(fotoBytes));
+        fotoBytes = null;
+        fotoMimeType = null;
+        fotoAlterada = false;
+        if (alunoAtual.getFotoChave() != null && !alunoAtual.getFotoChave().isBlank()) {
+            imagePreview.setSrc(storageService.gerarUrlTemporario(alunoAtual.getFotoChave(), Duration.ofHours(2)));
         } else {
             imagePreview.setSrc("");
-            fotoBytes = null;
         }
 
         // 3. REGRAS PARA EVITAR DUPLICADOS (Apenas um diálogo)
@@ -431,9 +452,26 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
             // Configuração única dos botões do footer
             Button guardar = new Button("Guardar", VaadinIcon.CHECK.create(), e -> {
                 if (binder.validate().isOk()) {
-                    alunoAtual.setFoto(fotoBytes);
                     if (alunoAtual.getStudio() == null) {
                         alunoAtual.setStudio(TenantContext.getCurrentStudio());
+                    }
+                    if (fotoAlterada) {
+                        String chaveAntiga = alunoAtual.getFotoChave();
+                        Studio studio = alunoAtual.getStudio();
+                        String chave = "alunos/" + (studio != null ? studio.getSlug() : "sem-estudio")
+                                + "/" + UUID.randomUUID() + ".jpg";
+                        try {
+                            storageService.upload(chave, fotoMimeType != null ? fotoMimeType : "image/jpeg",
+                                    new java.io.ByteArrayInputStream(fotoBytes), fotoBytes.length);
+                        } catch (Exception ex) {
+                            Notification.show("Erro ao guardar a foto: " + ex.getMessage(), 5000,
+                                    Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                            return;
+                        }
+                        alunoAtual.setFotoChave(chave);
+                        if (chaveAntiga != null && !chaveAntiga.isBlank()) {
+                            try { storageService.apagar(chaveAntiga); } catch (Exception ignored) { }
+                        }
                     }
                     alunoRepository.save(alunoAtual);
                     Notification.show("Guardado com sucesso!").addThemeVariants(NotificationVariant.LUMO_SUCCESS);

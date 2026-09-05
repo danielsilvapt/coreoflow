@@ -222,8 +222,9 @@ public class AlunosProfessorView extends VerticalLayout {
         String profNomeNormalizado = normalizar(getFirstNameFromDatabase());
 
         List<Turma> turmasDoProf = turmaService.findAllComplete().stream()
-                .filter(t -> t.getProfessor() != null)
-                .filter(t -> normalizar(t.getProfessor().getNome().split(" ")[0]).equals(profNomeNormalizado))
+                .filter(t -> t.getTodosProfessores().stream()
+                        .anyMatch(p -> p.getNome() != null
+                                && normalizar(p.getNome().split(" ")[0]).equals(profNomeNormalizado)))
                 .collect(Collectors.toList());
 
         Map<Aluno, Set<String>> alunoTurmasMap = new HashMap<>();
