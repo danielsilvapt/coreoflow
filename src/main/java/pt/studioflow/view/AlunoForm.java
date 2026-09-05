@@ -457,9 +457,11 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
                     }
                     if (fotoAlterada) {
                         String chaveAntiga = alunoAtual.getFotoChave();
-                        Studio studio = alunoAtual.getStudio();
-                        String chave = "alunos/" + (studio != null ? studio.getSlug() : "sem-estudio")
-                                + "/" + UUID.randomUUID() + ".jpg";
+                        // Estúdio da sessão (o proxy lazy de alunoAtual.getStudio() já não tem
+                        // sessão Hibernate neste handler — foi carregado noutro pedido).
+                        Studio studio = TenantContext.getCurrentStudio();
+                        String slug = studio != null && studio.getSlug() != null ? studio.getSlug() : "sem-estudio";
+                        String chave = "alunos/" + slug + "/" + UUID.randomUUID() + ".jpg";
                         try {
                             storageService.upload(chave, fotoMimeType != null ? fotoMimeType : "image/jpeg",
                                     new java.io.ByteArrayInputStream(fotoBytes), fotoBytes.length);

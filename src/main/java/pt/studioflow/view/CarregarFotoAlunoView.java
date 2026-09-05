@@ -164,9 +164,11 @@ public class CarregarFotoAlunoView extends VerticalLayout {
 
         try {
             String chaveAntiga = alunoSelecionado.getFotoChave();
-            pt.studioflow.model.Studio studio = alunoSelecionado.getStudio();
-            String chave = "alunos/" + (studio != null ? studio.getSlug() : "sem-estudio")
-                    + "/" + UUID.randomUUID() + ".jpg";
+            // Estúdio da sessão — o proxy lazy de alunoSelecionado.getStudio() já não tem
+            // sessão Hibernate neste handler (aluno carregado noutro pedido).
+            pt.studioflow.model.Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
+            String slug = studio != null && studio.getSlug() != null ? studio.getSlug() : "sem-estudio";
+            String chave = "alunos/" + slug + "/" + UUID.randomUUID() + ".jpg";
             storageService.upload(chave, fotoMimeTypeTemporaria != null ? fotoMimeTypeTemporaria : "image/jpeg",
                     new ByteArrayInputStream(fotoBytesTemporaria), fotoBytesTemporaria.length);
             alunoSelecionado.setFotoChave(chave);
