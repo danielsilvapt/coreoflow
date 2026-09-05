@@ -20,9 +20,11 @@ import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.repository.AlunoRepository;
+import pt.studioflow.service.R2StorageService;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.UUID;
 
 import org.springframework.data.domain.Sort;
 
@@ -31,13 +33,16 @@ import org.springframework.data.domain.Sort;
 public class CarregarFotoAlunoView extends VerticalLayout {
 
     private final AlunoRepository alunoRepository;
+    private final R2StorageService storageService;
 
     private ComboBox<Aluno> comboAluno;
     private byte[] fotoBytesTemporaria = null;
+    private String fotoMimeTypeTemporaria = null;
     private Div previewAvatar;
 
-    public CarregarFotoAlunoView(AlunoRepository alunoRepository) {
+    public CarregarFotoAlunoView(AlunoRepository alunoRepository, R2StorageService storageService) {
         this.alunoRepository = alunoRepository;
+        this.storageService = storageService;
 
         setSizeFull();
         setJustifyContentMode(JustifyContentMode.CENTER);
@@ -102,6 +107,7 @@ public class CarregarFotoAlunoView extends VerticalLayout {
         upload.addSucceededListener(event -> {
             try {
                 fotoBytesTemporaria = buffer.getInputStream().readAllBytes();
+                fotoMimeTypeTemporaria = event.getMIMEType();
 
                 StreamResource resource = new StreamResource("preview.png",
                         () -> new ByteArrayInputStream(fotoBytesTemporaria));
@@ -157,9 +163,17 @@ public class CarregarFotoAlunoView extends VerticalLayout {
         }
 
         try {
-            // Associa os bytes ao aluno e grava no repositório
-            alunoSelecionado.setFoto(fotoBytesTemporaria);
+            String chaveAntiga = alunoSelecionado.getFotoChave();
+            pt.studioflow.model.Studio studio = alunoSelecionado.getStudio();
+            String chave = "alunos/" + (studio != null ? studio.getSlug() : "sem-estudio")
+                    + "/" + UUID.randomUUID() + ".jpg";
+            storageService.upload(chave, fotoMimeTypeTemporaria != null ? fotoMimeTypeTemporaria : "image/jpeg",
+                    new ByteArrayInputStream(fotoBytesTemporaria), fotoBytesTemporaria.length);
+            alunoSelecionado.setFotoChave(chave);
             alunoRepository.save(alunoSelecionado);
+            if (chaveAntiga != null && !chaveAntiga.isBlank()) {
+                try { storageService.apagar(chaveAntiga); } catch (Exception ignored) { }
+            }
 
             Notification.show("Foto de " + alunoSelecionado.getNomeCompleto() + " atualizada com sucesso!",
                     4000, Notification.Position.MIDDLE)

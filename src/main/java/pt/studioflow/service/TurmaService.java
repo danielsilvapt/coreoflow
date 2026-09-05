@@ -23,6 +23,7 @@ import pt.studioflow.repository.MensalidadeRepository;
 import pt.studioflow.repository.OcorrenciaAulaRepository;
 import pt.studioflow.repository.PresencaRepository;
 import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.repository.VideoAulaRepository;
 
 @Service
 public class TurmaService {
@@ -53,6 +54,9 @@ public class TurmaService {
 
     @Autowired
     private MarcacaoSalaRepository marcacaoSalaRepository;
+
+    @Autowired
+    private VideoAulaRepository videoAulaRepository;
 
     // =========================
     // TURMAS
@@ -93,6 +97,8 @@ public class TurmaService {
         listaEsperaRepository.flush();
         ocorrenciaAulaRepository.deleteByTurma(turma);
         ocorrenciaAulaRepository.flush();
+        videoAulaRepository.deleteByTurma(turma);
+        videoAulaRepository.flush();
         marcacaoSalaRepository.desvincularTurma(turma);
         marcacaoSalaRepository.flush();
         turmaRepository.delete(turma);

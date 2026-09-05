@@ -18,7 +18,9 @@ import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.model.*;
 import pt.studioflow.repository.*;
 import pt.studioflow.service.AuthService;
+import pt.studioflow.service.R2StorageService;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.Month;
 import java.time.format.DateTimeFormatter;
@@ -37,7 +39,9 @@ public class PortalAlunoView extends VerticalLayout {
                             MensalidadeRepository mensalidadeRepo,
                             PresencaRepository presencaRepo,
                             AvaliacaoAlunoRepository avaliacaoRepo,
-                            ContratoDigitalRepository contratoRepo) {
+                            ContratoDigitalRepository contratoRepo,
+                            VideoAulaRepository videoAulaRepo,
+                            R2StorageService storageService) {
 
         setSizeFull();
         setPadding(false);
@@ -80,7 +84,7 @@ public class PortalAlunoView extends VerticalLayout {
         tabs.setSizeFull();
         tabs.getStyle().set("padding", "0 16px");
 
-        tabs.add("📅 Presenças", criarTabPresencas(presencas));
+        tabs.add("📅 Presenças", criarTabPresencas(presencas, videoAulaRepo, storageService));
         tabs.add("💳 Mensalidades", criarTabMensalidades(mensalidades));
         tabs.add("⭐ Avaliações", criarTabAvaliacoes(aluno, avaliacaoRepo));
         tabs.add("📄 Contratos", criarTabContratos(aluno, contratoRepo));
@@ -141,7 +145,8 @@ public class PortalAlunoView extends VerticalLayout {
         return c;
     }
 
-    private VerticalLayout criarTabPresencas(List<Presenca> presencas) {
+    private VerticalLayout criarTabPresencas(List<Presenca> presencas, VideoAulaRepository videoAulaRepo,
+            R2StorageService storageService) {
         VerticalLayout layout = new VerticalLayout();
         layout.setPadding(true);
 
@@ -150,6 +155,17 @@ public class PortalAlunoView extends VerticalLayout {
                 .filter(p -> p.getData() != null)
                 .sorted((a, b) -> b.getData().compareTo(a.getData()))
                 .limit(20).toList();
+
+        // Vídeos disponíveis para as turmas+datas destas presenças (1 query, sem N+1)
+        List<Turma> turmasDasPresencas = ultimas.stream()
+                .map(Presenca::getTurma).filter(java.util.Objects::nonNull).distinct().toList();
+        List<LocalDate> datasDasPresencas = ultimas.stream()
+                .map(Presenca::getData).distinct().toList();
+        List<VideoAula> videosDisponiveis = turmasDasPresencas.isEmpty() || datasDasPresencas.isEmpty()
+                ? List.of()
+                : videoAulaRepo.findByTurmaInAndDataInOrderByDataUploadDesc(turmasDasPresencas, datasDasPresencas);
+        java.util.Map<String, List<VideoAula>> videosPorTurmaData = videosDisponiveis.stream()
+                .collect(java.util.stream.Collectors.groupingBy(v -> v.getTurma().getId() + "|" + v.getData()));
 
         Grid<Presenca> grid = new Grid<>(Presenca.class, false);
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
@@ -165,10 +181,54 @@ public class PortalAlunoView extends VerticalLayout {
             s.getStyle().set("color", presente ? "#27AE60" : "#E74C3C").set("font-weight", "600");
             return s;
         }).setHeader("Estado").setAutoWidth(true);
+        grid.addComponentColumn(p -> {
+            if (p.getTurma() == null) return new Span("");
+            List<VideoAula> videos = videosPorTurmaData.get(p.getTurma().getId() + "|" + p.getData());
+            if (videos == null || videos.isEmpty()) return new Span("");
+            Button verVideo = new Button("Vídeo", VaadinIcon.PLAY_CIRCLE.create(),
+                    e -> mostrarVideosDaAula(p.getTurma(), p.getData(), videos, storageService));
+            verVideo.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            verVideo.getStyle().set("color", "#D32F2F");
+            return verVideo;
+        }).setHeader("Vídeo").setAutoWidth(true);
 
         grid.setItems(ultimas);
         layout.add(new H3("Últimas Presenças"), grid);
         return layout;
+    }
+
+    private void mostrarVideosDaAula(Turma turma, LocalDate data, List<VideoAula> videos,
+            R2StorageService storageService) {
+        com.vaadin.flow.component.dialog.Dialog dialog = new com.vaadin.flow.component.dialog.Dialog();
+        dialog.setHeaderTitle(turma.getDescricao() + " · " + data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        dialog.setWidth("380px");
+
+        VerticalLayout content = new VerticalLayout();
+        content.setPadding(false);
+        videos.forEach(v -> {
+            Button ver = new Button(v.getNomeFicheiro(), VaadinIcon.PLAY_CIRCLE.create(), e -> {
+                String url = storageService.gerarUrlTemporario(v.getChaveArmazenamento(), java.time.Duration.ofHours(2));
+                getUI().ifPresent(ui -> ui.getPage().open(url, "_blank"));
+            });
+            ver.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+            ver.setWidthFull();
+
+            Button descarregar = new Button(VaadinIcon.DOWNLOAD_ALT.create(), e -> {
+                String url = storageService.gerarUrlDownload(v.getChaveArmazenamento(), v.getNomeFicheiro(),
+                        java.time.Duration.ofHours(2));
+                getUI().ifPresent(ui -> ui.getPage().open(url, "_blank"));
+            });
+            descarregar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ICON);
+
+            HorizontalLayout linha = new HorizontalLayout(ver, descarregar);
+            linha.setWidthFull();
+            linha.setFlexGrow(1, ver);
+            linha.setAlignItems(FlexComponent.Alignment.CENTER);
+            content.add(linha);
+        });
+        dialog.add(content);
+        dialog.getFooter().add(new Button("Fechar", e -> dialog.close()));
+        dialog.open();
     }
 
     private VerticalLayout criarTabMensalidades(List<Mensalidade> mensalidades) {

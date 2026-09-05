@@ -1,6 +1,5 @@
 package pt.studioflow.view;
 
-import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -32,7 +31,6 @@ import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.StreamResource;
 
 import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.model.Aluno;
@@ -44,7 +42,10 @@ import pt.studioflow.repository.ProfessorRepository;
 import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.repository.UserRepository;
 import pt.studioflow.service.EmailService;
+import pt.studioflow.service.R2StorageService;
 import pt.studioflow.service.TurmaService;
+
+import java.time.Duration;
 
 @PageTitle("Comunicação | CoreoFlow")
 @Route(value = "comunicacao", layout = MainLayout.class)
@@ -57,6 +58,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
     private final ProfessorRepository professorRepository;
     private final UserRepository userRepository;
     private final AlunoRepository alunoRepository;
+    private final R2StorageService storageService;
 
     private final Div containerCards = new Div();
 
@@ -82,13 +84,15 @@ public class TurmaComunicacaoView extends VerticalLayout {
             EmailService emailService,
             ProfessorRepository professorRepository,
             UserRepository userRepository,
-            AlunoRepository alunoRepository) {
+            AlunoRepository alunoRepository,
+            R2StorageService storageService) {
         this.turmaRepository = turmaRepository;
         this.turmaService = turmaService;
         this.emailService = emailService;
         this.professorRepository = professorRepository;
         this.userRepository = userRepository;
         this.alunoRepository = alunoRepository;
+        this.storageService = storageService;
 
         setSizeFull();
         setPadding(false);
@@ -180,7 +184,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
                     .orElse(null);
 
             if (professorLogado != null) {
-                turmas = turmaRepository.findByProfessor(professorLogado);
+                turmas = turmaRepository.findByProfessorOrCoProfessor(professorLogado);
             } else {
                 turmas = new ArrayList<>();
                 Notification.show("Professor não vinculado ao utilizador logado.", 3000, Notification.Position.MIDDLE)
@@ -254,15 +258,9 @@ public class TurmaComunicacaoView extends VerticalLayout {
 
             Div avatar = new Div();
 
-            // Supondo que aluno.getFoto() retorne um byte[] (ex: do banco de dados)
-            byte[] fotoBytes = aluno.getFoto();
-
-            if (fotoBytes != null && fotoBytes.length > 0) {
-                // Cria o recurso de stream a partir dos bytes da foto
-                StreamResource resource = new StreamResource("avatar-" + aluno.getId() + ".png",
-                        () -> new ByteArrayInputStream(fotoBytes));
-
-                Image image = new Image(resource, "Foto de " + aluno.getNomeCompleto());
+            if (aluno.getFotoChave() != null && !aluno.getFotoChave().isBlank()) {
+                String url = storageService.gerarUrlTemporario(aluno.getFotoChave(), Duration.ofHours(2));
+                Image image = new Image(url, "Foto de " + aluno.getNomeCompleto());
 
                 // Ajusta a imagem para cobrir o espaço do avatar perfeitamente
                 image.getStyle()

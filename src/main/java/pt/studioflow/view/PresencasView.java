@@ -496,10 +496,12 @@ public class PresencasView extends VerticalLayout {
     private void carregarTurmasPermitidas() {
         pt.studioflow.model.Studio _s = pt.studioflow.config.TenantContext.getCurrentStudio();
         List<Turma> turmasAll = _s != null ? turmaRepository.findAllByStudio(_s) : turmaRepository.findAllComplete();
+        String primeiroNomeProf = normalizar(getFirstNameFromDatabase());
         List<Turma> turmas = isAdmin() ? turmasAll
                 : turmasAll.stream()
-                        .filter(t -> t.getProfessor() != null && normalizar(t.getProfessor().getNome())
-                                .contains(normalizar(getFirstNameFromDatabase())))
+                        .filter(t -> !primeiroNomeProf.isBlank() && t.getTodosProfessores().stream()
+                                .anyMatch(p -> p.getNome() != null
+                                        && normalizar(p.getNome()).contains(primeiroNomeProf)))
                         .collect(Collectors.toList());
 
         List<Turma> comTodas = new ArrayList<>();

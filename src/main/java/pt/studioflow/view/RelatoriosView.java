@@ -20,6 +20,7 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.vaadin.flow.component.ClickEvent;
 import com.vaadin.flow.component.ComponentEventListener;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -278,25 +279,36 @@ public class RelatoriosView extends VerticalLayout {
                 d.open();
         }
 
-        private Button botaoEmailPagamento(RemuneracaoService.LinhaPagamento l, String nomeMes) {
+        private Component botaoEmailPagamento(RemuneracaoService.LinhaPagamento l, String nomeMes) {
                 Button btnEmail = new Button(VaadinIcon.ENVELOPE.create());
                 btnEmail.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
-                btnEmail.addClickListener(e -> {
-                        String emailProf = l.professor() != null && l.professor().getEmail() != null
-                                        ? l.professor().getEmail() : "";
-                        String pNome = l.nome().split(" ")[0];
-                        String valor = String.format("%.2f", l.total());
-                        String assunto = "Pagamento de Aulas - " + nomeMes;
-                        String corpo = String.format(
-                                        "Olá %s,\n\nA fim de podermos efetuar a transferência bancária referente às aulas do mês de %s, solicitamos o envio do recibo no valor de %s€.\n\nObrigada,\n\n---\n*** Mensagem enviada a partir da Plataforma CoreoFlow ***",
-                                        pNome, nomeMes, valor);
-                        String mailto = "mailto:" + emailProf + "?subject="
-                                        + URLEncoder.encode(assunto, StandardCharsets.UTF_8).replace("+", "%20")
-                                        + "&body="
-                                        + URLEncoder.encode(corpo, StandardCharsets.UTF_8).replace("+", "%20");
-                        getUI().ifPresent(ui -> ui.getPage().open(mailto, "_self"));
-                });
-                return btnEmail;
+
+                String emailProf = l.professor() != null && l.professor().getEmail() != null
+                                ? l.professor().getEmail() : "";
+                if (emailProf.isBlank()) {
+                        btnEmail.setEnabled(false);
+                        btnEmail.getElement().setAttribute("title", "Professor sem email definido");
+                        return btnEmail;
+                }
+
+                String pNome = l.nome().split(" ")[0];
+                String valor = String.format("%.2f", l.total());
+                String assunto = "Pagamento de Aulas - " + nomeMes;
+                String corpo = String.format(
+                                "Olá %s,\n\nA fim de podermos efetuar a transferência bancária referente às aulas do mês de %s, solicitamos o envio do recibo no valor de %s€.\n\nObrigada,\n\n---\n*** Mensagem enviada a partir da Plataforma CoreoFlow ***",
+                                pNome, nomeMes, valor);
+                String mailto = "mailto:" + emailProf + "?subject="
+                                + URLEncoder.encode(assunto, StandardCharsets.UTF_8).replace("+", "%20")
+                                + "&body="
+                                + URLEncoder.encode(corpo, StandardCharsets.UTF_8).replace("+", "%20");
+
+                // Âncora mailto nativa: o browser abre o cliente de email sem navegar a SPA
+                // para fora (o open(mailto, "_self") anterior partia a ligação e deixava a
+                // modal presa, impossível de fechar).
+                Anchor link = new Anchor(mailto, btnEmail);
+                link.setTarget("_blank");
+                link.getElement().setAttribute("router-ignore", true);
+                return link;
         }
 
         // --- 2. RELATÓRIO ALUNOS POR TURMA (ESPAÇAMENTO CORRIGIDO) ---
