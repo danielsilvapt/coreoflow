@@ -1,7 +1,10 @@
 package pt.studioflow.model;
 
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import jakarta.persistence.*;
 
 @Entity
@@ -20,6 +23,18 @@ public class Turma {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "professor_id")
     private Professor professor;
+
+    /**
+     * Co-professores da turma (além do {@link #professor} principal). O professor
+     * principal continua a ser o responsável para folha de pagamento e relatórios
+     * de horas; os co-professores servem para dar acesso à turma (turmas de
+     * competição costumam ter vários professores).
+     */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "turma_coprofessores",
+            joinColumns = @JoinColumn(name = "turma_id"),
+            inverseJoinColumns = @JoinColumn(name = "professor_id"))
+    private Set<Professor> coProfessores = new LinkedHashSet<>();
 
     @Column(name = "ativo")
     private Boolean ativo = true;
@@ -113,6 +128,27 @@ public class Turma {
 
     public void setProfessor(Professor professor) {
         this.professor = professor;
+    }
+
+    public Set<Professor> getCoProfessores() {
+        return coProfessores;
+    }
+
+    public void setCoProfessores(Set<Professor> coProfessores) {
+        this.coProfessores = coProfessores != null ? coProfessores : new LinkedHashSet<>();
+    }
+
+    /** Professor principal + co-professores, sem nulos e sem duplicados. */
+    @Transient
+    public List<Professor> getTodosProfessores() {
+        List<Professor> todos = new ArrayList<>();
+        if (professor != null) todos.add(professor);
+        if (coProfessores != null) {
+            for (Professor p : coProfessores) {
+                if (p != null && !todos.contains(p)) todos.add(p);
+            }
+        }
+        return todos;
     }
 
     public boolean isAtivo() {

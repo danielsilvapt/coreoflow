@@ -1,6 +1,5 @@
 package pt.studioflow.view;
 
-import java.io.ByteArrayInputStream;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -41,7 +40,6 @@ import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.StreamResource;
 
 import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.config.TenantContext;
@@ -49,6 +47,9 @@ import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Studio;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
+import pt.studioflow.service.R2StorageService;
+
+import java.time.Duration;
 
 @PageTitle("Controlo de Sócios | CoreoFlow")
 @Route(value = "socios", layout = MainLayout.class)
@@ -57,6 +58,7 @@ public class SocioView extends VerticalLayout {
 
     private final AlunoRepository alunoRepository;
     private final AlunoTurmaRepository alunoTurmaRepository;
+    private final R2StorageService storageService;
     private final Grid<Aluno> grid = new Grid<>(Aluno.class, false);
     private final AlunoForm socioForm;
     private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yy");
@@ -74,10 +76,12 @@ public class SocioView extends VerticalLayout {
     private final Span quotasPendentesLabel = new Span("0");
     private final Span alunosInativosMasSociosLabel = new Span("0");
 
-    public SocioView(AlunoRepository alunoRepository, AlunoTurmaRepository alunoTurmaRepository) {
+    public SocioView(AlunoRepository alunoRepository, AlunoTurmaRepository alunoTurmaRepository,
+            R2StorageService storageService) {
         this.alunoRepository = alunoRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
-        this.socioForm = new AlunoForm(alunoRepository, alunoTurmaRepository);
+        this.storageService = storageService;
+        this.socioForm = new AlunoForm(alunoRepository, alunoTurmaRepository, storageService);
         this.socioForm.setOnSaveCallback(this::updateList);
 
         setSizeFull();
@@ -182,10 +186,9 @@ public class SocioView extends VerticalLayout {
             row.setAlignItems(Alignment.CENTER);
 
             Image img;
-            if (socio.getFoto() != null && socio.getFoto().length > 0) {
-                StreamResource res = new StreamResource("foto_" + socio.getNumeroSocio() + ".png",
-                        () -> new ByteArrayInputStream(socio.getFoto()));
-                img = new Image(res, "Foto de " + socio.getNomeCompleto());
+            if (socio.getFotoChave() != null && !socio.getFotoChave().isBlank()) {
+                String url = storageService.gerarUrlTemporario(socio.getFotoChave(), Duration.ofHours(2));
+                img = new Image(url, "Foto de " + socio.getNomeCompleto());
             } else {
                 img = new Image("images/avatar-default.png", "Avatar padrão");
             }

@@ -28,7 +28,8 @@ public enum StudioModulo {
     LOJA("Loja / Merchandising"),
     SUBSIDIOS("Subsídios e Apoios"),
     REFERENCIAS("Referências"),
-    INQUERITOS("Inquéritos de Satisfação");
+    INQUERITOS("Inquéritos de Satisfação"),
+    VIDEOS_AULA("Vídeos das Aulas");
 
     private final String label;
 

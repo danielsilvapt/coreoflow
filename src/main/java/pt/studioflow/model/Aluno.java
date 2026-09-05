@@ -127,9 +127,9 @@ public class Aluno {
     @Column(name = "dados_validados")
     private Boolean dadosValidados = false;
 
-    @Lob
-    @Column(name = "foto", columnDefinition = "LONGBLOB")
-    private byte[] foto; // Foto do aluno em Base64 (armazenada como bytes)
+    /** Chave do objeto no bucket R2 (ver R2StorageService). Fotos deixaram de ser guardadas na BD. */
+    @Column(name = "foto_chave")
+    private String fotoChave;
 
     @OneToMany(mappedBy = "aluno", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Presenca> presencas;
@@ -356,12 +356,12 @@ public class Aluno {
         this.carimboDataHora = carimboDataHora;
     }
 
-    public byte[] getFoto() {
-        return foto;
+    public String getFotoChave() {
+        return fotoChave;
     }
 
-    public void setFoto(byte[] foto) {
-        this.foto = foto;
+    public void setFotoChave(String fotoChave) {
+        this.fotoChave = fotoChave;
     }
 
     public boolean isSocioAtivo() {

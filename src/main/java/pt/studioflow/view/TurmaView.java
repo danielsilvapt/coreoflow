@@ -97,7 +97,8 @@ public class TurmaView extends VerticalLayout {
             String q = e.getValue().toLowerCase();
             grid.setItems(getTurmasDoStudio().stream()
                     .filter(t -> t.getDescricao().toLowerCase().contains(q)
-                            || (t.getProfessor() != null && t.getProfessor().getNome().toLowerCase().contains(q))
+                            || t.getTodosProfessores().stream()
+                                    .anyMatch(p -> p.getNome() != null && p.getNome().toLowerCase().contains(q))
                             || (t.getCodigo() != null && t.getCodigo().toLowerCase().contains(q)))
                     .toList());
         });
@@ -153,13 +154,28 @@ public class TurmaView extends VerticalLayout {
         }).setHeader("Turma").setFlexGrow(2).setSortable(true).setComparator(Turma::getDescricao);
 
         grid.addComponentColumn(t -> {
-            if (t.getProfessor() == null)
+            if (t.getProfessor() == null && t.getCoProfessores().isEmpty())
                 return new Span("—");
-            Span s = new Span(t.getProfessor().getNome());
-            s.getStyle().set("background", "#ede7f6").set("color", "#6d1b7b")
-                    .set("padding", "3px 10px").set("border-radius", "12px").set("font-size", "0.85rem");
-            return s;
-        }).setHeader("Professor").setAutoWidth(true).setSortable(true);
+            com.vaadin.flow.component.orderedlayout.VerticalLayout vl =
+                    new com.vaadin.flow.component.orderedlayout.VerticalLayout();
+            vl.setPadding(false);
+            vl.setSpacing(false);
+            if (t.getProfessor() != null) {
+                Span s = new Span(t.getProfessor().getNome());
+                s.getStyle().set("background", "#ede7f6").set("color", "#6d1b7b")
+                        .set("padding", "3px 10px").set("border-radius", "12px").set("font-size", "0.85rem");
+                vl.add(s);
+            }
+            if (!t.getCoProfessores().isEmpty()) {
+                String extra = t.getCoProfessores().stream()
+                        .map(pt.studioflow.model.Professor::getNome)
+                        .collect(java.util.stream.Collectors.joining(", "));
+                Span co = new Span("+ " + extra);
+                co.getStyle().set("font-size", "0.75rem").set("color", "#888").set("margin-top", "2px");
+                vl.add(co);
+            }
+            return vl;
+        }).setHeader("Professor(es)").setAutoWidth(true).setSortable(true);
 
         grid.addComponentColumn(t -> {
             int n = alunoTurmaRepository.findByTurma(t).size();
