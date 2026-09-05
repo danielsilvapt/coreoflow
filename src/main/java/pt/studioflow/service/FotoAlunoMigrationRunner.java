@@ -4,6 +4,8 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Studio;
 import pt.studioflow.repository.AlunoRepository;
@@ -23,14 +25,11 @@ import java.util.UUID;
 public class FotoAlunoMigrationRunner implements ApplicationRunner {
 
     private final JdbcTemplate jdbcTemplate;
-    private final AlunoRepository alunoRepository;
-    private final R2StorageService storageService;
+    private final FotoAlunoMigrador migrador;
 
-    public FotoAlunoMigrationRunner(JdbcTemplate jdbcTemplate, AlunoRepository alunoRepository,
-            R2StorageService storageService) {
+    public FotoAlunoMigrationRunner(JdbcTemplate jdbcTemplate, FotoAlunoMigrador migrador) {
         this.jdbcTemplate = jdbcTemplate;
-        this.alunoRepository = alunoRepository;
-        this.storageService = storageService;
+        this.migrador = migrador;
     }
 
     @Override
@@ -50,25 +49,50 @@ public class FotoAlunoMigrationRunner implements ApplicationRunner {
         int migrados = 0;
         for (Long id : pendentes) {
             try {
-                byte[] bytes = jdbcTemplate.queryForObject("SELECT foto FROM aluno WHERE id = ?", byte[].class, id);
-                if (bytes == null || bytes.length == 0) continue;
-
-                Aluno aluno = alunoRepository.findById(id).orElse(null);
-                if (aluno == null) continue;
-
-                Studio studio = aluno.getStudio();
-                String chave = "alunos/" + (studio != null ? studio.getSlug() : "sem-estudio")
-                        + "/" + UUID.randomUUID() + ".jpg";
-                storageService.upload(chave, "image/jpeg", new ByteArrayInputStream(bytes), bytes.length);
-
-                aluno.setFotoChave(chave);
-                alunoRepository.save(aluno);
-                migrados++;
+                if (migrador.migrarAluno(id)) migrados++;
             } catch (Exception e) {
                 System.err.println("Migração de fotos: falhou para o aluno " + id + " — " + e.getMessage()
                         + " (tenta novamente no próximo arranque)");
             }
         }
         System.out.println("Migração de fotos: " + migrados + " de " + pendentes.size() + " concluída(s).");
+    }
+}
+
+/**
+ * Migra a foto de um aluno numa transação própria (sessão Hibernate aberta),
+ * para que {@code aluno.getStudio().getSlug()} — lazy — funcione, e para que
+ * cada aluno seja atómico (uma falha não afeta os outros).
+ */
+@Service
+class FotoAlunoMigrador {
+
+    private final JdbcTemplate jdbcTemplate;
+    private final AlunoRepository alunoRepository;
+    private final R2StorageService storageService;
+
+    FotoAlunoMigrador(JdbcTemplate jdbcTemplate, AlunoRepository alunoRepository, R2StorageService storageService) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.alunoRepository = alunoRepository;
+        this.storageService = storageService;
+    }
+
+    /** @return true se a foto foi migrada, false se não havia nada a fazer. */
+    @Transactional
+    public boolean migrarAluno(Long id) {
+        byte[] bytes = jdbcTemplate.queryForObject("SELECT foto FROM aluno WHERE id = ?", byte[].class, id);
+        if (bytes == null || bytes.length == 0) return false;
+
+        Aluno aluno = alunoRepository.findById(id).orElse(null);
+        if (aluno == null) return false;
+
+        Studio studio = aluno.getStudio();
+        String slug = studio != null && studio.getSlug() != null ? studio.getSlug() : "sem-estudio";
+        String chave = "alunos/" + slug + "/" + UUID.randomUUID() + ".jpg";
+        storageService.upload(chave, "image/jpeg", new ByteArrayInputStream(bytes), bytes.length);
+
+        aluno.setFotoChave(chave);
+        alunoRepository.save(aluno);
+        return true;
     }
 }
