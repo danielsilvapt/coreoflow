@@ -30,7 +30,10 @@ public class Turma {
      * de horas; os co-professores servem para dar acesso à turma (turmas de
      * competição costumam ter vários professores).
      */
-    @ManyToMany(fetch = FetchType.LAZY)
+    // EAGER: associação pequena (0-3 profs/turma) e as views do Vaadin não têm
+    // open-session-in-view — sem isto, getTodosProfessores() rebentava com
+    // LazyInitializationException na navegação.
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "turma_coprofessores",
             joinColumns = @JoinColumn(name = "turma_id"),
             inverseJoinColumns = @JoinColumn(name = "professor_id"))
