@@ -431,8 +431,10 @@ public class MainLayout extends AppLayout {
                                 tabs.add(criarTab("Aniversários", VaadinIcon.GIFT, "#E91E63", CRMView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.MENSALIDADES))
                                 tabs.add(criarTab("Mensalidades", VaadinIcon.WALLET, "#E74C3C", MensalidadeView.class, null));
-                        if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS))
+                        if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS)) {
                                 tabs.add(criarTab("Presenças", VaadinIcon.TASKS, "#2980B9", PresencasView.class, null));
+                                tabs.add(criarTab("Presenças do Dia", VaadinIcon.CALENDAR_USER, "#2980B9", PresencasDiaView.class, null));
+                        }
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.REGISTO_HORAS))
                                 tabs.add(criarTab("Registo de Horas", VaadinIcon.CLOCK, "#3F51B5", RegistoHorasView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.EVENTOS))
@@ -475,8 +477,10 @@ public class MainLayout extends AppLayout {
                 else if (isProf || isDelegado) {
                         tabs.add(criarHeaderMenu("Painel do Professor"));
                         if (isProf && !isDelegado) {
-                                if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS))
+                                if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS)) {
                                         tabs.add(criarTab("Presenças", VaadinIcon.CHECK_SQUARE, "#27AE60", PresencasView.class, null));
+                                        tabs.add(criarTab("Presenças do Dia", VaadinIcon.CALENDAR_USER, "#27AE60", PresencasDiaView.class, null));
+                                }
                                 if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.REGISTO_HORAS))
                                         tabs.add(criarTab("Registo de Horas", VaadinIcon.CLOCK, "#3F51B5", RegistoHorasView.class, null));
                         }
