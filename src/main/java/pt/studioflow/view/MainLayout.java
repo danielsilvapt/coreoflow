@@ -449,10 +449,8 @@ public class MainLayout extends AppLayout {
                                 tabs.add(criarTab("Aniversários", VaadinIcon.GIFT, "#E91E63", CRMView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.MENSALIDADES))
                                 tabs.add(criarTab("Mensalidades", VaadinIcon.WALLET, "#E74C3C", MensalidadeView.class, null));
-                        if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS)) {
+                        if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS))
                                 tabs.add(criarTab("Presenças", VaadinIcon.TASKS, "#2980B9", PresencasView.class, null));
-                                tabs.add(criarTab("Presenças do Dia", VaadinIcon.CALENDAR_USER, "#2980B9", PresencasDiaView.class, null));
-                        }
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.REGISTO_HORAS))
                                 tabs.add(criarTab("Registo de Horas", VaadinIcon.CLOCK, "#3F51B5", RegistoHorasView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.EVENTOS))
@@ -469,6 +467,7 @@ public class MainLayout extends AppLayout {
                                 tabs.add(criarTab("Contratos", VaadinIcon.FILE_TEXT, "#607D8B", ContratosView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PLANO_AULAS))
                                 tabs.add(criarTab("Plano de Aulas", VaadinIcon.CALENDAR, "#00897B", PlanoAulasView.class, null));
+                        tabs.add(criarTab("Horário", VaadinIcon.CALENDAR_CLOCK, "#0e7490", HorarioView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.VIDEOS_AULA))
                                 tabs.add(criarTab("Vídeos das Aulas", VaadinIcon.PLAY_CIRCLE, "#D32F2F", VideosAulaProfessorView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.LOJA))
@@ -496,10 +495,8 @@ public class MainLayout extends AppLayout {
                 else if (isProf || isDelegado) {
                         tabs.add(criarHeaderMenu("Painel do Professor"));
                         if (isProf && !isDelegado) {
-                                if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS)) {
+                                if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS))
                                         tabs.add(criarTab("Presenças", VaadinIcon.CHECK_SQUARE, "#27AE60", PresencasView.class, null));
-                                        tabs.add(criarTab("Presenças do Dia", VaadinIcon.CALENDAR_USER, "#27AE60", PresencasDiaView.class, null));
-                                }
                                 if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.REGISTO_HORAS))
                                         tabs.add(criarTab("Registo de Horas", VaadinIcon.CLOCK, "#3F51B5", RegistoHorasView.class, null));
                         }
@@ -574,7 +571,22 @@ public class MainLayout extends AppLayout {
                         .set("width", "100%")
                         .set("background", "rgba(255,255,255,0.95)");
 
-                drawerContent.add(scroller, brandingFooter);
+                // Terminar sessão — sempre visível no fundo do drawer (no telemóvel
+                // o menu de utilizador no topo pode não caber).
+                Button btnLogoutDrawer = new Button("Terminar Sessão", VaadinIcon.POWER_OFF.create(),
+                                e -> performLogout());
+                btnLogoutDrawer.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+                btnLogoutDrawer.setWidthFull();
+                btnLogoutDrawer.getStyle()
+                                .set("justify-content", "flex-start")
+                                .set("color", "#c0392b")
+                                .set("font-weight", "600")
+                                .set("padding", "10px 16px");
+                com.vaadin.flow.component.html.Div logoutWrap = new com.vaadin.flow.component.html.Div(btnLogoutDrawer);
+                logoutWrap.getStyle().set("border-top", "1px solid #e0e0e0").set("padding", "4px 6px")
+                                .set("background", "rgba(255,255,255,0.95)");
+
+                drawerContent.add(scroller, logoutWrap, brandingFooter);
                 addToDrawer(drawerContent);
         }
 

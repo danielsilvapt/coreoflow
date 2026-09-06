@@ -23,13 +23,16 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dependency.JavaScript;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -55,7 +58,10 @@ import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.repository.UserRepository;
 import pt.studioflow.service.EmailService;
 import pt.studioflow.service.PdfService;
+import pt.studioflow.service.R2StorageService;
 import pt.studioflow.service.TurmaService;
+
+import java.time.Duration;
 import pt.studioflow.view.PresencasView.AlunoPresenca;
 
 @Route(value = "presencas", layout = MainLayout.class)
@@ -71,6 +77,7 @@ public class PresencasView extends VerticalLayout {
     private final AlunoTurmaRepository alunoTurmaRepository;
     private final UserRepository userRepository;
     private final PdfService pdfService;
+    private final R2StorageService storageService;
 
     private final EmailService mailService;
 
@@ -81,6 +88,16 @@ public class PresencasView extends VerticalLayout {
     private YearMonth mesSelecionado;
     private final Map<Long, Map<LocalDate, Boolean>> presencasCache = new HashMap<>();
     private Div chartContainer;
+
+    // Modo "Marcar por dia": para uma turma específica, marca-se a presença de
+    // um dia concreto vendo a cara dos alunos em cards (como no menu Comunicação).
+    private DatePicker diaPicker;
+    private Button btnVistaCards;
+    private Div cardsDiaContainer;
+    private Span contadorDia;
+    private boolean modoCardsDia = false;
+    private final Map<Long, Boolean> estadoDia = new HashMap<>();
+    private int totalAlunosDia = 0;
 
     // Modo "Todos": galeria de cards com o gráfico de presenças do mês
     // escolhido de cada turma, mais um painel de contagens. É o ecrã que
@@ -104,7 +121,8 @@ public class PresencasView extends VerticalLayout {
             AlunoTurmaRepository alunoTurmaRepository,
             UserRepository userRepository,
             PdfService pdfService,
-            EmailService mailService) {
+            EmailService mailService,
+            R2StorageService storageService) {
         this.turmaRepository = turmaRepository;
         this.presencaRepository = presencaRepository;
         this.turmaService = turmaService;
@@ -113,6 +131,7 @@ public class PresencasView extends VerticalLayout {
         this.userRepository = userRepository;
         this.pdfService = pdfService;
         this.mailService = mailService;
+        this.storageService = storageService;
 
         // Alterado para permitir scroll infinito na página
         setSizeFull();
@@ -168,7 +187,18 @@ public class PresencasView extends VerticalLayout {
         btnGuardar = new Button("Guardar", VaadinIcon.DATABASE.create(), e -> guardarPresencas());
         btnGuardar.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
 
-        toolbar.add(turmaCombo, mesCombo, btnExperimental, btnGuardar);
+        diaPicker = new DatePicker("Dia");
+        diaPicker.setWidth("170px");
+        diaPicker.setVisible(false);
+
+        btnVistaCards = new Button("Marcar por dia", VaadinIcon.GRID_BIG.create(), e -> {
+            modoCardsDia = !modoCardsDia;
+            aplicarVistaTurma();
+        });
+        btnVistaCards.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+        btnVistaCards.setVisible(false);
+
+        toolbar.add(turmaCombo, mesCombo, diaPicker, btnVistaCards, btnExperimental, btnGuardar);
 
         grid.addThemeVariants(GridVariant.LUMO_COLUMN_BORDERS, GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_COMPACT);
         // Ajustado para scroll infinito (a grid cresce com os dados)
@@ -198,7 +228,20 @@ public class PresencasView extends VerticalLayout {
                 .set("width", "100%")
                 .set("margin-top", "10px");
 
-        add(title, toolbar, grid, chartContainer, statsContainer, cardsContainer);
+        contadorDia = new Span();
+        contadorDia.getStyle().set("font-weight", "700").set("color", "#16a085").set("margin", "4px 0 10px");
+        contadorDia.setVisible(false);
+
+        cardsDiaContainer = new Div();
+        cardsDiaContainer.setId("cards-dia-container");
+        cardsDiaContainer.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "repeat(auto-fill, minmax(180px, 1fr))")
+                .set("gap", "20px")
+                .set("width", "100%");
+        cardsDiaContainer.setVisible(false);
+
+        add(title, toolbar, grid, chartContainer, statsContainer, cardsContainer, contadorDia, cardsDiaContainer);
     }
 
     private void abrirDialogExperimental() {
@@ -332,6 +375,7 @@ public class PresencasView extends VerticalLayout {
         carregarPresencasCache();
         atualizarColunasGrid();
         atualizarGrafico();
+        aplicarVistaTurma();
     }
 
     private void entrarModoTurma() {
@@ -340,19 +384,181 @@ public class PresencasView extends VerticalLayout {
         mesCombo.setVisible(true);
         btnExperimental.setVisible(true);
         btnGuardar.setVisible(true);
+        btnVistaCards.setVisible(true);
         statsContainer.setVisible(false);
         cardsContainer.setVisible(false);
     }
 
     private void entrarModoTodos() {
+        modoCardsDia = false;
         grid.setVisible(false);
         chartContainer.setVisible(false);
         mesCombo.setVisible(true); // no modo "Todos" continua a ser possível escolher o mês
         btnExperimental.setVisible(false);
         btnGuardar.setVisible(false);
+        btnVistaCards.setVisible(false);
+        diaPicker.setVisible(false);
+        contadorDia.setVisible(false);
+        cardsDiaContainer.setVisible(false);
         statsContainer.setVisible(true);
         cardsContainer.setVisible(true);
         renderCardsTodasTurmas();
+    }
+
+    /**
+     * Alterna, para uma turma específica, entre a grelha mensal e a vista de
+     * "cards do dia" (marcar presenças de um dia concreto vendo a foto de cada
+     * aluno, à semelhança do menu Comunicação).
+     */
+    private void aplicarVistaTurma() {
+        boolean cards = modoCardsDia;
+        grid.setVisible(!cards);
+        chartContainer.setVisible(!cards);
+        mesCombo.setVisible(!cards);
+        diaPicker.setVisible(cards);
+        contadorDia.setVisible(cards);
+        cardsDiaContainer.setVisible(cards);
+        btnVistaCards.setText(cards ? "Ver grelha mensal" : "Marcar por dia");
+        btnVistaCards.setIcon((cards ? VaadinIcon.TABLE : VaadinIcon.GRID_BIG).create());
+        if (cards) {
+            if (diaPicker.getValue() == null) {
+                diaPicker.setValue(diaAulaMaisRecente());
+            }
+            renderCardsDia();
+        }
+    }
+
+    /** Dia mais recente (&le; hoje) em que a turma tem aula; hoje se não houver. */
+    private LocalDate diaAulaMaisRecente() {
+        if (turmaSelecionada == null)
+            return LocalDate.now();
+        Set<DayOfWeek> dias = turmaSelecionada.getAulas().stream()
+                .map(Aula::getDia).collect(Collectors.toSet());
+        LocalDate hoje = LocalDate.now();
+        for (int i = 0; i < 7; i++) {
+            LocalDate d = hoje.minusDays(i);
+            if (dias.isEmpty() || dias.contains(d.getDayOfWeek()))
+                return d;
+        }
+        return hoje;
+    }
+
+    private void renderCardsDia() {
+        cardsDiaContainer.removeAll();
+        estadoDia.clear();
+        totalAlunosDia = 0;
+        if (turmaSelecionada == null || diaPicker.getValue() == null) {
+            atualizarContadorDia();
+            return;
+        }
+        LocalDate dia = diaPicker.getValue();
+
+        Map<Long, Boolean> existentes = new HashMap<>();
+        presencaRepository.findByTurmaAndDataBetween(turmaSelecionada, dia, dia)
+                .forEach(p -> existentes.put(p.getAluno().getId(), p.isPresente()));
+
+        List<Aluno> alunos = turmaService.getAlunosDaTurma(turmaSelecionada).stream()
+                .sorted(Comparator.comparing(Aluno::getNomeCompleto, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+
+        if (alunos.isEmpty()) {
+            Span vazio = new Span("Esta turma não tem alunos.");
+            vazio.getStyle().set("color", "#888");
+            cardsDiaContainer.add(vazio);
+        }
+
+        for (Aluno aluno : alunos) {
+            estadoDia.put(aluno.getId(), existentes.getOrDefault(aluno.getId(), false));
+            cardsDiaContainer.add(criarCardAlunoDia(aluno));
+        }
+        totalAlunosDia = alunos.size();
+        atualizarContadorDia();
+    }
+
+    private Div criarCardAlunoDia(Aluno aluno) {
+        Div card = new Div();
+        card.getStyle()
+                .set("display", "flex").set("flex-direction", "column").set("align-items", "center")
+                .set("gap", "8px").set("padding", "14px").set("border-radius", "12px")
+                .set("box-shadow", "0 2px 5px rgba(0,0,0,0.1)").set("cursor", "pointer").set("user-select", "none");
+
+        Div avatar = new Div();
+        avatar.getStyle()
+                .set("width", "80px").set("height", "80px").set("border-radius", "50%").set("overflow", "hidden")
+                .set("display", "flex").set("align-items", "center").set("justify-content", "center")
+                .set("background", "#eee");
+        if (aluno.getFotoChave() != null && !aluno.getFotoChave().isBlank()) {
+            Image image = new Image(storageService.gerarUrlTemporario(aluno.getFotoChave(), Duration.ofHours(2)),
+                    "Foto de " + aluno.getNomeCompleto());
+            image.getStyle().set("width", "80px").set("height", "80px").set("object-fit", "cover")
+                    .set("border-radius", "50%");
+            avatar.add(image);
+        } else {
+            Icon defaultIcon = new Icon(VaadinIcon.USER);
+            defaultIcon.getStyle().set("font-size", "40px").set("color", "#666");
+            avatar.add(defaultIcon);
+        }
+
+        Span nome = new Span(formatarNomeCurto(aluno.getNomeCompleto()));
+        nome.getStyle().set("font-size", "0.9em").set("text-align", "center");
+        if (aluno.getStatus() == AlunoStatus.EXPERIMENTAL) {
+            nome.getStyle().set("color", "#FF8C00");
+            nome.setText(nome.getText() + " (Exp.)");
+        }
+
+        Span estado = new Span();
+        estado.getStyle().set("font-size", "0.8em").set("font-weight", "700");
+
+        Runnable aplicar = () -> {
+            boolean presente = estadoDia.getOrDefault(aluno.getId(), false);
+            if (presente) {
+                card.getStyle().set("border", "2px solid #2ecc71").set("background", "#ebfaf0");
+                estado.setText("✓ Presente");
+                estado.getStyle().set("color", "#27ae60");
+            } else {
+                card.getStyle().set("border", "1px solid #e0e0e0").set("background", "#f9f9f9");
+                estado.setText("Ausente");
+                estado.getStyle().set("color", "#c0392b");
+            }
+        };
+        aplicar.run();
+
+        card.addClickListener(e -> {
+            estadoDia.put(aluno.getId(), !estadoDia.getOrDefault(aluno.getId(), false));
+            aplicar.run();
+            atualizarContadorDia();
+        });
+
+        card.add(avatar, nome, estado);
+        return card;
+    }
+
+    private void atualizarContadorDia() {
+        long presentes = estadoDia.values().stream().filter(Boolean::booleanValue).count();
+        contadorDia.setText(presentes + " / " + totalAlunosDia + " presentes");
+    }
+
+    private void guardarPresencasDia() {
+        LocalDate dia = diaPicker.getValue();
+        if (dia == null) {
+            Notification.show("Escolha o dia primeiro.").addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+        Map<Long, Aluno> porId = turmaService.getAlunosDaTurma(turmaSelecionada).stream()
+                .collect(Collectors.toMap(Aluno::getId, a -> a, (a, b) -> a));
+        estadoDia.forEach((alunoId, presente) -> {
+            Aluno aluno = porId.get(alunoId);
+            if (aluno == null)
+                return;
+            Presenca p = presencaRepository.findByAlunoAndTurmaAndData(aluno, turmaSelecionada, dia)
+                    .orElseGet(Presenca::new);
+            p.setAluno(aluno);
+            p.setTurma(turmaSelecionada);
+            p.setData(dia);
+            p.setPresente(presente);
+            presencaRepository.save(p);
+        });
+        Notification.show("Presenças do dia guardadas!").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     private Div criarStatCard(String label, String valor, String cor) {
@@ -479,6 +685,10 @@ public class PresencasView extends VerticalLayout {
     private void guardarPresencas() {
         if (turmaSelecionada == null)
             return;
+        if (modoCardsDia) {
+            guardarPresencasDia();
+            return;
+        }
         grid.getListDataView().getItems().forEach(ap -> {
             ap.getPresencas().forEach((data, presente) -> {
                 Presenca p = presencaRepository.findByAlunoAndTurmaAndData(ap.getAluno(), turmaSelecionada, data)
@@ -561,6 +771,10 @@ public class PresencasView extends VerticalLayout {
     private void configurarEventos() {
         turmaCombo.addValueChangeListener(e -> carregarTudo());
         mesCombo.addValueChangeListener(e -> carregarTudo());
+        diaPicker.addValueChangeListener(e -> {
+            if (modoCardsDia)
+                renderCardsDia();
+        });
     }
 
     @Override
