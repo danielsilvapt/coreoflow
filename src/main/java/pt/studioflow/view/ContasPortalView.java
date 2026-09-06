@@ -51,11 +51,11 @@ public class ContasPortalView extends VerticalLayout {
     private final TextField filtro = new TextField();
 
     public ContasPortalView(AlunoRepository alunoRepository, ContaPortalRepository contaPortalRepository,
-            EmailService emailService, @Value("${app.base-url}") String baseUrl) {
+            EmailService emailService, @Value("${app.base-url:https://app.coreoflow.me}") String baseUrl) {
         this.alunoRepository = alunoRepository;
         this.contaPortalRepository = contaPortalRepository;
         this.emailService = emailService;
-        this.baseUrl = baseUrl;
+        this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
 
         setSizeFull();
         setPadding(true);
