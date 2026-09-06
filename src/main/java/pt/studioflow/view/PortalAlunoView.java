@@ -206,19 +206,25 @@ public class PortalAlunoView extends VerticalLayout {
         VerticalLayout content = new VerticalLayout();
         content.setPadding(false);
         videos.forEach(v -> {
-            Button ver = new Button(v.getNomeFicheiro(), VaadinIcon.PLAY_CIRCLE.create(), e -> {
-                String url = storageService.gerarUrlTemporario(v.getChaveArmazenamento(), java.time.Duration.ofHours(2));
-                getUI().ifPresent(ui -> ui.getPage().open(url, "_blank"));
-            });
-            ver.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-            ver.setWidthFull();
+            // Anchor (não Page.open()) — o popup-blocker bloqueia janelas abertas
+            // após um round-trip do servidor.
+            Button verBtn = new Button(v.getNomeFicheiro(), VaadinIcon.PLAY_CIRCLE.create());
+            verBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+            verBtn.setWidthFull();
+            com.vaadin.flow.component.html.Anchor ver = new com.vaadin.flow.component.html.Anchor(
+                    storageService.gerarUrlTemporario(v.getChaveArmazenamento(), java.time.Duration.ofHours(2)), verBtn);
+            ver.setTarget("_blank");
+            ver.setRouterIgnore(true);
+            ver.getStyle().set("flex-grow", "1").set("text-decoration", "none");
 
-            Button descarregar = new Button(VaadinIcon.DOWNLOAD_ALT.create(), e -> {
-                String url = storageService.gerarUrlDownload(v.getChaveArmazenamento(), v.getNomeFicheiro(),
-                        java.time.Duration.ofHours(2));
-                getUI().ifPresent(ui -> ui.getPage().open(url, "_blank"));
-            });
-            descarregar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ICON);
+            Button descarregarBtn = new Button(VaadinIcon.DOWNLOAD_ALT.create());
+            descarregarBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ICON);
+            com.vaadin.flow.component.html.Anchor descarregar = new com.vaadin.flow.component.html.Anchor(
+                    storageService.gerarUrlDownload(v.getChaveArmazenamento(), v.getNomeFicheiro(),
+                            java.time.Duration.ofHours(2)),
+                    descarregarBtn);
+            descarregar.getElement().setAttribute("download", true);
+            descarregar.getStyle().set("text-decoration", "none");
 
             HorizontalLayout linha = new HorizontalLayout(ver, descarregar);
             linha.setWidthFull();
