@@ -172,7 +172,9 @@ public class UserView extends VerticalLayout {
         if (!novo) password.setPlaceholder("(Deixar em branco para manter)");
 
         ComboBox<String> role = new ComboBox<>("Perfil");
-        role.setItems("ADMIN", "PROF", "ALUNO", "DELEG");
+        // ALUNO deixou de ser um utilizador: o acesso de alunos/encarregados é
+        // por email via ContaPortal (ver "Acessos ao Portal").
+        role.setItems("ADMIN", "PROF", "DELEG");
         role.setRequired(true);
         role.setWidthFull();
         role.setValue(utilizador.getRole());

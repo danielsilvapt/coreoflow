@@ -392,6 +392,34 @@ public class EmailService {
                 }
         }
 
+        /**
+         * Convite para o portal do aluno/encarregado: link onde o destinatário
+         * define a sua password. Usado tanto no primeiro acesso como na
+         * reposição de password.
+         */
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
+        public void enviarConvitePortal(String email, String nomeEstudio, String linkAtivacao) {
+                if (email == null || email.isBlank()) return;
+                try {
+                        SimpleMailMessage mensagem = new SimpleMailMessage();
+                        mensagem.setTo(email);
+                        mensagem.setSubject("Acesso ao portal — " + nomeEstudio);
+                        mensagem.setText(
+                                        "Olá,\n\n" +
+                                        "Foi criado um acesso ao portal do " + nomeEstudio + " para o email " + email + ".\n" +
+                                        "No portal pode acompanhar presenças, mensalidades, avaliações, contratos e os " +
+                                        "vídeos das aulas dos seus educandos.\n\n" +
+                                        "Para definir a sua palavra-passe, abra este link (válido por 7 dias):\n" +
+                                        linkAtivacao + "\n\n" +
+                                        "Depois entra em app.coreoflow.me com o seu email e a palavra-passe que definir.\n\n" +
+                                        "Se não esperava este email, pode ignorá-lo.\n\n" +
+                                        "CoreoFlow");
+                        mailSender.send(mensagem);
+                } catch (Exception ex) {
+                        System.err.println("Falha ao enviar convite do portal para " + email + ": " + ex.getMessage());
+                }
+        }
+
         /** Email enviado ao aluno quando a renovação de matrícula é aprovada na validação. */
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailAprovacaoRenovacao(Aluno aluno) {

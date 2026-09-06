@@ -12,6 +12,7 @@ import java.util.List;
 public interface VideoAulaRepository extends JpaRepository<VideoAula, Long> {
     List<VideoAula> findByTurmaAndDataOrderByDataUploadDesc(Turma turma, LocalDate data);
     List<VideoAula> findByTurmaInAndDataInOrderByDataUploadDesc(Collection<Turma> turmas, Collection<LocalDate> datas);
+    List<VideoAula> findByTurmaInOrderByDataUploadDesc(Collection<Turma> turmas);
     List<VideoAula> findByStudioOrderByDataUploadDesc(Studio studio);
     List<VideoAula> findByDataBefore(LocalDate data);
     void deleteByTurma(Turma turma);
