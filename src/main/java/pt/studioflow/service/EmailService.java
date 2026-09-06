@@ -257,6 +257,7 @@ public class EmailService {
                         MimeMessage message = mailSender.createMimeMessage();
                         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
+                        helper.setFrom(mailFrom, "CoreoFlow");
                         helper.setTo(professor.getEmail());
                         helper.setSubject("Confirmação de Presença: " + aluno.getNomeCompleto());
 
@@ -290,6 +291,7 @@ public class EmailService {
         public void enviarEmailNotificacao(Aluno aluno) {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
+                        mensagem.setFrom(mailFrom);
                         mensagem.setTo(mailFrom);
                         mensagem.setSubject("Nova Inscrição Pendente: " + aluno.getNomeCompleto());
 
@@ -322,6 +324,7 @@ public class EmailService {
         public void enviarEmailNotificacaoRenovacao(Aluno aluno) {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
+                        mensagem.setFrom(mailFrom);
                         mensagem.setTo(mailFrom);
                         mensagem.setSubject("Pedido de Renovação de Matrícula: " + aluno.getNomeCompleto());
 
@@ -352,6 +355,7 @@ public class EmailService {
                 if (aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
+                        mensagem.setFrom(mailFrom);
                         mensagem.setTo(aluno.getEmail());
                         mensagem.setSubject("Recebemos o teu pedido — " + nomeEstudio);
 
@@ -380,6 +384,7 @@ public class EmailService {
                 if (email == null || email.isBlank()) return;
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
+                        mensagem.setFrom(mailFrom);
                         mensagem.setTo(email);
                         mensagem.setSubject("Acesso ao portal — " + nomeEstudio);
                         mensagem.setText(
@@ -393,6 +398,7 @@ public class EmailService {
                                         "Se não esperava este email, pode ignorá-lo.\n\n" +
                                         "CoreoFlow");
                         mailSender.send(mensagem);
+                        System.out.println("Convite do portal enviado para " + email + " (from=" + mailFrom + ")");
                 } catch (Exception ex) {
                         System.err.println("Falha ao enviar convite do portal para " + email + ": " + ex.getMessage());
                 }
@@ -404,6 +410,7 @@ public class EmailService {
                 if (aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
+                        mensagem.setFrom(mailFrom);
                         mensagem.setTo(aluno.getEmail());
                         mensagem.setSubject("Renovação de matrícula confirmada");
 
@@ -427,6 +434,7 @@ public class EmailService {
         public void enviarEmailNotificacaoExperimental(Aluno aluno, Turma turma) {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
+                        mensagem.setFrom(mailFrom);
                         mensagem.setTo(mailFrom);
                         mensagem.setSubject("Novo Aluno Experimental: " + aluno.getNomeCompleto());
 
@@ -460,6 +468,7 @@ public class EmailService {
                         String corpo) {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
+                        mensagem.setFrom(mailFrom);
                         mensagem.setTo(emailDestinatario);
                         mensagem.setSubject(assunto);
 
