@@ -367,7 +367,7 @@ public class PlaneamentoAulasView extends VerticalLayout {
             try {
                 String assunto = "Sumário da aula — " + l.turma().getDescricao() + " ("
                         + DataUtil.formatar(l.data()) + ")";
-                emailService.enviarEmailParaLista(l.turma().getProfessor(), emails, assunto, sumarioTxt);
+                emailService.enviarEmailParaLista(TenantContext.getCurrentStudio(), l.turma().getProfessor(), emails, assunto, sumarioTxt);
                 s.setEnviado(true);
                 s.setDataEnvio(LocalDateTime.now());
                 Notification.show("Sumário enviado a " + emails.size() + " aluno(s).")

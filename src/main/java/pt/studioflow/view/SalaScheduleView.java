@@ -352,6 +352,7 @@ public class SalaScheduleView extends VerticalLayout {
                         .filter(prof -> prof.getNome().equals(p.getProfessor()))
                         .findFirst()
                         .ifPresent(prof -> emailService.enviarEmailAprovacaoSala(
+                                TenantContext.getCurrentStudio(),
                                 prof.getEmail(), prof.getNome(), p.getSala().getNome(),
                                 pt.studioflow.util.DataUtil.formatar(p.getData()), p.getHoraInicio().toString(), p.getHoraFim().toString()));
                 atualizarTudo();
@@ -367,6 +368,7 @@ public class SalaScheduleView extends VerticalLayout {
                         .filter(prof -> prof.getNome().equals(p.getProfessor()))
                         .findFirst()
                         .ifPresent(prof -> emailService.enviarEmailRecusaSala(
+                                TenantContext.getCurrentStudio(),
                                 prof.getEmail(), prof.getNome(), p.getSala().getNome(),
                                 pt.studioflow.util.DataUtil.formatar(p.getData()), p.getHoraInicio().toString(), p.getHoraFim().toString()));
                 atualizarTudo();
@@ -858,7 +860,7 @@ public class SalaScheduleView extends VerticalLayout {
             }
             try {
                 String assunto = "Sumário da aula — " + turma.getDescricao() + " (" + DataUtil.formatar(data) + ")";
-                emailService.enviarEmailParaLista(turma.getProfessor(), emails, assunto, sumarioTxt);
+                emailService.enviarEmailParaLista(TenantContext.getCurrentStudio(), turma.getProfessor(), emails, assunto, sumarioTxt);
                 s.setEnviado(true);
                 s.setDataEnvio(LocalDateTime.now());
                 Notification.show("Sumário enviado a " + emails.size() + " aluno(s).")
@@ -1108,6 +1110,7 @@ public class SalaScheduleView extends VerticalLayout {
 
             try {
                 emailService.notificarAdminNovoPedido(
+                        TenantContext.getCurrentStudio(),
                         m.getProfessor(), m.getTipo(), m.getTurma() != null ? m.getTurma().getDescricao() : "",
                         m.getSala().getNome(), pt.studioflow.util.DataUtil.formatar(m.getData()),
                         m.getHoraInicio().toString(), m.getHoraFim().toString(),
@@ -1563,6 +1566,7 @@ public class SalaScheduleView extends VerticalLayout {
 
             try {
                 emailService.notificarAdminNovoPedido(
+                        TenantContext.getCurrentStudio(),
                         m.getProfessor(), m.getTipo(), m.getTurma() != null ? m.getTurma().getDescricao() : "",
                         m.getSala().getNome(), pt.studioflow.util.DataUtil.formatar(m.getData()),
                         m.getHoraInicio().toString(), m.getHoraFim().toString(),

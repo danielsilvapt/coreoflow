@@ -161,7 +161,7 @@ public class CampanhasView extends VerticalLayout {
                     .collect(Collectors.toList());
             if (!emails.isEmpty()) {
                 try {
-                    emailService.enviarEmailParaLista(null, emails, c.getTitulo(), c.getMensagem());
+                    emailService.enviarEmailParaLista(TenantContext.getCurrentStudio(), null, emails, c.getTitulo(), c.getMensagem());
                     enviados = emails.size();
                 } catch (Exception ex) {
                     Notification.show("Erro ao enviar email: " + ex.getMessage())

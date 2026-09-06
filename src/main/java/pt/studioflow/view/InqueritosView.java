@@ -178,7 +178,7 @@ public class InqueritosView extends VerticalLayout {
                             + inquerito.getTitulo() + ":\n\n"
                             + "<a href='" + link + "'>" + link + "</a>\n\n"
                             + "Obrigado pela sua participação!\n";
-                    emailService.enviarEmailParaLista(null, emails, inquerito.getTitulo(), corpo);
+                    emailService.enviarEmailParaLista(studio, null, emails, inquerito.getTitulo(), corpo);
                 } catch (Exception ex) {
                     Notification.show("Erro ao enviar emails: " + ex.getMessage())
                             .addThemeVariants(NotificationVariant.LUMO_WARNING);

@@ -1,7 +1,6 @@
 package pt.studioflow.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -14,6 +13,7 @@ import pt.studioflow.config.AsyncEmailConfig;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Convite;
 import pt.studioflow.model.Professor;
+import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
 
 import java.util.ArrayList;
@@ -29,11 +29,17 @@ public class EmailService {
     @org.springframework.beans.factory.annotation.Value("${app.mail.from:${spring.mail.username}}")
     private String mailFrom;
 
+    @org.springframework.beans.factory.annotation.Value("${app.base-url:https://app.coreoflow.me}")
+    private String baseUrl;
+
         @Autowired
         private JavaMailSender mailSender;
 
-        public void enviarEmailParaLista(Professor professorCorrespondente, List<String> destinatarios, String assunto,
-                        String corpoMensagem)
+        @Autowired
+        private EmailAssinatura assinatura;
+
+        public void enviarEmailParaLista(Studio studio, Professor professorCorrespondente, List<String> destinatarios,
+                        String assunto, String corpoMensagem)
                         throws Exception {
                 MimeMessage mimeMessage = mailSender.createMimeMessage();
                 // Usamos o Helper para permitir HTML (assinatura com negrito, links, etc)
@@ -56,28 +62,17 @@ public class EmailService {
                 helper.setReplyTo(mailFrom);
                 helper.setSubject(assunto);
 
-                // Montagem do HTML com a Assinatura
-                String assinaturaHtml = "<br><br>" +
-                                "--<br>" +
-                                "<img src='cid:logoAssinatura' style='width: 500px; height: auto;'><br>";
-
-                // Junta a mensagem escrita no portal com a assinatura
-                // O replace("\n", "<br>") serve para manter as quebras de linha que o professor
-                // fizer
-
-                String conteudoCompleto = corpoMensagem.replace("\n", "<br>") + assinaturaHtml;
-
+                // Junta a mensagem escrita no portal (mantendo as quebras de linha) com a
+                // assinatura comum da plataforma.
+                String conteudoCompleto = corpoMensagem.replace("\n", "<br>") + assinatura.html(studio);
                 helper.setText(conteudoCompleto, true); // O 'true' indica que é HTML
-
-                ClassPathResource res = new ClassPathResource("static/images/assinatura_studio.png");
-                helper.addInline("logoAssinatura", res);
 
                 mailSender.send(mimeMessage);
         }
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
-        public void enviarEmailAprovacaoSala(String destinatario, String nomeProfessor, String sala, String data,
-                        String horaInicio, String horaFim) {
+        public void enviarEmailAprovacaoSala(Studio studio, String destinatario, String nomeProfessor, String sala,
+                        String data, String horaInicio, String horaFim) {
                 try {
                         MimeMessage mimeMessage = mailSender.createMimeMessage();
                         MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -102,11 +97,7 @@ public class EmailService {
                                                         "</div>",
                                         nomeProfessor, sala, data, horaInicio, horaFim);
 
-                        String assinaturaHtml = "<br><br>--<br><img src='cid:logoAssinatura' style='width: 500px; height: auto;'><br>";
-                        helper.setText(corpoMensagem + assinaturaHtml, true);
-
-                        ClassPathResource res = new ClassPathResource("static/images/assinatura_studio.png");
-                        helper.addInline("logoAssinatura", res);
+                        helper.setText(corpoMensagem + assinatura.html(studio), true);
 
                         mailSender.send(mimeMessage);
 
@@ -121,8 +112,8 @@ public class EmailService {
         }
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
-        public void notificarAdminNovoPedido(String nomeProfessor, String tipo, String turma, String sala, String data,
-                        String horaInicio, String horaFim, String observacoes) {
+        public void notificarAdminNovoPedido(Studio studio, String nomeProfessor, String tipo, String turma, String sala,
+                        String data, String horaInicio, String horaFim, String observacoes) {
                 try {
                         MimeMessage mimeMessage = mailSender.createMimeMessage();
                         MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -149,7 +140,7 @@ public class EmailService {
                                                         "</ul>" +
 
                                                         "<p style='margin-top: 20px;'>" +
-                                                        "  <a href='https://app.coreoflow.app/horario-salas' " +
+                                                        "  <a href='" + baseUrl + "/horario-salas' " +
                                                         "  style='background-color: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block;'>"
                                                         +
                                                         "  Abrir Aplicação para Aprovar</a>" +
@@ -157,11 +148,7 @@ public class EmailService {
                                                         "</div>",
                                         nomeProfessor, tipo, turma, sala, data, horaInicio, horaFim, observacoes);
 
-                        String assinaturaHtml = "<br><br>--<br><img src='cid:logoAssinatura' style='width: 500px; height: auto;'><br>";
-                        helper.setText(corpoMensagem + assinaturaHtml, true);
-
-                        ClassPathResource res = new ClassPathResource("static/images/assinatura_studio.png");
-                        helper.addInline("logoAssinatura", res);
+                        helper.setText(corpoMensagem + assinatura.html(studio), true);
 
                         mailSender.send(mimeMessage);
 
@@ -173,8 +160,8 @@ public class EmailService {
         }
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
-        public void enviarEmailRecusaSala(String destinatario, String nomeProfessor, String sala, String data,
-                        String horaInicio, String horaFim) {
+        public void enviarEmailRecusaSala(Studio studio, String destinatario, String nomeProfessor, String sala,
+                        String data, String horaInicio, String horaFim) {
                 try {
                         MimeMessage mimeMessage = mailSender.createMimeMessage();
                         MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -202,11 +189,7 @@ public class EmailService {
                                                         "</div>",
                                         nomeProfessor, sala, data, horaInicio, horaFim);
 
-                        String assinaturaHtml = "<br><br>--<br><img src='cid:logoAssinatura' style='width: 500px; height: auto;'><br>";
-                        helper.setText(corpoMensagem + assinaturaHtml, true);
-
-                        ClassPathResource res = new ClassPathResource("static/images/assinatura_studio.png");
-                        helper.addInline("logoAssinatura", res);
+                        helper.setText(corpoMensagem + assinatura.html(studio), true);
 
                         mailSender.send(mimeMessage);
 
@@ -220,7 +203,7 @@ public class EmailService {
         }
 
         public void enviarConvocatoria(Aluno aluno, Convite convite) {
-                String urlBase = "https://app.coreoflow.app/api/convocatoria";
+                String urlBase = baseUrl + "/api/convocatoria";
                 String linkConfirmar = urlBase + "/confirmar?alunoId=" + aluno.getId() + "&conviteId="
                                 + convite.getId();
                 String linkRecusar = urlBase + "/recusar?alunoId=" + aluno.getId() + "&conviteId=" + convite.getId();
@@ -229,6 +212,7 @@ public class EmailService {
                         MimeMessage message = mailSender.createMimeMessage();
                         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
+                        helper.setFrom(mailFrom);
                         helper.setTo(aluno.getEmail());
                         helper.setSubject("Convocatória: " + convite.getEvento());
 
@@ -252,19 +236,9 @@ public class EmailService {
                                         +
                                         "</div>" +
 
-                                        "<hr style='border: 0; border-top: 1px solid #eee;'>" +
-
-                                        // Assinatura
-                                        "<div style='margin-top: 20px; text-align: left;'>" +
-                                        "<p style='margin: 0; font-size: 0.9em; color: #7f8c8d;'>Atenciosamente,</p>" +
-                                        "<p style='margin: 5px 0; font-weight: bold; color: #2c3e50;'>CoreoFlow</p>"
-                                        +
-                                        // Aqui inseres a URL da tua imagem (deve estar num servidor público)
-                                        "<img src='https://app.coreoflow.app/images/assinatura_studio.png' alt='CoreoFlow Logo' style='width: 400px; margin-top: 10px;'>"
-                                        +
                                         "<p style='font-size: 0.8em; color: #bdc3c7; margin-top: 10px;'>Esta é uma mensagem automática da App de Gestão do CoreoFlow, por favor não responda.</p>"
                                         +
-                                        "</div>" +
+                                        assinatura.html(aluno.getStudio()) +
                                         "</div>";
 
                         helper.setText(htmlContent, true); // O 'true' indica que é HTML
