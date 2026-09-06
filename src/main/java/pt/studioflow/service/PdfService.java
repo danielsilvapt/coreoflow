@@ -61,7 +61,8 @@ public class PdfService {
             p.setSpacingBefore(10);
             document.add(p);
 
-            document.add(new Paragraph("\nData: " + convite.getData() + " às " + convite.getHora()));
+            document.add(new Paragraph("\nData: " + pt.studioflow.util.DataUtil.formatar(convite.getData())
+                    + " às " + convite.getHora()));
             document.add(new Paragraph("Local: " + (convite.getLocal() != null ? convite.getLocal() : "N/A")));
             document.add(new Paragraph("Notas: " + (convite.getObservacoes() != null ? convite.getObservacoes() : "")));
 

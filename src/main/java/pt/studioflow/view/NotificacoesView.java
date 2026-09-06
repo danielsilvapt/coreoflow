@@ -300,17 +300,20 @@ public class NotificacoesView extends VerticalLayout {
             ).collect(Collectors.toList()), "mensalidade"));
 
         conteudo.add(criarCard("Seguros Desportivos Expirados", segurosExpirados.size(), "#d32f2f", VaadinIcon.SHIELD,
-            segurosExpirados.stream().map(a -> a.getNomeCompleto() + " — expirou em " + a.getDataExpiracaoSeguro())
+            segurosExpirados.stream().map(a -> a.getNomeCompleto() + " — expirou em "
+                    + pt.studioflow.util.DataUtil.formatar(a.getDataExpiracaoSeguro()))
                 .collect(Collectors.toList()), "alunos"));
 
         if (!segurosAExpirar.isEmpty()) {
             conteudo.add(criarCard("⚠️ Seguros a Expirar em 30 dias", segurosAExpirar.size(), "#ff8f00", VaadinIcon.ALARM,
-                segurosAExpirar.stream().map(a -> a.getNomeCompleto() + " — expira em " + a.getDataExpiracaoSeguro())
+                segurosAExpirar.stream().map(a -> a.getNomeCompleto() + " — expira em "
+                        + pt.studioflow.util.DataUtil.formatar(a.getDataExpiracaoSeguro()))
                                 .collect(Collectors.toList()), "alunos"));
         }
 
         conteudo.add(criarCard("Quotas de Sócio Expiradas", quotasExpiradas.size(), "#880e4f", VaadinIcon.CREDIT_CARD,
-            quotasExpiradas.stream().map(a -> a.getNomeCompleto() + " — expirou em " + a.getDataExpiracaoQuota())
+            quotasExpiradas.stream().map(a -> a.getNomeCompleto() + " — expirou em "
+                    + pt.studioflow.util.DataUtil.formatar(a.getDataExpiracaoQuota()))
                 .collect(Collectors.toList()), "socios"));
 
         conteudo.add(criarCard("Alunos em Risco de Abandono (sem presença há 15+ dias)", emRisco.size(), "#bf360c", VaadinIcon.WARNING,
@@ -380,13 +383,13 @@ public class NotificacoesView extends VerticalLayout {
 
         conteudo.add(criarCard("✅ Salas Aprovadas (últimos 2 dias / próximas)", salasAprovadas.size(), "#2e7d32", VaadinIcon.CHECK_CIRCLE,
             salasAprovadas.stream().map(m ->
-                (m.getData() != null ? m.getData().toString() : "—") + " " + m.getHoraInicio() + "–" + m.getHoraFim()
+                (m.getData() != null ? pt.studioflow.util.DataUtil.formatar(m.getData()) : "—") + " " + m.getHoraInicio() + "–" + m.getHoraFim()
                 + " | " + (m.getSala() != null ? m.getSala().getNome() : "—") + " (" + m.getTipo() + ")"
             ).collect(Collectors.toList()), "horario-salas"));
 
         conteudo.add(criarCard("⏳ Pedidos de Sala Aguardam Aprovação", salasPendentes.size(), "#f57f17", VaadinIcon.CLOCK,
             salasPendentes.stream().map(m ->
-                (m.getData() != null ? m.getData().toString() : "—") + " " + m.getHoraInicio() + "–" + m.getHoraFim()
+                (m.getData() != null ? pt.studioflow.util.DataUtil.formatar(m.getData()) : "—") + " " + m.getHoraInicio() + "–" + m.getHoraFim()
                 + " | " + (m.getSala() != null ? m.getSala().getNome() : "—") + " (" + m.getTipo() + ")"
             ).collect(Collectors.toList()), "horario-salas"));
 

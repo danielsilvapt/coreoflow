@@ -324,7 +324,7 @@ public class SalaScheduleView extends VerticalLayout {
                         .findFirst()
                         .ifPresent(prof -> emailService.enviarEmailAprovacaoSala(
                                 prof.getEmail(), prof.getNome(), p.getSala().getNome(),
-                                p.getData().toString(), p.getHoraInicio().toString(), p.getHoraFim().toString()));
+                                pt.studioflow.util.DataUtil.formatar(p.getData()), p.getHoraInicio().toString(), p.getHoraFim().toString()));
                 atualizarTudo();
                 Notification n = Notification.show("Pedido aprovado — email enviado ao professor!", 3000,
                         Notification.Position.BOTTOM_CENTER);
@@ -339,7 +339,7 @@ public class SalaScheduleView extends VerticalLayout {
                         .findFirst()
                         .ifPresent(prof -> emailService.enviarEmailRecusaSala(
                                 prof.getEmail(), prof.getNome(), p.getSala().getNome(),
-                                p.getData().toString(), p.getHoraInicio().toString(), p.getHoraFim().toString()));
+                                pt.studioflow.util.DataUtil.formatar(p.getData()), p.getHoraInicio().toString(), p.getHoraFim().toString()));
                 atualizarTudo();
                 Notification n = Notification.show("Pedido recusado — professor notificado.", 3000,
                         Notification.Position.BOTTOM_CENTER);
@@ -899,7 +899,7 @@ public class SalaScheduleView extends VerticalLayout {
             try {
                 emailService.notificarAdminNovoPedido(
                         m.getProfessor(), m.getTipo(), m.getTurma() != null ? m.getTurma().getDescricao() : "",
-                        m.getSala().getNome(), m.getData().toString(),
+                        m.getSala().getNome(), pt.studioflow.util.DataUtil.formatar(m.getData()),
                         m.getHoraInicio().toString(), m.getHoraFim().toString(),
                         m.getObservacoes() != null ? m.getObservacoes() : "");
             } catch (Exception ex) {
@@ -1208,7 +1208,7 @@ public class SalaScheduleView extends VerticalLayout {
             try {
                 emailService.notificarAdminNovoPedido(
                         m.getProfessor(), m.getTipo(), m.getTurma() != null ? m.getTurma().getDescricao() : "",
-                        m.getSala().getNome(), m.getData().toString(),
+                        m.getSala().getNome(), pt.studioflow.util.DataUtil.formatar(m.getData()),
                         m.getHoraInicio().toString(), m.getHoraFim().toString(),
                         m.getObservacoes() != null ? m.getObservacoes() : "");
             } catch (Exception ex) {

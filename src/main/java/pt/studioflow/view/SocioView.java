@@ -61,7 +61,7 @@ public class SocioView extends VerticalLayout {
     private final R2StorageService storageService;
     private final Grid<Aluno> grid = new Grid<>(Aluno.class, false);
     private final AlunoForm socioForm;
-    private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yy");
+    private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private ListDataProvider<Aluno> dataProvider;
     private final Map<String, String> filtrosTexto = new HashMap<>();
