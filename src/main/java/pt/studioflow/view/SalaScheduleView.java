@@ -11,15 +11,21 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.orderedlayout.FlexLayout;
+import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.component.upload.receivers.FileBuffer;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -44,8 +50,10 @@ import pt.studioflow.model.OcorrenciaAula;
 import pt.studioflow.model.Professor;
 import pt.studioflow.model.Sala;
 import pt.studioflow.model.Studio;
+import pt.studioflow.model.SumarioAula;
 import pt.studioflow.model.Turma;
 import pt.studioflow.model.User;
+import pt.studioflow.model.VideoAula;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AulaRepository;
 import pt.studioflow.repository.MarcacaoSalaRepository;
@@ -53,9 +61,16 @@ import pt.studioflow.repository.OcorrenciaAulaRepository;
 import pt.studioflow.repository.ProfessorRepository;
 import pt.studioflow.repository.SalaRepository;
 import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.repository.SumarioAulaRepository;
 import pt.studioflow.repository.UserRepository;
+import pt.studioflow.repository.VideoAulaRepository;
 import pt.studioflow.service.EmailService;
+import pt.studioflow.service.R2StorageService;
 import pt.studioflow.service.TurmaService;
+import pt.studioflow.util.DataUtil;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @PageTitle("Mapa de Salas | CoreoFlow")
 @Route(value = "horario-salas", layout = MainLayout.class)
@@ -71,6 +86,13 @@ public class SalaScheduleView extends VerticalLayout {
     private final EmailService emailService;
     private final UserRepository userRepository;
     private final OcorrenciaAulaRepository ocorrenciaAulaRepository;
+    private final VideoAulaRepository videoAulaRepository;
+    private final R2StorageService storageService;
+    private final SumarioAulaRepository sumarioAulaRepository;
+    private final TurmaService turmaService;
+
+    /** Professor associado ao utilizador (null se admin ou não resolvido). */
+    private Professor professorLogado;
 
     private final int HORA_INICIO = 9;
     private final int HORA_FIM = 23;
@@ -89,7 +111,9 @@ public class SalaScheduleView extends VerticalLayout {
     public SalaScheduleView(SalaRepository salaRepository, TurmaRepository turmaRepository,
             MarcacaoSalaRepository marcacaoRepository, AulaRepository aulaRepository,
             ProfessorRepository professorRepository, TurmaService turmaService, AlunoRepository alunoRepository,
-            EmailService emailService, UserRepository userRepository, OcorrenciaAulaRepository ocorrenciaAulaRepository) {
+            EmailService emailService, UserRepository userRepository, OcorrenciaAulaRepository ocorrenciaAulaRepository,
+            VideoAulaRepository videoAulaRepository, R2StorageService storageService,
+            SumarioAulaRepository sumarioAulaRepository) {
 
         this.salaRepository = salaRepository;
         this.turmaRepository = turmaRepository;
@@ -100,8 +124,13 @@ public class SalaScheduleView extends VerticalLayout {
         this.emailService = emailService;
         this.userRepository = userRepository;
         this.ocorrenciaAulaRepository = ocorrenciaAulaRepository;
+        this.videoAulaRepository = videoAulaRepository;
+        this.storageService = storageService;
+        this.sumarioAulaRepository = sumarioAulaRepository;
+        this.turmaService = turmaService;
 
         this.isAdmin = VaadinServletRequest.getCurrent().getHttpServletRequest().isUserInRole("ADMIN");
+        this.professorLogado = isAdmin ? null : resolverProfessorLogado();
 
         setPadding(true);
         setSpacing(true);
@@ -363,6 +392,32 @@ public class SalaScheduleView extends VerticalLayout {
         return s != null ? professorRepository.findAllByStudio(s) : professorRepository.findAll();
     }
 
+    private Professor resolverProfessorLogado() {
+        try {
+            String userLogado = VaadinServletRequest.getCurrent().getHttpServletRequest()
+                    .getUserPrincipal().getName();
+            String primeiro = resolverPrimeiroNomeUserLogado(userLogado);
+            return getProfessoresDoStudio().stream()
+                    .filter(p -> p.getNome() != null && !p.getNome().isBlank())
+                    .filter(p -> normalizarTxt(p.getNome()).contains(normalizarTxt(primeiro)))
+                    .findFirst().orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private boolean isMinhaTurma(Turma t) {
+        return !isAdmin && professorLogado != null && professorLogado.getId() != null
+                && t != null && t.getProfessor() != null
+                && professorLogado.getId().equals(t.getProfessor().getId());
+    }
+
+    private static String normalizarTxt(String t) {
+        return t == null ? ""
+                : java.text.Normalizer.normalize(t, java.text.Normalizer.Form.NFD)
+                        .replaceAll("\\p{M}", "").toLowerCase().trim();
+    }
+
     /**
      * Resolve o primeiro nome do utilizador logado a partir do campo firstName na BD
      * (mesma lógica usada no resto da app), em vez de assumir que o username/principal
@@ -445,11 +500,15 @@ public class SalaScheduleView extends VerticalLayout {
                         .filter(o -> !o.getData().isBefore(semanaAtual) && !o.getData().isAfter(semanaAtual.plusDays(6)))
                         .collect(Collectors.toList());
 
-        grelhaContainer.add(criarGrelhaGlobal(salas, todasAulas, todasMarcacoes, ocorrenciasDaSemana));
+        List<SumarioAula> sumariosSemana = studio != null
+                ? sumarioAulaRepository.findByStudioAndDataBetween(studio, semanaAtual, semanaAtual.plusDays(6))
+                : sumarioAulaRepository.findByDataBetween(semanaAtual, semanaAtual.plusDays(6));
+
+        grelhaContainer.add(criarGrelhaGlobal(salas, todasAulas, todasMarcacoes, ocorrenciasDaSemana, sumariosSemana));
     }
 
     private Div criarGrelhaGlobal(List<Sala> salas, List<Aula> aulas, List<MarcacaoSala> marcacoes,
-            List<OcorrenciaAula> ocorrencias) {
+            List<OcorrenciaAula> ocorrencias, List<SumarioAula> sumarios) {
         Div container = new Div();
         container.getStyle().set("display", "inline-block").set("min-width", "100%").set("position", "relative");
 
@@ -599,7 +658,7 @@ public class SalaScheduleView extends VerticalLayout {
                                             && o.getTurma().getId().equals(a.getTurma().getId())
                                             && o.getData().equals(dataDia))
                                     .findFirst().orElse(null);
-                            coluna.add(criarElementoAula(a, oc));
+                            coluna.add(criarElementoAula(a, oc, dataDia, sumarios));
                         });
 
                 marcacoes.stream()
@@ -613,13 +672,17 @@ public class SalaScheduleView extends VerticalLayout {
         return container;
     }
 
-    private Div criarElementoAula(Aula a, OcorrenciaAula ocorrencia) {
+    private Div criarElementoAula(Aula a, OcorrenciaAula ocorrencia, LocalDate dataDia, List<SumarioAula> sumarios) {
         double top = calcularTop(a.getHoraInicio());
         double height = calcularAltura(a.getHoraInicio(), a.getHoraFim());
         String corBase = (a.getTurma() != null && a.getTurma().getCor() != null) ? a.getTurma().getCor() : "#3b82f6";
 
         boolean cancelada = ocorrencia != null && ocorrencia.getTipo() == OcorrenciaAula.Tipo.CANCELAMENTO;
         boolean substituida = ocorrencia != null && ocorrencia.getTipo() == OcorrenciaAula.Tipo.SUBSTITUICAO;
+
+        boolean minhaTurma = isMinhaTurma(a.getTurma());
+        SumarioAula sumario = sumarioParaAula(a, dataDia, sumarios);
+        boolean planeada = sumario != null && sumario.temConteudo();
 
         String texto = a.getTurma().getDescricao();
         if (cancelada) {
@@ -628,6 +691,8 @@ public class SalaScheduleView extends VerticalLayout {
             String nomeSubst = ocorrencia.getProfessorSubstituto() != null
                     ? ocorrencia.getProfessorSubstituto().getNome() : "—";
             texto = "🔄 " + texto + " (Subst.: " + nomeSubst + ")";
+        } else if (minhaTurma) {
+            texto = (planeada ? "📝 " : "⏳ ") + texto;
         }
 
         Span label = new Span(texto);
@@ -661,13 +726,158 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("border-left", "4px solid " + (substituida ? "#E67E22" : "rgba(0,0,0,0.15)"));
         if (cancelada) {
             div.getStyle().set("opacity", "0.65");
+        } else if (minhaTurma && !planeada) {
+            // Aula do professor ainda por planear: contorno tracejado âmbar.
+            div.getStyle()
+                    .set("border", "2px dashed #f59e0b")
+                    .set("box-shadow", "0 0 0 1px rgba(245,158,11,0.35), 0 1px 3px rgba(0,0,0,0.1)");
         }
 
+        div.getStyle().set("cursor", "pointer");
         if (isAdmin) {
-            div.getStyle().set("cursor", "pointer");
-            div.addClickListener(e -> abrirDialogEditarAula(a));
+            div.addClickListener(e -> abrirDialogEditarAula(a, dataDia));
+        } else if (minhaTurma) {
+            // Professor, aula sua: planeamento + vídeos.
+            div.getElement().setAttribute("title", planeada ? "Ver / editar plano" : "Planear esta aula");
+            div.addClickListener(e -> abrirDialogPlanoAula(a, dataDia, sumario));
+        } else if (a.getTurma() != null) {
+            // Professor, aula de outro: só vídeos.
+            div.addClickListener(e -> abrirDialogVideosAula(a.getTurma(), dataDia));
         }
         return div;
+    }
+
+    private SumarioAula sumarioParaAula(Aula a, LocalDate data, List<SumarioAula> sumarios) {
+        if (a.getTurma() == null || sumarios == null) {
+            return null;
+        }
+        return sumarios.stream()
+                .filter(s -> s.getTurma() != null && s.getTurma().getId().equals(a.getTurma().getId()))
+                .filter(s -> data.equals(s.getData()))
+                .filter(s -> a.getHoraInicio() == null || a.getHoraInicio().equals(s.getHoraInicio()))
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * Diálogo (adaptado a mobile) para o professor consultar/editar o plano e o
+     * sumário de uma aula sua, com atalho para os vídeos.
+     */
+    private void abrirDialogPlanoAula(Aula a, LocalDate data, SumarioAula sumarioGrelha) {
+        Turma turma = a.getTurma();
+        SumarioAula s = sumarioGrelha;
+        if (s == null && turma != null && a.getHoraInicio() != null) {
+            s = sumarioAulaRepository.findByTurmaAndDataAndHoraInicio(turma, data, a.getHoraInicio()).orElse(null);
+        }
+        final SumarioAula existente = s;
+
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(turma != null ? turma.getDescricao() : "Aula");
+        dialog.setWidth("94vw");
+        dialog.setMaxWidth("480px");
+
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter
+                .ofPattern("EEEE, d 'de' MMMM", new java.util.Locale("pt", "PT"));
+        String horas = a.getHoraInicio() + (a.getHoraFim() != null ? " – " + a.getHoraFim() : "");
+        Span sub = new Span(capitalizarPt(data.format(fmt)) + "  ·  " + horas
+                + (a.getSala() != null ? "  ·  " + a.getSala().getNome() : ""));
+        sub.getStyle().set("font-size", "0.85rem").set("color", "#64748b").set("font-weight", "600");
+
+        TextArea planeamento = new TextArea("📝 Plano da aula");
+        planeamento.setPlaceholder("O que vais dar nesta aula...");
+        planeamento.setWidthFull();
+        planeamento.setMinHeight("120px");
+        if (existente != null && existente.getPlaneamento() != null) planeamento.setValue(existente.getPlaneamento());
+
+        TextArea sumarioTxt = new TextArea("✅ Sumário (depois da aula)");
+        sumarioTxt.setPlaceholder("Resumo do que foi dado...");
+        sumarioTxt.setWidthFull();
+        sumarioTxt.setMinHeight("120px");
+        if (existente != null && existente.getSumario() != null) sumarioTxt.setValue(existente.getSumario());
+
+        VerticalLayout conteudo = new VerticalLayout(sub, planeamento, sumarioTxt);
+        conteudo.setPadding(false);
+        conteudo.setSpacing(true);
+
+        if (existente != null && existente.isEnviado() && existente.getDataEnvio() != null) {
+            Span env = new Span("Sumário enviado à turma em " + DataUtil.formatar(existente.getDataEnvio()));
+            env.getStyle().set("color", "#15803d").set("font-weight", "600").set("font-size", "0.8rem");
+            conteudo.add(env);
+        }
+        dialog.add(conteudo);
+
+        Button btnVideos = new Button("🎬 Vídeos", e -> abrirDialogVideosAula(turma, data));
+        btnVideos.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        btnVideos.setEnabled(turma != null);
+
+        Button guardar = new Button("Guardar", e -> guardarPlanoAula(a, data, existente,
+                planeamento.getValue(), sumarioTxt.getValue(), false, dialog));
+        guardar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button enviar = new Button("Guardar e enviar sumário", e -> guardarPlanoAula(a, data, existente,
+                planeamento.getValue(), sumarioTxt.getValue(), true, dialog));
+        enviar.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+        enviar.setEnabled(sumarioTxt.getValue() != null && !sumarioTxt.getValue().isBlank());
+        sumarioTxt.addValueChangeListener(e -> enviar.setEnabled(e.getValue() != null && !e.getValue().isBlank()));
+
+        dialog.getFooter().add(btnVideos, new Button("Fechar", e -> dialog.close()), guardar, enviar);
+        dialog.open();
+    }
+
+    private void guardarPlanoAula(Aula a, LocalDate data, SumarioAula existente, String plano, String sumarioTxt,
+            boolean enviar, Dialog dialog) {
+        Turma turma = a.getTurma();
+        if (turma == null) return;
+
+        SumarioAula s = existente != null ? existente : new SumarioAula();
+        s.setTurma(turma);
+        s.setData(data);
+        s.setHoraInicio(a.getHoraInicio());
+        s.setHoraFim(a.getHoraFim());
+        s.setTipo(a.getTipo() != null ? a.getTipo() : "REGULAR");
+        s.setStudio(TenantContext.getCurrentStudio());
+        if (s.getProfessor() == null) {
+            s.setProfessor(professorLogado != null ? professorLogado.getNome()
+                    : (turma.getProfessor() != null ? turma.getProfessor().getNome() : null));
+        }
+        s.setPlaneamento(plano);
+        s.setSumario(sumarioTxt);
+
+        if (enviar) {
+            if (sumarioTxt == null || sumarioTxt.isBlank()) {
+                Notification.show("Escreve o sumário antes de enviar.")
+                        .addThemeVariants(NotificationVariant.LUMO_WARNING);
+                return;
+            }
+            List<String> emails = turmaService.getAlunosDaTurma(turma).stream()
+                    .map(Aluno::getEmail).filter(em -> em != null && !em.isBlank()).distinct()
+                    .collect(java.util.stream.Collectors.toList());
+            if (emails.isEmpty()) {
+                Notification.show("Nenhum aluno desta turma tem email registado.")
+                        .addThemeVariants(NotificationVariant.LUMO_WARNING);
+                return;
+            }
+            try {
+                String assunto = "Sumário da aula — " + turma.getDescricao() + " (" + DataUtil.formatar(data) + ")";
+                emailService.enviarEmailParaLista(turma.getProfessor(), emails, assunto, sumarioTxt);
+                s.setEnviado(true);
+                s.setDataEnvio(LocalDateTime.now());
+                Notification.show("Sumário enviado a " + emails.size() + " aluno(s).")
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (Exception ex) {
+                Notification.show("Erro ao enviar: " + ex.getMessage())
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+        } else {
+            Notification.show("Plano guardado.").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        }
+        sumarioAulaRepository.save(s);
+        dialog.close();
+        atualizarTudo();
+    }
+
+    private static String capitalizarPt(String s) {
+        return (s == null || s.isEmpty()) ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 
     private Div criarElementoMarcacao(MarcacaoSala m) {
@@ -917,7 +1127,7 @@ public class SalaScheduleView extends VerticalLayout {
         dialog.open();
     }
 
-    private void abrirDialogEditarAula(Aula aula) {
+    private void abrirDialogEditarAula(Aula aula, LocalDate data) {
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle("Modificar Aula Regular");
         dialog.setWidth("440px");
@@ -934,7 +1144,12 @@ public class SalaScheduleView extends VerticalLayout {
         tempo.setWidthFull();
         tempo.getStyle().set("flex-wrap", "wrap");
 
-        VerticalLayout layout = new VerticalLayout(comboTurma, tempo);
+        Button btnVideos = new Button("🎬 Vídeos da aula (" + DataUtil.formatar(data) + ")",
+                e -> abrirDialogVideosAula(aula.getTurma(), data));
+        btnVideos.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        btnVideos.setEnabled(aula.getTurma() != null && data != null);
+
+        VerticalLayout layout = new VerticalLayout(comboTurma, tempo, btnVideos);
         layout.setPadding(false);
         dialog.add(layout);
 
@@ -957,6 +1172,147 @@ public class SalaScheduleView extends VerticalLayout {
 
         dialog.getFooter().add(apagar, guardar);
         dialog.open();
+    }
+
+    /**
+     * Vídeos de uma aula concreta (turma + data), acessível ao clicar na aula
+     * no mapa de salas. Reutiliza o armazenamento R2 / {@link VideoAula} — os
+     * alunos veem estes vídeos no portal.
+     */
+    private void abrirDialogVideosAula(Turma turma, LocalDate data) {
+        if (turma == null || data == null) {
+            Notification.show("Esta aula não tem turma/data associada.")
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Vídeos · " + turma.getDescricao() + " · " + DataUtil.formatar(data));
+        dialog.setWidth("440px");
+        dialog.setMaxWidth("100%");
+
+        FlexLayout lista = new FlexLayout();
+        lista.setFlexWrap(FlexLayout.FlexWrap.WRAP);
+        lista.getStyle().set("gap", "12px").set("margin-top", "4px");
+
+        Runnable[] refresh = new Runnable[1];
+        refresh[0] = () -> {
+            lista.removeAll();
+            List<VideoAula> videos = videoAulaRepository.findByTurmaAndDataOrderByDataUploadDesc(turma, data);
+            if (videos.isEmpty()) {
+                Span vazio = new Span("Ainda não há vídeos para esta aula.");
+                vazio.getStyle().set("color", "#888");
+                lista.add(vazio);
+            } else {
+                videos.forEach(v -> lista.add(criarCardVideoMapa(v, refresh[0])));
+            }
+        };
+
+        FileBuffer buffer = new FileBuffer();
+        Upload upload = new Upload(buffer);
+        upload.setAcceptedFileTypes("video/mp4", "video/quicktime", "video/x-msvideo", "video/webm");
+        upload.setMaxFiles(1);
+        upload.setMaxFileSize(300 * 1024 * 1024);
+        upload.setUploadButton(new Button("Enviar vídeo"));
+        upload.setDropLabel(new Span("ou arrastar aqui (vídeo, máx 300MB)"));
+        upload.addSucceededListener(event -> {
+            Studio studio = TenantContext.getCurrentStudio();
+            try {
+                String nome = event.getFileName();
+                String chave = "videos/" + (studio != null ? studio.getSlug() : "sem-estudio") + "/" + turma.getId()
+                        + "/" + data + "/" + UUID.randomUUID() + "_" + nome;
+                storageService.upload(chave, resolverContentTypeVideo(event.getMIMEType(), nome),
+                        buffer.getInputStream(), event.getContentLength());
+                VideoAula v = new VideoAula();
+                v.setTurma(turma);
+                v.setData(data);
+                v.setChaveArmazenamento(chave);
+                v.setNomeFicheiro(nome);
+                v.setTamanhoBytes(event.getContentLength());
+                v.setProfessor(turma.getProfessor());
+                v.setStudio(studio);
+                videoAulaRepository.save(v);
+                upload.clearFileList();
+                refresh[0].run();
+                Notification.show("Vídeo enviado!").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (Exception ex) {
+                Notification.show("Erro ao enviar: " + ex.getMessage(), 6000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        upload.addFailedListener(e -> Notification.show("Falha no upload: " + e.getReason().getMessage(), 5000,
+                Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR));
+
+        VerticalLayout content = new VerticalLayout(upload, lista);
+        content.setPadding(false);
+        content.setSpacing(true);
+        dialog.add(content);
+        dialog.getFooter().add(new Button("Fechar", e -> dialog.close()));
+        refresh[0].run();
+        dialog.open();
+    }
+
+    private Component criarCardVideoMapa(VideoAula video, Runnable refresh) {
+        VerticalLayout card = new VerticalLayout();
+        card.setWidth("120px");
+        card.setPadding(false);
+        card.setSpacing(false);
+        card.setAlignItems(Alignment.CENTER);
+        card.getStyle().set("border", "1px solid #e2e8f0").set("border-radius", "10px").set("padding", "8px");
+
+        Div thumb = new Div(VaadinIcon.PLAY_CIRCLE.create());
+        thumb.getStyle().set("width", "100%").set("height", "56px").set("border-radius", "6px")
+                .set("display", "flex").set("align-items", "center").set("justify-content", "center")
+                .set("background", "linear-gradient(135deg, #1e293b 0%, #334155 100%)").set("color", "white");
+        Anchor play = new Anchor(
+                storageService.gerarUrlTemporario(video.getChaveArmazenamento(), Duration.ofHours(2)), thumb);
+        play.setTarget("_blank");
+        play.setRouterIgnore(true);
+        play.getStyle().set("width", "100%").set("text-decoration", "none");
+
+        Span nome = new Span(video.getNomeFicheiro());
+        nome.getStyle().set("font-size", "0.65rem").set("text-align", "center").set("width", "100%")
+                .set("white-space", "nowrap").set("overflow", "hidden").set("text-overflow", "ellipsis")
+                .set("margin-top", "4px");
+
+        Button apagar = new Button(VaadinIcon.TRASH.create(), e -> {
+            ConfirmDialog cd = new ConfirmDialog();
+            cd.setHeader("Apagar vídeo?");
+            cd.setText("\"" + video.getNomeFicheiro() + "\" será removido.");
+            cd.setCancelable(true);
+            cd.setConfirmText("Apagar");
+            cd.setConfirmButtonTheme("error primary");
+            cd.addConfirmListener(ev -> {
+                try {
+                    storageService.apagar(video.getChaveArmazenamento());
+                } catch (Exception ignored) {
+                }
+                videoAulaRepository.delete(video);
+                refresh.run();
+            });
+            cd.open();
+        });
+        apagar.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+        card.add(play, nome, apagar);
+        return card;
+    }
+
+    private static String resolverContentTypeVideo(String mime, String nomeFicheiro) {
+        if (mime != null && !mime.isBlank() && !"application/octet-stream".equalsIgnoreCase(mime)) {
+            return mime;
+        }
+        String nome = nomeFicheiro == null ? "" : nomeFicheiro.toLowerCase();
+        int ponto = nome.lastIndexOf('.');
+        String ext = ponto >= 0 ? nome.substring(ponto + 1) : "";
+        return switch (ext) {
+            case "mp4", "m4v" -> "video/mp4";
+            case "mov", "qt" -> "video/quicktime";
+            case "webm" -> "video/webm";
+            case "avi" -> "video/x-msvideo";
+            case "mkv" -> "video/x-matroska";
+            default -> "application/octet-stream";
+        };
     }
 
     private void abrirDialogEditarMarcacao(MarcacaoSala mSimplificada) {
