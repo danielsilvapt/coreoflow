@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CoreoFlow — gestão de estúdios de dança</title>
+<meta name="description" content="Turmas, mensalidades, presenças, planos de aula e o portal dos encarregados — geridos num só lugar. Feito para escolas de dança portuguesas.">
+<meta name="theme-color" content="#0A1730">
+<link rel="icon" href="/favicon.ico">
+<meta property="og:title" content="CoreoFlow — gestão de estúdios de dança">
+<meta property="og:description" content="Tudo o que o teu estúdio de dança precisa, num só sítio.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://coreoflow.me">
+<meta property="og:image" content="https://coreoflow.me/logo2-coreoflow.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap">
+<style>
+  :root{
+    --ground:#F5F9F7;
+    --paper:#FFFFFF;
+    --ink:#0E1E3D;
+    --ink-soft:#48586F;
+    --line:#E2EAE7;
+    --flow:#0E9C86;
+    --flow-bright:#00C9A7;
+    --navy:#0A1730;
+    --navy-2:#132A4C;
+    --on-navy:#EAF1EF;
+    --on-navy-soft:#93A8BC;
+    --warn:#C67E24;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(14,30,61,.05), 0 14px 40px -18px rgba(14,30,61,.16);
+    --maxw:1120px;
+    --step-0:1rem;
+    --step-1:1.15rem;
+    --step-2:1.45rem;
+    --step-3:2rem;
+    --step-4:clamp(2.4rem, 1.6rem + 3.4vw, 4.1rem);
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#081020;
+      --paper:#0E1B33;
+      --ink:#E9F1EF;
+      --ink-soft:#9BB0C3;
+      --line:#213249;
+      --flow:#31E0BF;
+      --flow-bright:#43ECCB;
+      --navy:#060D1C;
+      --navy-2:#0D1E3A;
+      --on-navy:#E9F1EF;
+      --on-navy-soft:#8FA5B9;
+      --warn:#E0A24B;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 44px -18px rgba(0,0,0,.6);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#081020;--paper:#0E1B33;--ink:#E9F1EF;--ink-soft:#9BB0C3;--line:#213249;
+    --flow:#31E0BF;--flow-bright:#43ECCB;--navy:#060D1C;--navy-2:#0D1E3A;
+    --on-navy:#E9F1EF;--on-navy-soft:#8FA5B9;--warn:#E0A24B;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 44px -18px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box;min-width:0}
+  html{-webkit-text-size-adjust:100%}
+  html,body{overflow-x:clip}
+  body{
+    margin:0;
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size:var(--step-0);
+    font-weight:450;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  img{max-width:100%;display:block}
+  a{color:inherit;text-decoration:none}
+  h1,h2,h3{font-family:"Fraunces", Georgia, "Times New Roman", serif;font-weight:600;line-height:1.08;text-wrap:balance;margin:0;letter-spacing:-.012em}
+  p{margin:0}
+  ::selection{background:var(--flow-bright);color:var(--navy)}
+  :focus-visible{outline:2.5px solid var(--flow-bright);outline-offset:3px;border-radius:4px}
+
+  .wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:clamp(20px,5vw,40px)}
+
+  /* ---------- header ---------- */
+  header{position:sticky;top:0;z-index:50;background:color-mix(in srgb, var(--ground) 82%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid transparent;transition:border-color .2s, background .2s}
+  header.scrolled{border-color:var(--line);background:color-mix(in srgb, var(--ground) 94%, transparent)}
+  .nav{display:flex;align-items:center;gap:28px;height:70px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700}
+  .brand img{height:25px;width:auto}
+  .brand .logo-dark{display:none}
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]) .brand .logo-light{display:none}
+    :root:not([data-theme="light"]) .brand .logo-dark{display:block}
+  }
+  :root[data-theme="dark"] .brand .logo-light{display:none}
+  :root[data-theme="dark"] .brand .logo-dark{display:block}
+  .nav-links{display:flex;gap:26px;margin-left:auto;font-size:.95rem;color:var(--ink-soft)}
+  .nav-links a:hover{color:var(--ink)}
+  .nav .btn{margin-left:0}
+  .menu-btn{display:none;margin-left:auto;background:none;border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--ink);cursor:pointer}
+
+  .btn{
+    --_bg:var(--flow);--_fg:#04201B;
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--_bg);color:var(--_fg);
+    font-family:"IBM Plex Sans",sans-serif;font-weight:600;font-size:.95rem;
+    padding:11px 20px;border-radius:10px;border:1px solid transparent;
+    cursor:pointer;transition:transform .12s ease, filter .18s ease;
+    white-space:nowrap;
+  }
+  .btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+  .btn.ghost{--_bg:transparent;--_fg:var(--ink);border-color:var(--line)}
+  .btn.on-navy{--_fg:#04201B}
+  .btn.ghost.on-navy{--_fg:var(--on-navy);border-color:rgba(255,255,255,.22)}
+
+  /* ---------- flow spine ---------- */
+  main{position:relative}
+  main::before{
+    content:"";position:absolute;left:max(18px, calc((100vw - var(--maxw))/2 + clamp(20px,5vw,40px)));
+    top:0;bottom:120px;width:2px;
+    background:linear-gradient(var(--line), var(--line) 88%, transparent);
+    z-index:0;
+  }
+  section{position:relative;z-index:1;padding-block:clamp(56px,8vw,104px)}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:11px;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;font-weight:500;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--flow);
+    margin-bottom:22px;
+  }
+  .eyebrow::before{
+    content:"";width:9px;height:9px;flex:none;transform:rotate(45deg);
+    background:var(--flow);box-shadow:0 0 0 4px var(--ground);
+  }
+  @media (max-width:820px){
+    main::before{display:none}
+    .eyebrow::before{box-shadow:none}
+  }
+
+  /* ---------- hero ---------- */
+  .hero{background:var(--navy);color:var(--on-navy);padding-block:clamp(64px,10vw,132px);overflow:hidden}
+  .hero::before{display:none}
+  .hero .wrap{position:relative}
+  .hero .eyebrow{color:var(--flow-bright)}
+  .hero .eyebrow::before{background:var(--flow-bright);box-shadow:none}
+  .hero h1{font-size:var(--step-4);font-weight:600;max-width:16ch}
+  .hero h1 .flowword{position:relative;color:var(--flow-bright);white-space:nowrap}
+  .hero h1 .flowword svg{position:absolute;left:-2%;right:-2%;bottom:-.28em;width:104%;height:.5em;overflow:visible}
+  .hero h1 .flowword path{fill:none;stroke:var(--flow-bright);stroke-width:5;stroke-linecap:round;
+    stroke-dasharray:520;stroke-dashoffset:520;animation:draw 1.15s .35s cubic-bezier(.6,0,.2,1) forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .hero p.lead{margin-top:26px;font-size:var(--step-1);color:var(--on-navy-soft);max-width:56ch;line-height:1.6}
+  .hero-cta{display:flex;flex-wrap:wrap;gap:14px;margin-top:36px}
+  .hero-trust{margin-top:30px;font-family:"IBM Plex Mono",monospace;font-size:.78rem;color:var(--on-navy-soft);letter-spacing:.02em}
+  .hero-trust b{color:var(--on-navy);font-weight:500}
+
+  /* ---------- timetable mock ---------- */
+  .showcase{background:var(--navy);color:var(--on-navy);padding-top:0}
+  .showcase .wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:clamp(32px,5vw,72px);align-items:center}
+  .showcase h2{font-size:var(--step-3);color:var(--on-navy);max-width:14ch}
+  .showcase p{margin-top:16px;color:var(--on-navy-soft);max-width:44ch}
+  .showcase ul{margin:22px 0 0;padding:0;list-style:none;display:grid;gap:10px}
+  .showcase li{padding-left:24px;position:relative;color:var(--on-navy);font-size:.96rem}
+  .showcase li::before{content:"";position:absolute;left:0;top:.62em;width:11px;height:2px;background:var(--flow-bright)}
+
+  .tt{
+    background:var(--navy-2);border:1px solid rgba(255,255,255,.09);border-radius:16px;
+    padding:16px;font-family:"IBM Plex Mono",monospace;box-shadow:0 30px 70px -30px rgba(0,0,0,.7);
+    width:100%;
+  }
+  .tt-head{display:grid;grid-template-columns:40px repeat(4,1fr);gap:6px;font-size:.62rem;color:var(--on-navy-soft);letter-spacing:.08em;margin-bottom:8px;text-align:center}
+  .tt-grid{display:grid;grid-template-columns:40px repeat(4,1fr);grid-auto-rows:24px;gap:6px}
+  .tt-hour{grid-column:1;font-size:.58rem;color:var(--on-navy-soft);text-align:right;padding-right:6px}
+  .tt-block{border-radius:6px;padding:5px 8px;font-size:.6rem;line-height:1.2;color:#06231D;font-weight:600;overflow:hidden}
+  .tt-block small{display:block;font-weight:400;opacity:.66}
+  .b-ballet{background:#8FD9C9}.b-contemp{background:#F2C879}.b-hip{background:#EBA6B7}.b-jazz{background:#A9C7EA}
+  .tt-cap{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);font-size:.58rem;color:var(--on-navy-soft);display:flex;justify-content:space-between;letter-spacing:.03em}
+
+  /* ---------- generic section text ---------- */
+  .lead-block{max-width:62ch}
+  .lead-block h2{font-size:var(--step-3)}
+  .lead-block p{margin-top:16px;color:var(--ink-soft)}
+
+  /* ---------- problem ---------- */
+  .prob{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-top:12px}
+  .prob>div{background:var(--paper);padding:26px 24px}
+  .prob h3{font-size:1.12rem;font-family:"IBM Plex Sans",sans-serif;font-weight:600;letter-spacing:0}
+  .prob p{margin-top:8px;color:var(--ink-soft);font-size:.94rem}
+  .prob .k{font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:var(--warn);letter-spacing:.1em;text-transform:uppercase}
+
+  /* ---------- feature groups ---------- */
+  .feat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:16px}
+  .fgroup{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:26px 26px 22px;box-shadow:var(--shadow)}
+  .fgroup h3{font-family:"IBM Plex Sans",sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:0;display:flex;align-items:center;gap:9px}
+  .fgroup h3 i{width:7px;height:7px;border-radius:2px;background:var(--flow);flex:none}
+  .fgroup ul{margin:16px 0 0;padding:0;list-style:none;columns:1;display:grid;gap:9px}
+  .fgroup li{font-size:.92rem;color:var(--ink-soft);padding-left:18px;position:relative}
+  .fgroup li::before{content:"";position:absolute;left:0;top:.6em;width:8px;height:2px;background:var(--flow)}
+  .fgroup li b{color:var(--ink);font-weight:600}
+
+  /* ---------- portal split ---------- */
+  .portal{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .portal .wrap{display:grid;grid-template-columns:1fr 1.05fr;gap:clamp(30px,5vw,64px);align-items:center}
+  .portal h2{font-size:var(--step-3);max-width:15ch}
+  .portal p{margin-top:16px;color:var(--ink-soft);max-width:46ch}
+  .phone{
+    justify-self:center;width:min(300px,80vw);border:1px solid var(--line);border-radius:26px;background:var(--ground);
+    padding:12px;box-shadow:var(--shadow)
+  }
+  .phone-top{height:5px;width:64px;background:var(--line);border-radius:3px;margin:2px auto 12px}
+  .p-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:9px}
+  .p-card .r{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .p-h{font-family:"IBM Plex Mono",monospace;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+  .p-strong{font-weight:600}
+  .pill{font-family:"IBM Plex Mono",monospace;font-size:.64rem;padding:3px 9px;border-radius:20px;font-weight:500;white-space:nowrap;flex:none}
+  .pill.ok{background:color-mix(in srgb,var(--flow) 18%,transparent);color:var(--flow)}
+  .pill.due{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+  .p-mut{color:var(--ink-soft);font-size:.82rem}
+
+  /* ---------- PT band ---------- */
+  .pt-band{background:var(--navy);color:var(--on-navy)}
+  .pt-band .eyebrow{color:var(--flow-bright)}
+  .pt-band .eyebrow::before{background:var(--flow-bright);box-shadow:none}
+  .pt-band h2{font-size:var(--step-3);color:var(--on-navy);max-width:20ch}
+  .pt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:34px}
+  .pt-grid div{border-top:2px solid var(--flow-bright);padding-top:14px}
+  .pt-grid h3{font-family:"IBM Plex Sans",sans-serif;font-size:.98rem;font-weight:600;color:var(--on-navy);letter-spacing:0}
+  .pt-grid p{margin-top:6px;font-size:.86rem;color:var(--on-navy-soft)}
+
+  /* ---------- pricing ---------- */
+  .price{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--paper)}
+  .tier{padding:30px 26px;border-right:1px solid var(--line)}
+  .tier:last-child{border-right:0}
+  .tier.mark{background:color-mix(in srgb,var(--flow) 7%,var(--paper))}
+  .tier .name{font-family:"Fraunces",serif;font-weight:600;font-size:1.4rem}
+  .tier .who{color:var(--ink-soft);font-size:.88rem;margin-top:4px}
+  .tier .amt{font-family:"IBM Plex Mono",monospace;font-size:1.02rem;margin-top:18px;color:var(--ink);font-weight:500}
+  .tier .amt span{color:var(--ink-soft);font-size:.8rem}
+  .tier ul{margin:16px 0 22px;padding:0;list-style:none;display:grid;gap:8px}
+  .tier li{font-size:.88rem;color:var(--ink-soft);padding-left:18px;position:relative}
+  .tier li::before{content:"";position:absolute;left:0;top:.58em;width:8px;height:2px;background:var(--flow)}
+  .tier .btn{width:100%;justify-content:center}
+  .tier .tag{font-family:"IBM Plex Mono",monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--flow);display:block;margin-bottom:6px;min-height:1em}
+  .price-note{margin-top:18px;font-size:.86rem;color:var(--ink-soft)}
+
+  /* ---------- faq ---------- */
+  .faq{max-width:760px}
+  details{border-bottom:1px solid var(--line);padding:6px 0}
+  details summary{cursor:pointer;list-style:none;padding:14px 32px 14px 0;font-weight:600;position:relative;font-size:1rem}
+  details summary::-webkit-details-marker{display:none}
+  details summary::after{content:"+";position:absolute;right:4px;top:12px;font-family:"IBM Plex Mono",monospace;color:var(--flow);font-size:1.2rem}
+  details[open] summary::after{content:"–"}
+  details p{padding:0 0 16px;color:var(--ink-soft);font-size:.94rem;max-width:64ch}
+
+  /* ---------- final cta ---------- */
+  .final{background:var(--navy);color:var(--on-navy);text-align:left}
+  .final::before{display:none}
+  .final .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:26px}
+  .final h2{font-size:var(--step-2);color:var(--on-navy);max-width:20ch}
+  .final p{color:var(--on-navy-soft);margin-top:8px;font-size:.95rem}
+
+  /* ---------- footer ---------- */
+  footer{background:var(--ground);border-top:1px solid var(--line);padding-block:44px;font-size:.86rem;color:var(--ink-soft)}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:20px 40px;align-items:baseline;justify-content:space-between}
+  footer a:hover{color:var(--ink)}
+  footer .foot-brand{font-family:"Fraunces",serif;font-weight:600;color:var(--ink);font-size:1.05rem}
+  .foot-links{display:flex;gap:22px;flex-wrap:wrap}
+
+  @media (max-width:940px){
+    .showcase .wrap,.portal .wrap{grid-template-columns:1fr}
+    .feat{grid-template-columns:1fr}
+    .pt-grid{grid-template-columns:repeat(2,1fr)}
+    .prob{grid-template-columns:1fr}
+    .price{grid-template-columns:1fr}
+    .tier{border-right:0;border-bottom:1px solid var(--line)}
+    .tier:last-child{border-bottom:0}
+  }
+  @media (max-width:720px){
+    .nav-links,.nav>.btn{display:none}
+    .menu-btn{display:inline-block}
+    header.open .nav-links{display:flex;position:absolute;left:0;right:0;top:70px;flex-direction:column;background:var(--paper);border-bottom:1px solid var(--line);padding:18px clamp(20px,5vw,40px);gap:16px}
+    header.open .nav>.btn{display:inline-flex}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms!important;transition-duration:.001ms!important}
+    .hero h1 .flowword path{stroke-dashoffset:0}
+  }
+</style>
+</head>
+<body>
+
+<header id="site-header">
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="CoreoFlow — início">
+      <img src="/logo2-coreoflow.png" alt="CoreoFlow" class="logo-light" width="150" height="25">
+      <img src="/logo-coreoflow.png" alt="CoreoFlow" class="logo-dark" width="150" height="25">
+    </a>
+    <button class="menu-btn" aria-label="Abrir menu" aria-expanded="false">Menu</button>
+    <nav class="nav-links">
+      <a href="#funcionalidades">Funcionalidades</a>
+      <a href="#portal">Portal do encarregado</a>
+      <a href="#precos">Preços</a>
+      <a href="#faq">Perguntas</a>
+      <a href="https://app.coreoflow.me/login">Entrar</a>
+    </nav>
+    <a class="btn" href="mailto:geral@coreoflow.me?subject=Demonstração%20CoreoFlow">Pedir demonstração</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap">
+      <span class="eyebrow">Gestão de estúdios de dança</span>
+      <h1>A plataforma que põe o teu estúdio de dança
+        <span class="flowword">a fluir<svg viewBox="0 0 200 24" aria-hidden="true"><path d="M2 15 C 26 4, 44 22, 70 12 S 118 2, 142 13 S 182 22, 198 9"/></svg></span>.
+      </h1>
+      <p class="lead">Turmas, mensalidades, presenças, planos de aula e o portal dos encarregados —
+        geridos num só lugar, sem folhas de cálculo à solta nem grupos de WhatsApp por controlar.</p>
+      <div class="hero-cta">
+        <a class="btn on-navy" href="mailto:geral@coreoflow.me?subject=Demonstração%20CoreoFlow&body=Ol%C3%A1%2C%20gostava%20de%20ver%20o%20CoreoFlow%20a%20funcionar.">Pedir demonstração</a>
+        <a class="btn ghost on-navy" href="#funcionalidades">Ver funcionalidades</a>
+      </div>
+      <p class="hero-trust">Dados em servidores na <b>União Europeia</b> &nbsp;·&nbsp; backups diários &nbsp;·&nbsp; suporte em <b>português</b></p>
+    </div>
+  </section>
+
+  <!-- SHOWCASE: mapa de salas -->
+  <section class="showcase">
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">Mapa de salas &amp; planeamento</span>
+        <h2>Vê a semana toda numa grelha.</h2>
+        <p>Todas as salas, professores e turmas na mesma vista. O professor toca na sua aula
+          para planear o sumário; o admin vê o que está por planear.</p>
+        <ul>
+          <li>Aulas regulares, ensaios e reservas pontuais de sala</li>
+          <li>Sumário da aula enviado à turma por email num clique</li>
+          <li>Vídeos anexados à própria aula, visíveis no portal</li>
+          <li>Indicação visual do que já está planeado &mdash; e do que falta</li>
+        </ul>
+      </div>
+      <div class="tt" aria-hidden="true">
+        <div class="tt-head"><span></span><span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span></div>
+        <div class="tt-grid">
+          <span class="tt-hour" style="grid-row:1">17h</span>
+          <span class="tt-hour" style="grid-row:3">18h</span>
+          <span class="tt-hour" style="grid-row:5">19h</span>
+          <span class="tt-hour" style="grid-row:7">20h</span>
+          <span class="tt-hour" style="grid-row:9">21h</span>
+          <div class="tt-block b-ballet"  style="grid-column:2;grid-row:2/5">Ballet Iniciação<small>Sala A · Rita</small></div>
+          <div class="tt-block b-hip"     style="grid-column:4;grid-row:2/5">Hip Hop Kids<small>Sala B · Tó</small></div>
+          <div class="tt-block b-jazz"    style="grid-column:3;grid-row:5/8">Jazz 12+<small>Sala A · Rita</small></div>
+          <div class="tt-block b-contemp" style="grid-column:5;grid-row:4/9">Contemporâneo Av.<small>Sala B · Inês</small></div>
+          <div class="tt-block b-contemp" style="grid-column:2;grid-row:8/11">Ensaio · Gala<small>Sala A · Inês</small></div>
+        </div>
+        <div class="tt-cap"><span>Semana 12&ndash;18 mai</span><span>4 salas · 26 turmas</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section>
+    <div class="wrap">
+      <div class="lead-block">
+        <span class="eyebrow">Antes do CoreoFlow</span>
+        <h2>A escola cresce. A gestão fica pelo caminho.</h2>
+        <p>Mais alunos significa mais mensalidades por cobrar, mais faltas por registar e mais
+          encarregados a perguntar o mesmo. O CoreoFlow trata da operação para a direção poder
+          voltar a pensar na dança.</p>
+      </div>
+      <div class="prob">
+        <div>
+          <span class="k">Mensalidades</span>
+          <h3>Cobranças que escapam</h3>
+          <p>Quem pagou? Quem tem irmão com desconto? O mês fecha e há sempre valores por reconciliar.</p>
+        </div>
+        <div>
+          <span class="k">Presenças</span>
+          <h3>Faltas sem rasto</h3>
+          <p>A folha de papel perde-se. Ninguém sabe se um aluno anda a faltar até ser tarde.</p>
+        </div>
+        <div>
+          <span class="k">Comunicação</span>
+          <h3>Tudo no WhatsApp</h3>
+          <p>Avisos de gala, contratos, fotos e sumários misturados em cinco grupos diferentes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PORTAL -->
+  <section class="portal" id="portal">
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">Portal do encarregado</span>
+        <h2>Os pais entram e veem tudo.</h2>
+        <p>Um email e uma palavra-passe &mdash; sem app para instalar. Um encarregado com dois
+          filhos vê os dois. Presenças, mensalidades, avaliações, contratos por assinar e os
+          vídeos das aulas, sempre atualizados.</p>
+        <p class="p-mut" style="margin-top:14px">Menos mensagens para a secretaria. Menos "podes reenviar?".</p>
+      </div>
+      <div class="phone" aria-hidden="true">
+        <div class="phone-top"></div>
+        <div class="p-card">
+          <div class="p-h">Mensalidade · Maio</div>
+          <div class="r"><span class="p-strong">Turma Ballet Iniciação</span><span class="pill ok">Pago</span></div>
+        </div>
+        <div class="p-card">
+          <div class="p-h">Mensalidade · Junho</div>
+          <div class="r"><span class="p-strong">Turma Ballet Iniciação</span><span class="pill due">Por pagar</span></div>
+        </div>
+        <div class="p-card">
+          <div class="p-h">Aula de 14/05 · Contemporâneo</div>
+          <div class="r"><span class="p-strong">Vídeo da aula</span><span class="p-mut">2:14 min</span></div>
+        </div>
+        <div class="p-card">
+          <div class="p-h">Contrato 2026/27</div>
+          <div class="r"><span class="p-strong">Matrícula</span><span class="pill due">Assinar</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="funcionalidades">
+    <div class="wrap">
+      <div class="lead-block">
+        <span class="eyebrow">Funcionalidades</span>
+        <h2>Uma plataforma, não sete ferramentas.</h2>
+        <p>Cada estúdio liga só os módulos de que precisa. Começa pelo essencial e acrescenta
+          à medida que a escola cresce.</p>
+      </div>
+      <div class="feat">
+        <div class="fgroup">
+          <h3><i></i>Alunos &amp; turmas</h3>
+          <ul>
+            <li><b>Fichas de aluno</b> com foto, contactos e histórico</li>
+            <li><b>Inscrições e renovações</b> com validação pela secretaria</li>
+            <li><b>Lista de espera</b> por turma</li>
+            <li><b>Sócios</b>, quotas e seguro desportivo</li>
+            <li><b>Turmas e modalidades</b>, co-professores</li>
+            <li><b>Avaliações</b> de alunos por período</li>
+            <li><b>Aniversários</b> e alertas de CRM</li>
+          </ul>
+        </div>
+        <div class="fgroup">
+          <h3><i></i>Financeiro</h3>
+          <ul>
+            <li><b>Mensalidades automáticas</b>, descontos de irmão, prorata</li>
+            <li><b>Recibos e faturação</b> com integração Vendus</li>
+            <li><b>Transferências</b> com dupla assinatura</li>
+            <li><b>Subsídios e apoios</b> à inscrição</li>
+            <li><b>Previsão de receita</b> e rentabilidade por turma</li>
+            <li><b>Relatórios</b> de tesouraria e assiduidade</li>
+          </ul>
+        </div>
+        <div class="fgroup">
+          <h3><i></i>Aulas</h3>
+          <ul>
+            <li><b>Mapa de salas</b> semanal, com reservas pontuais</li>
+            <li><b>Plano e sumário</b> de cada aula, enviado à turma</li>
+            <li><b>Presenças</b> &mdash; folha mensal ou cards com foto do dia</li>
+            <li><b>Registo de horas</b> dos professores</li>
+            <li><b>Vídeos das aulas</b> guardados e partilhados com a turma</li>
+          </ul>
+        </div>
+        <div class="fgroup">
+          <h3><i></i>Comunicação</h3>
+          <ul>
+            <li><b>Portal do encarregado</b> por email, multi-educando</li>
+            <li><b>Campanhas</b> por email e WhatsApp</li>
+            <li><b>Contratos digitais</b> assinados online</li>
+            <li><b>Inquéritos</b> de satisfação com página pública</li>
+            <li><b>Notificações</b> de faltas, dívidas e prazos</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MADE FOR PT -->
+  <section class="pt-band">
+    <div class="wrap">
+      <span class="eyebrow">Feito para Portugal</span>
+      <h2>Escrito para a realidade de uma escola de dança portuguesa.</h2>
+      <div class="pt-grid">
+        <div><h3>Faturação PT</h3><p>Recibos e faturas com IVA e integração direta com o Vendus.</p></div>
+        <div><h3>Encarregados</h3><p>Modelo de encarregado de educação com vários educandos por conta.</p></div>
+        <div><h3>Subsídios</h3><p>Apoios e comparticipações à inscrição registados por aluno.</p></div>
+        <div><h3>RGPD</h3><p>Dados alojados na UE, acesso por perfil e backups diários.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section id="precos">
+    <div class="wrap">
+      <div class="lead-block">
+        <span class="eyebrow">Preços</span>
+        <h2>Acompanha o tamanho da escola.</h2>
+        <p>O valor mensal acompanha o número de alunos ativos &mdash; sem custos de instalação
+          e sem surpresas. Migração dos dados, formação da equipa e suporte em português
+          incluídos em todos os planos.</p>
+      </div>
+      <div class="price">
+        <div class="tier">
+          <span class="tag">&nbsp;</span>
+          <div class="name">Essencial</div>
+          <div class="who">Para estúdios a começar</div>
+          <!-- TODO Daniel: substituir por preço real -->
+          <div class="amt">Sob proposta</div>
+          <ul>
+            <li>Alunos, turmas e modalidades</li>
+            <li>Mensalidades e recibos</li>
+            <li>Presenças</li>
+            <li>Portal do encarregado</li>
+          </ul>
+          <a class="btn ghost" href="mailto:geral@coreoflow.me?subject=Plano%20Essencial%20—%20CoreoFlow">Falar connosco</a>
+        </div>
+        <div class="tier mark">
+          <span class="tag">Mais escolhido</span>
+          <div class="name">Pro</div>
+          <div class="who">Para estúdios em crescimento</div>
+          <div class="amt">Sob proposta</div>
+          <ul>
+            <li>Tudo do Essencial</li>
+            <li>Mapa de salas e planeamento de aulas</li>
+            <li>Avaliações e contratos digitais</li>
+            <li>Campanhas e notificações</li>
+            <li>Relatórios e previsão de receita</li>
+          </ul>
+          <a class="btn" href="mailto:geral@coreoflow.me?subject=Plano%20Pro%20—%20CoreoFlow">Pedir demonstração</a>
+        </div>
+        <div class="tier">
+          <span class="tag">&nbsp;</span>
+          <div class="name">Estúdio</div>
+          <div class="who">Operação completa</div>
+          <div class="amt">Sob proposta</div>
+          <ul>
+            <li>Tudo do Pro</li>
+            <li>Vídeos das aulas</li>
+            <li>Loja, subsídios e inquéritos</li>
+            <li>Faturação Vendus</li>
+            <li>Vários utilizadores e delegados</li>
+          </ul>
+          <a class="btn ghost" href="mailto:geral@coreoflow.me?subject=Plano%20Estúdio%20—%20CoreoFlow">Falar connosco</a>
+        </div>
+      </div>
+      <p class="price-note">Não há dois estúdios iguais. Conta-nos como funciona a tua escola e
+        preparamos uma proposta à medida &mdash; sem compromisso.</p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <div class="wrap">
+     <div class="faq">
+      <span class="eyebrow">Perguntas</span>
+      <h2 style="font-size:var(--step-3);margin-bottom:14px">Antes de decidir</h2>
+      <details open>
+        <summary>Já uso Excel e grupos de WhatsApp. Vale a pena mudar?</summary>
+        <p>Se a escola tem mais de 30 ou 40 alunos, normalmente sim. O tempo que se perde a
+          reconciliar pagamentos, a reescrever avisos e a procurar folhas de presenças costuma
+          pagar o CoreoFlow sozinho. Fazemos uma demonstração com os dados da tua escola para veres.</p>
+      </details>
+      <details>
+        <summary>E os meus dados atuais? Tenho de reintroduzir tudo?</summary>
+        <p>Não. A migração de alunos, turmas e histórico está incluída em todos os planos.
+          Envias-nos o que tens (Excel, exportações do sistema atual) e tratamos da importação.</p>
+      </details>
+      <details>
+        <summary>Os encarregados precisam de instalar alguma aplicação?</summary>
+        <p>Não. O portal é uma página web &mdash; entram com o email e a palavra-passe que definem
+          no primeiro acesso. Um encarregado com vários filhos gere todos na mesma conta.</p>
+      </details>
+      <details>
+        <summary>Funciona para a faturação em Portugal?</summary>
+        <p>Sim. O CoreoFlow gera recibos e integra com o Vendus para emissão de faturas com IVA.
+          Também há previsão de receita e relatórios de tesouraria.</p>
+      </details>
+      <details>
+        <summary>Há contrato de permanência?</summary>
+        <p>É mensal. Sem fidelização e sem custo de cancelamento &mdash; se não servir, sais e
+          levas os teus dados.</p>
+      </details>
+      <details>
+        <summary>Onde ficam os dados?</summary>
+        <p>Em servidores na União Europeia, com backups diários automáticos. O acesso é por
+          perfil (direção, secretaria, professor, encarregado) e cada um só vê o que lhe diz respeito.</p>
+      </details>
+     </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final">
+    <div class="wrap">
+      <div>
+        <h2>Vê o CoreoFlow com a tua escola em mente.</h2>
+        <p>Uma conversa de 20 minutos, com uma demonstração já preparada para estúdios de dança.</p>
+      </div>
+      <a class="btn on-navy" href="mailto:geral@coreoflow.me?subject=Demonstração%20CoreoFlow&body=Ol%C3%A1%2C%20gostava%20de%20agendar%20uma%20demonstra%C3%A7%C3%A3o.%0A%0AEsc%C3%B3la%3A%20%0AN%C2%BA%20aproximado%20de%20alunos%3A%20%0AMelhor%20hora%20para%20falar%3A%20">Pedir demonstração</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="foot-brand">CoreoFlow</div>
+      <p style="margin-top:6px">Gestão de estúdios de dança · um produto de Daniel Silva</p>
+    </div>
+    <div class="foot-links">
+      <a href="#funcionalidades">Funcionalidades</a>
+      <a href="#precos">Preços</a>
+      <a href="https://app.coreoflow.me/login">Entrar na plataforma</a>
+      <a href="mailto:geral@coreoflow.me">geral@coreoflow.me</a>
+    </div>
+    <div style="width:100%;border-top:1px solid var(--line);padding-top:16px;font-size:.8rem">
+      © <span id="y">2026</span> CoreoFlow
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var h=document.getElementById('site-header');
+    var onScroll=function(){h.classList.toggle('scrolled',window.scrollY>8)};
+    onScroll();addEventListener('scroll',onScroll,{passive:true});
+
+    var mb=document.querySelector('.menu-btn');
+    mb.addEventListener('click',function(){
+      var open=h.classList.toggle('open');
+      mb.setAttribute('aria-expanded',open?'true':'false');
+    });
+    h.querySelectorAll('.nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){h.classList.remove('open');mb.setAttribute('aria-expanded','false')});
+    });
+
+    var y=document.getElementById('y'); if(y) y.textContent=new Date().getFullYear();
+  })();
+</script>
+
+</body>
+</html>
