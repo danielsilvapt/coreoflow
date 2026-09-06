@@ -25,10 +25,10 @@ Depois, uma única vez:
    e remover o reencaminhamento/parking atual.
 2. Quando o DNS propagar, gerar o certificado HTTPS:
    ```
-   ! ssh root@188.245.115.89 "certbot --nginx -d coreoflow.me -d www.coreoflow.me --redirect -n --agree-tos -m geral@coreoflow.me"
+   ! ssh root@188.245.115.89 "certbot --nginx -d coreoflow.me -d www.coreoflow.me --redirect -n --agree-tos -m dfc.daniel@gmail.com"
    ```
 
 ## A rever antes de divulgar
 - **Preços**: as tabelas dizem "Sob proposta" — ver `<!-- TODO Daniel -->` no `index.html`
   se quiseres mostrar valores.
-- Email de contacto: `geral@coreoflow.me` (usado em todos os botões).
+- Email de contacto: `dfc.daniel@gmail.com` (usado em todos os botões).

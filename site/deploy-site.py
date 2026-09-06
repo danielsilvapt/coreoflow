@@ -74,6 +74,6 @@ print(
     "       Tipo A   Nome www   Valor 188.245.115.89\n"
     "     (remover o reencaminhamento / parking que existe agora)\n"
     "  2. Quando o DNS propagar (verifica: nslookup coreoflow.me), gerar o certificado:\n"
-    "       ! ssh root@188.245.115.89 \"certbot --nginx -d coreoflow.me -d www.coreoflow.me --redirect -n --agree-tos -m geral@coreoflow.me\"\n"
+    "       ! ssh root@188.245.115.89 \"certbot --nginx -d coreoflow.me -d www.coreoflow.me --redirect -n --agree-tos -m dfc.daniel@gmail.com\"\n"
 )
 c.close()
