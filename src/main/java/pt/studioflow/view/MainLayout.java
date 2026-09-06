@@ -467,6 +467,7 @@ public class MainLayout extends AppLayout {
                                 tabs.add(criarTab("Contratos", VaadinIcon.FILE_TEXT, "#607D8B", ContratosView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PLANO_AULAS))
                                 tabs.add(criarTab("Plano de Aulas", VaadinIcon.CALENDAR, "#00897B", PlanoAulasView.class, null));
+                        tabs.add(criarTab("Horário", VaadinIcon.CALENDAR_CLOCK, "#0e7490", HorarioView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.VIDEOS_AULA))
                                 tabs.add(criarTab("Vídeos das Aulas", VaadinIcon.PLAY_CIRCLE, "#D32F2F", VideosAulaProfessorView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.LOJA))
