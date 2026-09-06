@@ -1,8 +1,11 @@
 package pt.studioflow.view;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.details.Details;
-import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -11,137 +14,128 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
-import pt.studioflow.model.DriveVideoDTO; // Idealmente renomear para DriveMediaDTO no futuro
-import pt.studioflow.service.GoogleDriveService;
-import pt.studioflow.service.TurmaService;
+import pt.studioflow.model.Aluno;
+import pt.studioflow.model.Turma;
+import pt.studioflow.model.VideoAula;
+import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.repository.VideoAulaRepository;
+import pt.studioflow.service.AuthService;
+import pt.studioflow.service.R2StorageService;
 
+import java.time.Duration;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
+/**
+ * Área do aluno/encarregado: os vídeos que os professores enviaram para as
+ * aulas das turmas do aluno selecionado. Lê do bucket R2
+ * ({@link VideoAula} / {@link R2StorageService}) — a mesma fonte do upload em
+ * {@link VideosAulaProfessorView}.
+ */
 @Route(value = "alunos-videos", layout = MainLayout.class)
-@PageTitle("Media da Turma | CoreoFlow")
+@PageTitle("Vídeos das Aulas | CoreoFlow")
 @RolesAllowed("ALUNO")
 public class AlunoVideosView extends VerticalLayout {
 
-    private final GoogleDriveService driveService;
-    private final TurmaService turmaService;
+    private static final Duration LINK_VALIDADE = Duration.ofHours(2);
+    private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    public AlunoVideosView(GoogleDriveService driveService, TurmaService turmaService) {
-        this.driveService = driveService;
-        this.turmaService = turmaService;
+    private final R2StorageService storageService;
+
+    public AlunoVideosView(AuthService authService, TurmaRepository turmaRepository,
+            VideoAulaRepository videoAulaRepository, R2StorageService storageService) {
+        this.storageService = storageService;
 
         setSizeFull();
-        setSpacing(true);
         setPadding(true);
+        setSpacing(true);
+        add(new H2("Vídeos das Aulas"));
 
-        renderizarTurmas();
-    }
-
-    private void renderizarTurmas() {
-        String emailLogado = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication().getName();
-
-        List<pt.studioflow.model.Turma> turmas = turmaService.getTurmasPorAluno(emailLogado);
-
-        if (turmas.isEmpty()) {
-            add(new Span("Não foram encontradas turmas para o email: " + emailLogado));
+        Aluno aluno = authService.getAlunoSelecionado();
+        if (aluno == null) {
+            add(new Span("Perfil de aluno não encontrado. Contacta a secretaria."));
             return;
         }
 
-        turmas.forEach(turma -> {
-            Details details = new Details();
-            details.setSummaryText(turma.getDescricao());
-            details.setWidthFull();
+        List<Turma> turmas = turmaRepository.findByAlunoId(aluno.getId());
+        if (turmas.isEmpty()) {
+            add(new Span(aluno.getNomeCompleto() + " ainda não está inscrito(a) em nenhuma turma."));
+            return;
+        }
 
-            details.addOpenedChangeListener(e -> {
-                if (e.isOpened() && details.getContent().count() == 0) {
-                    details.add(carregarMediaDaTurma(turma.getGoogleDriveFolderId()));
-                }
-            });
+        List<VideoAula> videos = videoAulaRepository.findByTurmaInOrderByDataUploadDesc(turmas);
+        if (videos.isEmpty()) {
+            add(new Span("Ainda não há vídeos das aulas de " + aluno.getNomeCompleto() + "."));
+            return;
+        }
+
+        Map<Turma, List<VideoAula>> porTurma = videos.stream()
+                .collect(Collectors.groupingBy(VideoAula::getTurma, LinkedHashMap::new, Collectors.toList()));
+
+        porTurma.forEach((turma, lista) -> {
+            Details details = new Details();
+            details.setSummaryText(turma.getDescricao() + " · " + lista.size()
+                    + (lista.size() == 1 ? " vídeo" : " vídeos"));
+            details.setWidthFull();
+            details.setOpened(porTurma.size() == 1);
+
+            FlexLayout container = new FlexLayout();
+            container.setFlexWrap(FlexLayout.FlexWrap.WRAP);
+            container.getStyle().set("gap", "16px").set("padding", "12px 0");
+            lista.forEach(v -> container.add(criarCard(v)));
+
+            details.add(container);
             add(details);
         });
     }
 
-    private Component carregarMediaDaTurma(String folderId) {
-        FlexLayout container = new FlexLayout();
-        container.setFlexWrap(FlexLayout.FlexWrap.WRAP);
-        container.getStyle().set("gap", "20px");
-        container.getStyle().set("padding", "var(--lumo-space-m)");
-
-        // O serviço agora deve retornar todos os ficheiros (Vídeos e Imagens)
-        List<DriveVideoDTO> arquivos = driveService.listarVideosDaPasta(folderId);
-
-        if (arquivos.isEmpty()) {
-            return new Span("Nenhum conteúdo disponível para esta turma.");
-        }
-
-        for (DriveVideoDTO arquivo : arquivos) {
-            container.add(criarMediaCard(arquivo));
-        }
-
-        return container;
-    }
-
-    private Component criarMediaCard(DriveVideoDTO media) {
+    private Component criarCard(VideoAula video) {
         VerticalLayout card = new VerticalLayout();
-        card.setWidth("240px");
+        card.setWidth("200px");
         card.setPadding(true);
         card.setSpacing(false);
         card.setAlignItems(Alignment.CENTER);
-
-        // Estilo Base do Card
         card.getStyle().set("border", "1px solid #e2e8f0").set("border-radius", "12px")
-                .set("background", "white").set("box-shadow", "0 4px 6px -1px rgba(0, 0, 0, 0.1)")
-                .set("cursor", "pointer").set("transition", "all 0.3s ease").set("overflow", "hidden");
+                .set("background", "white").set("box-shadow", "0 2px 6px rgba(0,0,0,0.08)");
 
-        // Área de Visualização (Placeholder ou Imagem)
-        VerticalLayout visualArea = new VerticalLayout();
-        visualArea.setWidthFull();
-        visualArea.setHeight("135px");
-        visualArea.setJustifyContentMode(JustifyContentMode.CENTER);
-        visualArea.setAlignItems(Alignment.CENTER);
-        visualArea.getStyle().set("border-radius", "8px").set("overflow", "hidden").set("padding", "0");
+        VerticalLayout thumb = new VerticalLayout();
+        thumb.setWidthFull();
+        thumb.setHeight("110px");
+        thumb.setAlignItems(Alignment.CENTER);
+        thumb.setJustifyContentMode(JustifyContentMode.CENTER);
+        thumb.getStyle().set("background", "linear-gradient(135deg, #1e293b 0%, #334155 100%)")
+                .set("border-radius", "8px").set("cursor", "pointer");
+        Icon playIcon = VaadinIcon.PLAY_CIRCLE.create();
+        playIcon.setSize("36px");
+        playIcon.setColor("white");
+        thumb.add(playIcon);
 
-        // Lógica para detetar se é imagem ou vídeo
-        boolean isImage = media.getNome().toLowerCase().matches(".*\\.(jpg|jpeg|png|gif|webp)$");
+        Anchor reproduzir = new Anchor(
+                storageService.gerarUrlTemporario(video.getChaveArmazenamento(), LINK_VALIDADE), thumb);
+        reproduzir.setTarget("_blank");
+        reproduzir.setRouterIgnore(true);
+        reproduzir.getStyle().set("width", "100%").set("text-decoration", "none");
 
-        Icon actionIcon = new Icon(isImage ? VaadinIcon.PICTURE : VaadinIcon.PLAY_CIRCLE);
-        actionIcon.setSize("40px");
-        actionIcon.setColor("white");
+        Span data = new Span("Aula de " + video.getData().format(DATA));
+        data.getStyle().set("font-size", "12px").set("font-weight", "600").set("margin-top", "8px");
 
-        if (isImage) {
-            // Se for imagem, tentamos mostrar a miniatura do Drive
-            Image img = new Image(media.getThumbnailUrl() != null ? media.getThumbnailUrl() : "", "Preview");
-            img.setWidthFull();
-            img.setHeightFull();
-            img.getStyle().set("object-fit", "cover");
-            visualArea.add(img);
-        } else {
-            // Se for vídeo, mantemos o fundo gradiente e o ícone de Play
-            visualArea.getStyle().set("background", "linear-gradient(135deg, #1e293b 0%, #334155 100%)");
-            visualArea.add(actionIcon);
-        }
+        Span nome = new Span(video.getNomeFicheiro());
+        nome.getStyle().set("font-size", "11px").set("color", "#666").set("text-align", "center")
+                .set("width", "100%").set("white-space", "nowrap").set("text-overflow", "ellipsis")
+                .set("overflow", "hidden");
 
-        // Título
-        Span titulo = new Span(media.getNome());
-        titulo.getStyle().set("font-weight", "600").set("font-size", "14px").set("margin-top", "12px")
-                .set("text-align", "center").set("width", "100%").set("white-space", "nowrap")
-                .set("text-overflow", "ellipsis").set("overflow", "hidden");
+        Button descarregarBtn = new Button("Descarregar", VaadinIcon.DOWNLOAD_ALT.create());
+        descarregarBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        Anchor descarregar = new Anchor(
+                storageService.gerarUrlDownload(video.getChaveArmazenamento(), video.getNomeFicheiro(), LINK_VALIDADE),
+                descarregarBtn);
+        descarregar.getElement().setAttribute("download", true);
+        descarregar.getStyle().set("text-decoration", "none").set("margin-top", "4px");
 
-        card.add(visualArea, titulo);
-
-        // Hover Effects
-        card.getElement().addEventListener("mouseenter", e -> {
-            card.getStyle().set("transform", "translateY(-5px)");
-            actionIcon.setColor("#3b82f6");
-        });
-        card.getElement().addEventListener("mouseleave", e -> {
-            card.getStyle().set("transform", "translateY(0)");
-            actionIcon.setColor("white");
-        });
-
-        // Clique: Abre o link do Google Drive (Modo Preview)
-        card.addClickListener(e -> getUI().ifPresent(ui -> ui.getPage().open(media.getEmbedUrl(), "_blank")));
-
+        card.add(reproduzir, data, nome, descarregar);
         return card;
     }
 }

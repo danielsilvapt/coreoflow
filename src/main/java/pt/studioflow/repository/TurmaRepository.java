@@ -66,6 +66,9 @@ public interface TurmaRepository extends JpaRepository<Turma, Long> {
     @Query("SELECT t FROM Turma t JOIN t.alunosTurma at JOIN at.aluno a WHERE a.email = :email")
     List<Turma> findByAlunosEmail(@Param("email") String email);
 
+    @Query("SELECT DISTINCT t FROM Turma t JOIN t.alunosTurma at WHERE at.aluno.id = :alunoId ORDER BY t.descricao ASC")
+    List<Turma> findByAlunoId(@Param("alunoId") Long alunoId);
+
     @Query("SELECT t.id, size(t.alunosTurma) FROM Turma t")
     List<Object[]> getContagemAlunosPorTurma();
 

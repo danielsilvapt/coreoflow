@@ -33,6 +33,9 @@ public class SecurityConfig extends VaadinWebSecurity {
         http.authorizeHttpRequests(auth ->
                 auth.requestMatchers(new AntPathRequestMatcher("/inscricao")).permitAll());
 
+        http.authorizeHttpRequests(auth ->
+                auth.requestMatchers(new AntPathRequestMatcher("/portal-ativar")).permitAll());
+
         http.csrf(csrf -> csrf.ignoringRequestMatchers(new AntPathRequestMatcher("/api/convocatoria/**")));
 
         http.authorizeHttpRequests(auth ->
