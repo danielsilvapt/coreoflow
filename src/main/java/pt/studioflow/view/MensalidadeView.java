@@ -311,13 +311,22 @@ public class MensalidadeView extends VerticalLayout {
 
         // 2. Procurar a turma com a coleção "alunosTurma" já carregada de forma
         // antecipada
-        int aulasSemanais = turmaRepository.findByIdWithAlunos(m.getTurma().getId())
-                .map(turmaCarregada -> turmaCarregada.getAlunosTurma().stream()
+        var turmaCarregada = turmaRepository.findByIdWithAlunos(m.getTurma().getId()).orElse(null);
+        int aulasSemanais = turmaCarregada == null ? 1
+                : turmaCarregada.getAlunosTurma().stream()
                         .filter(at -> at.getAluno().getId().equals(m.getAluno().getId()))
                         .findFirst()
                         .map(AlunoTurma::getAulasPorSemana)
-                        .orElse(1) // Fallback se não encontrar a linha específica do AlunoTurma
-                ).orElse(1); // Fallback se não encontrar a turma na BD
+                        .orElse(1);
+
+        // 2b. Turma com mensalidade própria (competição, workshops) — valor fechado,
+        // usado tal-qual como base para o cálculo de descontos.
+        if (turmaCarregada != null && turmaCarregada.temMensalidadePropria()) {
+            Double proprio = turmaCarregada.getMensalidadeSocio() != null
+                    ? turmaCarregada.getMensalidadeSocio()
+                    : turmaCarregada.getMensalidadeNaoSocio();
+            if (proprio != null) return proprio;
+        }
 
         // 3. Determinar o preço final de tabela baseado nas propriedades
         if (esCrianca) {

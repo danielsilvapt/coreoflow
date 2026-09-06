@@ -27,6 +27,11 @@ public class Convite {
     @Column(length = 500)
     private String observacoes;
 
+    /** Estado do evento — planeado, confirmado, concluído ou cancelado. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado")
+    private EstadoEvento estado = EstadoEvento.PLANEADO;
+
     // Dentro da classe Convite.java
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "convite_figurinos", joinColumns = @JoinColumn(name = "convite_id"))
@@ -101,6 +106,14 @@ public class Convite {
 
     public void setObservacoes(String observacoes) {
         this.observacoes = observacoes;
+    }
+
+    public EstadoEvento getEstado() {
+        return estado;
+    }
+
+    public void setEstado(EstadoEvento estado) {
+        this.estado = estado;
     }
 
     public Map<Long, StatusParticipacao> getParticipacoes() {

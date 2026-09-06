@@ -63,6 +63,45 @@ public class Turma {
     @Column(name = "cor")
     private String cor; // Guardará o código Hexadecimal (ex: #FF0000)
 
+    /**
+     * Mensalidade própria desta turma, que substitui a tabela do estúdio
+     * (criança/adulto x 1x/2x por semana). Serve para turmas com preço fechado —
+     * competição, workshops, turmas de nível avançado. A null, aplica-se a tabela
+     * normal do {@link Studio}.
+     */
+    @Column(name = "mensalidade_socio")
+    private Double mensalidadeSocio;
+
+    /**
+     * Contraparte de {@link #mensalidadeSocio} para não-sócios. A null (mas com
+     * {@code mensalidadeSocio} preenchido), o não-sócio paga esse valor mais o
+     * acréscimo de não-sócio do estúdio.
+     */
+    @Column(name = "mensalidade_nao_socio")
+    private Double mensalidadeNaoSocio;
+
+    /** true se esta turma tem preço próprio em vez da tabela do estúdio. */
+    @Transient
+    public boolean temMensalidadePropria() {
+        return mensalidadeSocio != null || mensalidadeNaoSocio != null;
+    }
+
+    public Double getMensalidadeSocio() {
+        return mensalidadeSocio;
+    }
+
+    public void setMensalidadeSocio(Double mensalidadeSocio) {
+        this.mensalidadeSocio = mensalidadeSocio;
+    }
+
+    public Double getMensalidadeNaoSocio() {
+        return mensalidadeNaoSocio;
+    }
+
+    public void setMensalidadeNaoSocio(Double mensalidadeNaoSocio) {
+        this.mensalidadeNaoSocio = mensalidadeNaoSocio;
+    }
+
     // Dentro da classe Turma.java
     @Column(name = "whatsapp_group_link")
     private String whatsappGroupLink;

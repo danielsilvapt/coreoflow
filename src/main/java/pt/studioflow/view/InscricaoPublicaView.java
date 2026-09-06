@@ -416,7 +416,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
                 .mapToDouble(t -> {
                     Select<String> freqSelect = mapaFrequencias.get(t.getId());
                     int freq = (freqSelect != null && "1 vez / semana".equals(freqSelect.getValue())) ? 1 : 2;
-                    return mensalidadeConfig.calcularMensalidade(studioAtual, crianca ? "crianca" : "adulto", freq, socioVal);
+                    return mensalidadeConfig.calcularMensalidade(studioAtual, t, crianca ? "crianca" : "adulto", freq, socioVal);
                 }).sum();
 
         long numModalidades = selecionadas.stream().map(Turma::getModalidade).map(Modalidade::getId).distinct().count();
