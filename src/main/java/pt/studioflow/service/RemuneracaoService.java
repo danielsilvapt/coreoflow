@@ -266,7 +266,7 @@ public class RemuneracaoService {
 
     private double mensalidadeProjetada(Studio s, AlunoTurma at) {
         if (s == null || at.getAluno() == null) return 0.0;
-        return mensalidadeConfig.calcularMensalidade(s,
+        return mensalidadeConfig.calcularMensalidade(s, at.getTurma(),
                 at.getAluno().isCrianca() ? "crianca" : "adulto",
                 at.getAulasPorSemana(), at.getAluno().isSocio());
     }

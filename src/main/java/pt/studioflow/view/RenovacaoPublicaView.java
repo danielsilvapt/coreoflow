@@ -304,7 +304,7 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
                 .mapToDouble(t -> {
                     Select<String> freqSelect = mapaFrequencias.get(t.getId());
                     int freq = (freqSelect != null && "1 vez / semana".equals(freqSelect.getValue())) ? 1 : 2;
-                    return mensalidadeConfig.calcularMensalidade(studioAtual, aluno.isCrianca() ? "crianca" : "adulto", freq, aluno.isSocio());
+                    return mensalidadeConfig.calcularMensalidade(studioAtual, t, aluno.isCrianca() ? "crianca" : "adulto", freq, aluno.isSocio());
                 }).sum();
 
         long numModalidades = selecionadas.stream().map(Turma::getModalidade).map(Modalidade::getId).distinct().count();

@@ -2,6 +2,7 @@ package pt.studioflow.config;
 
 import org.springframework.stereotype.Component;
 import pt.studioflow.model.Studio;
+import pt.studioflow.model.Turma;
 
 /**
  * Configuração de mensalidades por estúdio (multi-tenant).
@@ -29,6 +30,43 @@ public class MensalidadeConfig {
             valor += studio.getMensalidadeNaoSocioAdicional();
         }
         return valor;
+    }
+
+    /**
+     * Valor da mensalidade de uma turma concreta. Se a turma tiver mensalidade
+     * própria configurada ({@link Turma#getMensalidadeSocio()} /
+     * {@link Turma#getMensalidadeNaoSocio()}), esse valor substitui a tabela do
+     * estúdio — é o caso das turmas de competição, workshops e níveis avançados.
+     * Caso contrário aplica-se a tabela normal (criança/adulto x frequência).
+     */
+    public double calcularMensalidade(Studio studio, Turma turma, String tipo, int aulasPorSemana, boolean socio) {
+        Double proprio = valorProprioDaTurma(turma, socio);
+        if (proprio != null) {
+            return proprio;
+        }
+        return calcularMensalidade(studio, tipo, aulasPorSemana, socio);
+    }
+
+    /**
+     * Mensalidade própria da turma para este aluno, ou null se a turma segue a
+     * tabela do estúdio. Um não-sócio sem valor próprio definido paga o valor de
+     * sócio mais o acréscimo de não-sócio do estúdio.
+     */
+    public Double valorProprioDaTurma(Turma turma, boolean socio) {
+        if (turma == null || !turma.temMensalidadePropria()) {
+            return null;
+        }
+        if (socio) {
+            return turma.getMensalidadeSocio() != null
+                    ? turma.getMensalidadeSocio()
+                    : turma.getMensalidadeNaoSocio();
+        }
+        if (turma.getMensalidadeNaoSocio() != null) {
+            return turma.getMensalidadeNaoSocio();
+        }
+        double adicional = turma.getStudio() != null && turma.getStudio().getMensalidadeNaoSocioAdicional() != null
+                ? turma.getStudio().getMensalidadeNaoSocioAdicional() : 0.0;
+        return turma.getMensalidadeSocio() + adicional;
     }
 
     // Métodos de conveniência que lêem do Studio atual da sessão

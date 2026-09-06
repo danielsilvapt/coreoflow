@@ -131,6 +131,21 @@ public class Aluno {
     @Column(name = "foto_chave")
     private String fotoChave;
 
+    /**
+     * Consentimento RGPD dado na ficha de inscrição/renovação pública — tratamento
+     * de dados pessoais e utilização de imagem. Obrigatório guardar como prova.
+     */
+    @Column(name = "consentimento_rgpd")
+    private Boolean consentimentoRgpd = false;
+
+    /**
+     * O aluno pediu desconto de familiar no formulário público. É só o pedido — a
+     * secretaria confirma em ValidacaoInscricoesView antes de aplicar o desconto
+     * ({@link TipoDesconto#DESCONTO_FAMILIARES}) às mensalidades.
+     */
+    @Column(name = "pede_desconto_familiar")
+    private Boolean pedeDescontoFamiliar = false;
+
     @OneToMany(mappedBy = "aluno", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Presenca> presencas;
 
@@ -379,6 +394,12 @@ public class Aluno {
 
     public boolean isPedidoRenovacao() { return pedidoRenovacao != null && pedidoRenovacao; }
     public void setPedidoRenovacao(boolean pedidoRenovacao) { this.pedidoRenovacao = pedidoRenovacao; }
+
+    public boolean isConsentimentoRgpd() { return consentimentoRgpd != null && consentimentoRgpd; }
+    public void setConsentimentoRgpd(boolean consentimentoRgpd) { this.consentimentoRgpd = consentimentoRgpd; }
+
+    public boolean isPedeDescontoFamiliar() { return pedeDescontoFamiliar != null && pedeDescontoFamiliar; }
+    public void setPedeDescontoFamiliar(boolean pedeDescontoFamiliar) { this.pedeDescontoFamiliar = pedeDescontoFamiliar; }
 
     public boolean isDadosValidados() { return Boolean.TRUE.equals(dadosValidados); }
     public void setDadosValidados(boolean dadosValidados) { this.dadosValidados = dadosValidados; }
