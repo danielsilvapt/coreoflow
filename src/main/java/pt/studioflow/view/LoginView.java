@@ -148,7 +148,13 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
                         boolean isProf = auth.getAuthorities().stream()
                                         .anyMatch(a -> a.getAuthority().equals("ROLE_PROF")
                                                         || a.getAuthority().equals("PROF"));
-                        event.forwardTo(isProf ? PresencasView.class : DashboardView.class);
+                        boolean isAluno = auth.getAuthorities().stream()
+                                        .anyMatch(a -> a.getAuthority().equals("ROLE_ALUNO"));
+                        if (isAluno) {
+                                event.forwardTo(PortalAlunoView.class);
+                        } else {
+                                event.forwardTo(isProf ? PresencasView.class : DashboardView.class);
+                        }
                 }
         }
 }

@@ -6,6 +6,7 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -58,6 +59,9 @@ public class VideosAulaProfessorView extends VerticalLayout {
     private final Span semTurmaAviso = new Span("Escolhe uma turma e uma data para ver/enviar vídeos.");
     private final Upload upload;
     private final FileBuffer buffer = new FileBuffer();
+
+    /** Validade dos links assinados do R2 gerados para reproduzir/descarregar. */
+    private static final Duration LINK_VALIDADE = Duration.ofHours(2);
 
     public VideosAulaProfessorView(TurmaRepository turmaRepo, VideoAulaRepository videoAulaRepo,
             UserRepository userRepo, R2StorageService storageService) {
@@ -118,7 +122,8 @@ public class VideosAulaProfessorView extends VerticalLayout {
             String chave = "videos/" + (studio != null ? studio.getSlug() : "sem-estudio") + "/" + turma.getId()
                     + "/" + data + "/" + UUID.randomUUID() + "_" + nomeOriginal;
 
-            storageService.upload(chave, event.getMIMEType(), buffer.getInputStream(), event.getContentLength());
+            storageService.upload(chave, resolverContentType(event.getMIMEType(), nomeOriginal),
+                    buffer.getInputStream(), event.getContentLength());
 
             VideoAula v = new VideoAula();
             v.setTurma(turma);
@@ -177,33 +182,56 @@ public class VideosAulaProfessorView extends VerticalLayout {
         playIcon.setSize("36px");
         playIcon.setColor("white");
         thumb.add(playIcon);
-        thumb.addClickListener(e -> abrirVideo(video));
+
+        // Anchor (não Page.open()) — abrir o URL assinado a partir de um round-trip
+        // do servidor é bloqueado pelo popup-blocker do browser.
+        Anchor reproduzir = new Anchor(
+                storageService.gerarUrlTemporario(video.getChaveArmazenamento(), LINK_VALIDADE), thumb);
+        reproduzir.setTarget("_blank");
+        reproduzir.setRouterIgnore(true);
+        reproduzir.getStyle().set("width", "100%").set("text-decoration", "none");
 
         Span nome = new Span(video.getNomeFicheiro());
         nome.getStyle().set("font-size", "12px").set("font-weight", "600").set("margin-top", "8px")
                 .set("text-align", "center").set("width", "100%").set("white-space", "nowrap")
                 .set("text-overflow", "ellipsis").set("overflow", "hidden");
 
-        Button descarregar = new Button("Descarregar", VaadinIcon.DOWNLOAD_ALT.create(), e -> baixarVideo(video));
-        descarregar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        Button descarregarBtn = new Button("Descarregar", VaadinIcon.DOWNLOAD_ALT.create());
+        descarregarBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        Anchor descarregar = new Anchor(
+                storageService.gerarUrlDownload(video.getChaveArmazenamento(), video.getNomeFicheiro(), LINK_VALIDADE),
+                descarregarBtn);
+        descarregar.getElement().setAttribute("download", true);
+        descarregar.getStyle().set("text-decoration", "none");
 
         Button apagar = new Button("Apagar", VaadinIcon.TRASH.create(), e -> confirmarApagar(video));
         apagar.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         apagar.getStyle().set("margin-top", "4px");
 
-        card.add(thumb, nome, descarregar, apagar);
+        card.add(reproduzir, nome, descarregar, apagar);
         return card;
     }
 
-    private void abrirVideo(VideoAula video) {
-        String url = storageService.gerarUrlTemporario(video.getChaveArmazenamento(), Duration.ofHours(2));
-        getUI().ifPresent(ui -> ui.getPage().open(url, "_blank"));
-    }
-
-    private void baixarVideo(VideoAula video) {
-        String url = storageService.gerarUrlDownload(video.getChaveArmazenamento(), video.getNomeFicheiro(),
-                Duration.ofHours(2));
-        getUI().ifPresent(ui -> ui.getPage().open(url, "_blank"));
+    /**
+     * O browser da Vaadin Upload nem sempre envia um MIME type (fica vazio ou
+     * {@code application/octet-stream}); nesse caso o R2 servia o vídeo como
+     * download em vez de o reproduzir. Deriva o tipo pela extensão.
+     */
+    private static String resolverContentType(String mime, String nomeFicheiro) {
+        if (mime != null && !mime.isBlank() && !"application/octet-stream".equalsIgnoreCase(mime)) {
+            return mime;
+        }
+        String nome = nomeFicheiro == null ? "" : nomeFicheiro.toLowerCase();
+        int ponto = nome.lastIndexOf('.');
+        String ext = ponto >= 0 ? nome.substring(ponto + 1) : "";
+        return switch (ext) {
+            case "mp4", "m4v" -> "video/mp4";
+            case "mov", "qt" -> "video/quicktime";
+            case "webm" -> "video/webm";
+            case "avi" -> "video/x-msvideo";
+            case "mkv" -> "video/x-matroska";
+            default -> "application/octet-stream";
+        };
     }
 
     private void confirmarApagar(VideoAula video) {

@@ -62,6 +62,7 @@ public class MainLayout extends AppLayout {
         private final BuildProperties buildProperties;
         private final EmailService emailService;
         private final LeadRepository leadRepository;
+        private final pt.studioflow.repository.ContaPortalRepository contaPortalRepository;
 
 
         // Cores da Identidade Visual Renovada
@@ -81,7 +82,8 @@ public class MainLayout extends AppLayout {
                         AlunoRepository alunoRepository, MarcacaoSalaRepository marcacaoRepository,
                         TransferenciaRepository transferenciaRepository, AuthService authService,
                         BuildProperties buildProperties, EmailService emailService,
-                        LeadRepository leadRepository) {
+                        LeadRepository leadRepository,
+                        pt.studioflow.repository.ContaPortalRepository contaPortalRepository) {
                 this.userRepository = userRepository;
                 this.authService = authService;
                 authService.initTenantContext(); // Inicializa o TenantContext para esta sessão
@@ -92,6 +94,7 @@ public class MainLayout extends AppLayout {
                 this.buildProperties = buildProperties;
                 this.emailService = emailService;
                 this.leadRepository = leadRepository;
+                this.contaPortalRepository = contaPortalRepository;
 
                 injectGlobalStyles();
                 createHeader();
@@ -190,9 +193,18 @@ public class MainLayout extends AppLayout {
 
                 // Menu de Utilizador Premium
                 User currentUser = authService.getCurrentUser().orElse(null);
-                String username = (currentUser != null && currentUser.getFirstName() != null && !currentUser.getFirstName().isBlank())
-                        ? currentUser.getFirstName()
-                        : (currentUser != null ? currentUser.getUsername() : "Utilizador");
+                pt.studioflow.model.ContaPortal contaPortal = currentUser == null
+                        ? authService.getContaPortalLogado().orElse(null) : null;
+                String username;
+                if (currentUser != null) {
+                        username = currentUser.getFirstName() != null && !currentUser.getFirstName().isBlank()
+                                ? currentUser.getFirstName() : currentUser.getUsername();
+                } else if (contaPortal != null) {
+                        username = contaPortal.getNome() != null && !contaPortal.getNome().isBlank()
+                                ? contaPortal.getNome() : contaPortal.getEmail();
+                } else {
+                        username = "Utilizador";
+                }
 
                 MenuBar userMenu = new MenuBar();
                 userMenu.addThemeVariants(MenuBarVariant.LUMO_TERTIARY);
@@ -221,17 +233,23 @@ public class MainLayout extends AppLayout {
                 SubMenu subMenu = rootItem.getSubMenu();
 
                 User finalUser = currentUser;
-                subMenu.addItem(criarItemDropdown(VaadinIcon.KEY, "Segurança"),
-                                e -> abrirDialogAlterarPassword(finalUser));
+                pt.studioflow.model.ContaPortal finalConta = contaPortal;
+                subMenu.addItem(criarItemDropdown(VaadinIcon.KEY, "Segurança"), e -> {
+                                if (finalUser != null) abrirDialogAlterarPassword(finalUser);
+                                else if (finalConta != null) abrirDialogAlterarPasswordPortal(finalConta);
+                });
                 subMenu.addItem(criarItemDropdown(VaadinIcon.HEADSET, "Suporte remoto"),
                                 e -> abrirDialogSuporte(finalUser));
                 subMenu.add(new Div()); // Spacer
                 subMenu.addItem(criarItemDropdown(VaadinIcon.POWER_OFF, "Terminar Sessão"), e -> performLogout());
 
-                // Sininho de notificações (apenas para não-SUPERADMIN)
+                // Sininho de notificações (apenas para não-SUPERADMIN e não-ALUNO —
+                // NotificacoesView é @RolesAllowed ADMIN/PROF)
                 Authentication authForBell = SecurityContextHolder.getContext().getAuthentication();
                 boolean isSuperAdmin = authForBell != null && authForBell.getAuthorities().stream()
                         .anyMatch(a -> a.getAuthority().equals("ROLE_SUPERADMIN"));
+                boolean isAlunoHeader = authForBell != null && authForBell.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_ALUNO"));
 
                 Button darkModeToggle = createDarkModeToggle();
 
@@ -249,7 +267,7 @@ public class MainLayout extends AppLayout {
                 }
 
                 HorizontalLayout rightLayout;
-                if (!isSuperAdmin) {
+                if (!isSuperAdmin && !isAlunoHeader) {
                         Icon bellIcon = VaadinIcon.BELL.create();
                         bellIcon.setSize("22px");
                         bellIcon.setColor(getPrimaryColor());
@@ -431,8 +449,10 @@ public class MainLayout extends AppLayout {
                                 tabs.add(criarTab("Aniversários", VaadinIcon.GIFT, "#E91E63", CRMView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.MENSALIDADES))
                                 tabs.add(criarTab("Mensalidades", VaadinIcon.WALLET, "#E74C3C", MensalidadeView.class, null));
-                        if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS))
+                        if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS)) {
                                 tabs.add(criarTab("Presenças", VaadinIcon.TASKS, "#2980B9", PresencasView.class, null));
+                                tabs.add(criarTab("Presenças do Dia", VaadinIcon.CALENDAR_USER, "#2980B9", PresencasDiaView.class, null));
+                        }
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.REGISTO_HORAS))
                                 tabs.add(criarTab("Registo de Horas", VaadinIcon.CLOCK, "#3F51B5", RegistoHorasView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.EVENTOS))
@@ -463,6 +483,7 @@ public class MainLayout extends AppLayout {
 
                         tabs.add(criarHeaderMenu("Configurações"));
                         tabs.add(criarSubTab("Utilizadores", VaadinIcon.SHIELD, UserView.class));
+                        tabs.add(criarSubTab("Acessos ao Portal", VaadinIcon.KEY, ContasPortalView.class));
                         tabs.add(criarSubTab("Professores", VaadinIcon.ACADEMY_CAP, ProfessorView.class));
                         tabs.add(criarSubTab("Salas", VaadinIcon.HOME, SalaView.class));
                         tabs.add(criarSubTab("Modalidades", VaadinIcon.BOOK, ModalidadeView.class));
@@ -475,8 +496,10 @@ public class MainLayout extends AppLayout {
                 else if (isProf || isDelegado) {
                         tabs.add(criarHeaderMenu("Painel do Professor"));
                         if (isProf && !isDelegado) {
-                                if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS))
+                                if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS)) {
                                         tabs.add(criarTab("Presenças", VaadinIcon.CHECK_SQUARE, "#27AE60", PresencasView.class, null));
+                                        tabs.add(criarTab("Presenças do Dia", VaadinIcon.CALENDAR_USER, "#27AE60", PresencasDiaView.class, null));
+                                }
                                 if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.REGISTO_HORAS))
                                         tabs.add(criarTab("Registo de Horas", VaadinIcon.CLOCK, "#3F51B5", RegistoHorasView.class, null));
                         }
@@ -492,11 +515,36 @@ public class MainLayout extends AppLayout {
                 // --- 4. ALUNO ---
                 if (isAluno) {
                         tabs.add(criarHeaderMenu("Área do Aluno"));
+                        tabs.add(criarTab("Portal", VaadinIcon.DASHBOARD, "#4A90E2", PortalAlunoView.class, null));
                         tabs.add(criarTab("Vídeos das Aulas", VaadinIcon.PLAY_CIRCLE, "#D32F2F", AlunoVideosView.class,
                                         null));
                 }
 
                 scroller.setContent(tabs);
+
+                // Seletor de filho (um email de encarregado pode ter vários alunos).
+                if (isAluno) {
+                        java.util.List<Aluno> filhos = authService.getAlunosDoPortal();
+                        if (filhos.size() > 1) {
+                                com.vaadin.flow.component.combobox.ComboBox<Aluno> seletor =
+                                                new com.vaadin.flow.component.combobox.ComboBox<>();
+                                seletor.setItems(filhos);
+                                seletor.setItemLabelGenerator(a -> a.getNomeCompleto() != null
+                                                ? a.getNomeCompleto() : ("Aluno " + a.getId()));
+                                Aluno selAtual = authService.getAlunoSelecionado();
+                                if (selAtual != null) seletor.setValue(selAtual);
+                                seletor.setWidthFull();
+                                seletor.addValueChangeListener(ev -> {
+                                        if (ev.getValue() != null) {
+                                                authService.setAlunoSelecionado(ev.getValue().getId());
+                                                UI.getCurrent().getPage().reload();
+                                        }
+                                });
+                                Div wrapper = new Div(seletor);
+                                wrapper.getStyle().set("padding", "12px 16px 4px");
+                                drawerContent.addComponentAsFirst(wrapper);
+                        }
+                }
 
                 // Footer de branding — fixo no fundo do drawer
                 Span brandLine1 = new Span("CoreoFlow");
@@ -676,6 +724,35 @@ public class MainLayout extends AppLayout {
                 Button save = new Button("Atualizar", e -> {
                         user.setPassword(passwordEncoder.encode(pw.getValue()));
                         userRepository.save(user);
+                        Notification.show("Password alterada!").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                        dialog.close();
+                });
+                save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+                VerticalLayout content = new VerticalLayout(
+                                new Span("Escolha uma senha forte para proteger os seus dados."), pw);
+                dialog.add(content);
+                dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), save);
+                dialog.open();
+        }
+
+        private void abrirDialogAlterarPasswordPortal(pt.studioflow.model.ContaPortal conta) {
+                if (conta == null)
+                        return;
+                Dialog dialog = new Dialog();
+                dialog.setHeaderTitle("Segurança da Conta");
+
+                PasswordField pw = new PasswordField("Nova Password");
+                pw.setWidthFull();
+
+                Button save = new Button("Atualizar", e -> {
+                        if (pw.getValue() == null || pw.getValue().length() < 6) {
+                                Notification.show("A password tem de ter pelo menos 6 caracteres.")
+                                                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                                return;
+                        }
+                        conta.setPasswordHash(passwordEncoder.encode(pw.getValue()));
+                        contaPortalRepository.save(conta);
                         Notification.show("Password alterada!").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                         dialog.close();
                 });
