@@ -258,6 +258,11 @@ public class TurmaAlunosView extends VerticalLayout {
             Notification.show("Inativo!").addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
+        if (alunoTurmaRepository.existsByAlunoAndTurma(aluno, turma)) {
+            Notification.show("Este aluno já está inscrito nesta turma.")
+                    .addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+            return;
+        }
         AlunoTurma at = new AlunoTurma();
         at.setAluno(aluno);
         at.setTurma(turma);

@@ -94,8 +94,7 @@ public class BillingView extends VerticalLayout {
                 pagar.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_SMALL);
                 return pagar;
             }
-            return new Span(f.getDataPagamento() != null
-                    ? f.getDataPagamento().toString() : "");
+            return new Span(pt.studioflow.util.DataUtil.formatar(f.getDataPagamento()));
         }).setHeader("Ação").setAutoWidth(true);
 
         grid.addColumn(f -> f.getStudio().getNome()).setHeader("Estúdio").setFlexGrow(1).setSortable(true);

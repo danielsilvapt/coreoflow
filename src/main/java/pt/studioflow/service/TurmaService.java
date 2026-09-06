@@ -111,12 +111,14 @@ public class TurmaService {
 
     @Transactional(readOnly = true)
     public List<Aluno> getAlunosDaTurma(Turma turma) {
-        return alunoTurmaRepository.findByTurma(turma).stream()
+        // Distinct por id: se houver AlunoTurma duplicado (mesmo aluno inscrito
+        // duas vezes na turma) o aluno só aparece uma vez.
+        java.util.Map<Long, Aluno> porId = new java.util.LinkedHashMap<>();
+        alunoTurmaRepository.findByTurma(turma).stream()
                 .map(AlunoTurma::getAluno)
-                // REMOVE qualquer filtro .filter(Aluno::isAtivo)
-                // Ou substitui por este que aceita Experimentais:
-                .filter(a -> a.isAtivo() || a.getStatus() == AlunoStatus.EXPERIMENTAL)
-                .collect(Collectors.toList());
+                .filter(a -> a != null && (a.isAtivo() || a.getStatus() == AlunoStatus.EXPERIMENTAL))
+                .forEach(a -> porId.putIfAbsent(a.getId(), a));
+        return new java.util.ArrayList<>(porId.values());
     }
 
     @Transactional
