@@ -468,6 +468,7 @@ public class MainLayout extends AppLayout {
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.PLANO_AULAS))
                                 tabs.add(criarTab("Plano de Aulas", VaadinIcon.CALENDAR, "#00897B", PlanoAulasView.class, null));
                         tabs.add(criarTab("Horário", VaadinIcon.CALENDAR_CLOCK, "#0e7490", HorarioView.class, null));
+                        tabs.add(criarTab("Aulas Planeadas", VaadinIcon.CLIPBOARD_CHECK, "#1d4ed8", AulasPlaneadasView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.VIDEOS_AULA))
                                 tabs.add(criarTab("Vídeos das Aulas", VaadinIcon.PLAY_CIRCLE, "#D32F2F", VideosAulaProfessorView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.LOJA))
@@ -501,6 +502,7 @@ public class MainLayout extends AppLayout {
                                         tabs.add(criarTab("Registo de Horas", VaadinIcon.CLOCK, "#3F51B5", RegistoHorasView.class, null));
                         }
                         tabs.add(criarTab("Meus Alunos", VaadinIcon.USERS, "#1ABC9C", AlunosProfessorView.class, null));
+                        tabs.add(criarTab("Planeamento de Aulas", VaadinIcon.CLIPBOARD_CHECK, "#1d4ed8", PlaneamentoAulasView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.AVALIACOES))
                                 tabs.add(criarTab("Avaliações", VaadinIcon.STAR, "#F1C40F", AvaliacoesView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.VIDEOS_AULA))

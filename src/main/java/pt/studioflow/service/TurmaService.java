@@ -58,6 +58,9 @@ public class TurmaService {
     @Autowired
     private VideoAulaRepository videoAulaRepository;
 
+    @Autowired
+    private pt.studioflow.repository.SumarioAulaRepository sumarioAulaRepository;
+
     // =========================
     // TURMAS
     // =========================
@@ -99,6 +102,7 @@ public class TurmaService {
         ocorrenciaAulaRepository.flush();
         videoAulaRepository.deleteByTurma(turma);
         videoAulaRepository.flush();
+        sumarioAulaRepository.deleteByTurma(turma);
         marcacaoSalaRepository.desvincularTurma(turma);
         marcacaoSalaRepository.flush();
         turmaRepository.delete(turma);
