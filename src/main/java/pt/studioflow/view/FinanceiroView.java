@@ -163,7 +163,10 @@ public class FinanceiroView extends VerticalLayout {
         }).setHeader("AÇÕES").setWidth("120px").setFlexGrow(0);
 
         // DADOS
-        Grid.Column<Transacao> cData = g.addColumn(Transacao::getData).setHeader("DATA").setAutoWidth(true)
+        Grid.Column<Transacao> cData = g.addColumn(t -> pt.studioflow.util.DataUtil.formatar(t.getData()))
+                .setHeader("DATA").setAutoWidth(true)
+                .setComparator(java.util.Comparator.comparing(Transacao::getData,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
                 .setSortable(true);
         Grid.Column<Transacao> cCat = g.addColumn(Transacao::getCategoria).setHeader("CATEGORIA").setAutoWidth(true)
                 .setSortable(true);
@@ -209,7 +212,8 @@ public class FinanceiroView extends VerticalLayout {
 
             List<Transacao> base = isReceita ? dadosRec : dadosDes;
             g.setItems(base.stream()
-                    .filter(t -> t.getData() != null && t.getData().toString().contains(fData))
+                    .filter(t -> t.getData() != null
+                            && pt.studioflow.util.DataUtil.formatar(t.getData()).contains(fData))
                     .filter(t -> t.getCategoria() != null && t.getCategoria().toLowerCase().contains(fCat))
                     .filter(t -> t.getDescricao() != null && t.getDescricao().toLowerCase().contains(fDesc))
                     .collect(Collectors.toList()));

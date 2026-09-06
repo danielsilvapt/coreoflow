@@ -640,7 +640,8 @@ public class DashboardView extends Div {
                 g.setItems(alunos);
                 g.addColumn(Aluno::getNomeCompleto).setHeader("Nome").setSortable(true);
                 g.addColumn(Aluno::getTelemovel).setHeader("Telemóvel");
-                g.addColumn(Aluno::getDataExpiracaoSeguro).setHeader("Data Expiração").setSortable(true);
+                g.addColumn(a -> pt.studioflow.util.DataUtil.formatar(a.getDataExpiracaoSeguro()))
+                                .setHeader("Data Expiração").setSortable(true);
                 g.setSizeFull();
                 d.add(g);
                 d.getFooter().add(new Button("Fechar", e -> d.close()));
@@ -879,7 +880,8 @@ public class DashboardView extends Div {
                                         ? a.getTurmas().stream().map(at -> at.getTurma().getDescricao())
                                                         .collect(Collectors.joining(", "))
                                         : "—").setHeader("Turma Atual").setFlexGrow(2);
-                        g.addColumn(Aluno::getDataInscricaoRenovacao).setHeader("Pedido em");
+                        g.addColumn(a -> pt.studioflow.util.DataUtil.formatar(a.getDataInscricaoRenovacao()))
+                                        .setHeader("Pedido em");
                         g.setSizeFull();
                         d.add(g);
 

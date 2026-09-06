@@ -58,7 +58,7 @@ public class ContratoAssinaturaView extends VerticalLayout implements HasUrlPara
 
         if (jaAssinado) {
             Span ok = new Span("✅ Contrato assinado digitalmente em "
-                    + c.getDataAssinatura().toString().replace("T", " às "));
+                    + pt.studioflow.util.DataUtil.formatar(c.getDataAssinatura()).replace(" ", " às "));
             ok.getStyle().set("color", "#27AE60").set("font-weight", "700")
                     .set("font-size", "14px").set("margin-top", "16px");
             add(ok);
@@ -78,7 +78,7 @@ public class ContratoAssinaturaView extends VerticalLayout implements HasUrlPara
             contratoRepo.save(c);
             removeAll();
             Span confirmacao = new Span("✅ Contrato assinado com sucesso em "
-                    + LocalDateTime.now().toString().replace("T", " às "));
+                    + pt.studioflow.util.DataUtil.formatar(LocalDateTime.now()).replace(" ", " às "));
             confirmacao.getStyle().set("color", "#27AE60").set("font-weight", "700").set("font-size", "16px");
             add(titulo, confirmacao);
             Button voltar = new Button("Voltar ao Portal", ev -> getUI().ifPresent(ui -> ui.navigate("portal")));
