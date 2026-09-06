@@ -9,13 +9,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.combobox.ComboBoxVariant;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.grid.HeaderRow;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -34,7 +39,10 @@ import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Turma;
 import pt.studioflow.model.User;
 import pt.studioflow.repository.UserRepository;
+import pt.studioflow.service.R2StorageService;
 import pt.studioflow.service.TurmaService;
+
+import java.time.Duration;
 
 @PageTitle("Os Meus Alunos | CoreoFlow")
 @Route(value = "alunos-professor", layout = MainLayout.class)
@@ -43,15 +51,18 @@ public class AlunosProfessorView extends VerticalLayout {
 
     private final TurmaService turmaService;
     private final UserRepository userRepository;
+    private final R2StorageService storageService;
 
     private Grid<AlunoDTO> grid;
     private ListDataProvider<AlunoDTO> dataProvider;
     private final Map<String, String> filtrosAtivos = new HashMap<>();
 
     @Autowired
-    public AlunosProfessorView(TurmaService turmaService, UserRepository userRepository) {
+    public AlunosProfessorView(TurmaService turmaService, UserRepository userRepository,
+            R2StorageService storageService) {
         this.turmaService = turmaService;
         this.userRepository = userRepository;
+        this.storageService = storageService;
 
         setSizeFull();
         setPadding(false);
@@ -70,17 +81,12 @@ public class AlunosProfessorView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_WRAP_CELL_CONTENT);
 
         // 1. Definição das Colunas
-        Grid.Column<AlunoDTO> colAluno = grid.addComponentColumn(dto -> {
-            Span nomeDesktop = new Span(dto.getAluno().getNomeCompleto());
-            nomeDesktop.addClassName("desktop-only");
-            Span nomeMobile = new Span(formatarNomeCurto(dto.getAluno().getNomeCompleto()));
-            nomeMobile.addClassName("mobile-only");
+        grid.addComponentColumn(dto -> criarAvatar(dto.getAluno()))
+                .setHeader("").setKey("foto").setAutoWidth(true).setFlexGrow(0);
 
-            VerticalLayout layout = new VerticalLayout(nomeDesktop, nomeMobile);
-            layout.setPadding(false);
-            layout.setSpacing(false);
-            return layout;
-        }).setHeader("Aluno").setSortable(true).setKey("aluno").setAutoWidth(true);
+        Grid.Column<AlunoDTO> colAluno = grid
+                .addColumn(dto -> formatarNomeCurto(dto.getAluno().getNomeCompleto()))
+                .setHeader("Aluno").setSortable(true).setKey("aluno").setAutoWidth(true);
 
         Grid.Column<AlunoDTO> colTurmas = grid.addColumn(dto -> dto.getNomesTurmas())
                 .setHeader("Turmas").setSortable(true).setKey("turmas").setAutoWidth(true);
@@ -271,6 +277,43 @@ public class AlunosProfessorView extends VerticalLayout {
             return "";
         String[] partes = nomeCompleto.trim().split("\\s+");
         return partes.length <= 1 ? nomeCompleto : partes[0] + " " + partes[partes.length - 1];
+    }
+
+    /** Miniatura redonda da foto do aluno; clicar abre a foto ampliada. */
+    private Component criarAvatar(Aluno aluno) {
+        Div wrap = new Div();
+        wrap.getStyle().set("width", "40px").set("height", "40px").set("border-radius", "50%")
+                .set("overflow", "hidden").set("display", "flex").set("align-items", "center")
+                .set("justify-content", "center").set("background", "#eee").set("flex-shrink", "0");
+
+        boolean temFoto = aluno.getFotoChave() != null && !aluno.getFotoChave().isBlank();
+        if (temFoto) {
+            Image img = new Image(storageService.gerarUrlTemporario(aluno.getFotoChave(), Duration.ofHours(2)),
+                    "Foto de " + aluno.getNomeCompleto());
+            img.getStyle().set("width", "40px").set("height", "40px").set("object-fit", "cover");
+            wrap.add(img);
+            wrap.getStyle().set("cursor", "pointer");
+            wrap.addClickListener(e -> abrirFotoGrande(aluno));
+        } else {
+            Icon ic = new Icon(VaadinIcon.USER);
+            ic.setSize("20px");
+            ic.setColor("#999");
+            wrap.add(ic);
+        }
+        return wrap;
+    }
+
+    private void abrirFotoGrande(Aluno aluno) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(formatarNomeCurto(aluno.getNomeCompleto()));
+
+        Image grande = new Image(storageService.gerarUrlTemporario(aluno.getFotoChave(), Duration.ofHours(2)),
+                "Foto de " + aluno.getNomeCompleto());
+        grande.getStyle().set("width", "100%").set("max-width", "340px").set("max-height", "340px")
+                .set("object-fit", "contain").set("border-radius", "12px");
+        dialog.add(grande);
+        dialog.getFooter().add(new Button("Fechar", e -> dialog.close()));
+        dialog.open();
     }
 
     private String getFirstNameFromDatabase() {
