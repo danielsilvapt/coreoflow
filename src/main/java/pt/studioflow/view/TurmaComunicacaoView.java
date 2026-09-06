@@ -393,7 +393,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
 
             try {
                 Professor profCc = ccProfessor.getValue() ? professorCorrespondente : null;
-                emailService.enviarEmailParaLista(profCc, emails, assunto.getValue(),
+                emailService.enviarEmailParaLista(studioAtual, profCc, emails, assunto.getValue(),
                         mensagem.getValue());
                 dialog.close();
                 Notification.show("E-mail enviado com sucesso para " + emails.size() + " alunos!")
