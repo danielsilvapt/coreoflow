@@ -24,4 +24,19 @@ public interface AulaRepository extends JpaRepository<Aula, Long> {
     // ===================== MULTI-TENANT =====================
     @Query("SELECT a FROM Aula a WHERE a.turma.studio = :studio")
     List<Aula> findByTurmaStudio(@Param("studio") Studio studio);
+
+    @Query("SELECT DISTINCT a FROM Aula a "
+            + "JOIN FETCH a.turma t "
+            + "LEFT JOIN FETCH t.professor "
+            + "LEFT JOIN FETCH t.modalidade "
+            + "LEFT JOIN FETCH a.sala "
+            + "WHERE t.studio = :studio")
+    List<Aula> findByStudioComHorario(@Param("studio") Studio studio);
+
+    @Query("SELECT DISTINCT a FROM Aula a "
+            + "JOIN FETCH a.turma t "
+            + "LEFT JOIN FETCH t.professor "
+            + "LEFT JOIN FETCH t.modalidade "
+            + "LEFT JOIN FETCH a.sala")
+    List<Aula> findAllComHorario();
 }
