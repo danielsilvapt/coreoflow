@@ -22,8 +22,12 @@ import java.util.List;
 @Service
 public class EmailService {
 
-    @org.springframework.beans.factory.annotation.Value("${spring.mail.username}")
-    private String mailFrom; // Email remetente (sobreposto por Studio)
+    // Remetente dos emails. Separado de spring.mail.username porque com relays SMTP
+    // (Brevo, etc.) o utilizador de autenticação (ex: b823a0001@smtp-brevo.com) não
+    // serve como "From" — este tem de ser um endereço do domínio verificado. Default
+    // para spring.mail.username para não partir configs antigas.
+    @org.springframework.beans.factory.annotation.Value("${app.mail.from:${spring.mail.username}}")
+    private String mailFrom;
 
         @Autowired
         private JavaMailSender mailSender;

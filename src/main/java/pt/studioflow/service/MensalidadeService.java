@@ -81,15 +81,22 @@ public class MensalidadeService {
             aluno = alunoRepository.findById(aluno.getId()).orElse(aluno);
             studio = aluno.getStudio();
         }
-        if (crianca) {
-            valorBase = (aulasPorSemana == 1 ? config.getValorCrianca1x(studio) : config.getValorCrianca2x(studio));
+        // Turmas com mensalidade própria (competição, workshops) não seguem a tabela
+        // do estúdio nem levam o acréscimo de não-sócio — o valor configurado é final.
+        Double valorProprio = config.valorProprioDaTurma(turma, socio);
+        if (valorProprio != null) {
+            valorBase = valorProprio;
         } else {
-            valorBase = (aulasPorSemana == 1 ? config.getValorAdulto1x(studio) : config.getValorAdulto2x(studio));
-        }
+            if (crianca) {
+                valorBase = (aulasPorSemana == 1 ? config.getValorCrianca1x(studio) : config.getValorCrianca2x(studio));
+            } else {
+                valorBase = (aulasPorSemana == 1 ? config.getValorAdulto1x(studio) : config.getValorAdulto2x(studio));
+            }
 
-        // Acrescenta adicional se não for sócio
-        if (!socio) {
-            valorBase += studio.getMensalidadeNaoSocioAdicional();
+            // Acrescenta adicional se não for sócio
+            if (!socio) {
+                valorBase += studio.getMensalidadeNaoSocioAdicional();
+            }
         }
 
         // 🔹 Gerar mensalidades do mês atual até junho (fim do ano letivo).

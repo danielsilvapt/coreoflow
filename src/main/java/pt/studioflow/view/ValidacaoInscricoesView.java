@@ -448,7 +448,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         List<Span> linhasMensalidades = new ArrayList<>();
         for (LinhaMensalidade linha : linhas) {
             Turma t = linha.turma();
-            double valor = mensalidadeConfig.calcularMensalidade(studio, tipo, linha.aulasPorSemana(), socio);
+            double valor = mensalidadeConfig.calcularMensalidade(studio, t, tipo, linha.aulasPorSemana(), socio);
             base += valor;
             String modalidade = t.getModalidade() != null ? t.getModalidade().getDescricao() + " - " : "";
             Span linhaSpan = new Span(modalidade + t.getDescricao() + ": " + formatarEuro(valor) + "/mês");

@@ -15,6 +15,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.data.binder.Binder;
@@ -53,6 +54,10 @@ public class TurmaForm extends Dialog {
 
     // NOVO CAMPO: ID GOOGLE DRIVE
     private TextField googleDriveFolderId = new TextField("ID da Pasta Google Drive");
+
+    // Mensalidade própria (opcional) — substitui a tabela do estúdio nesta turma
+    private NumberField mensalidadeSocio = new NumberField("Mensalidade sócio (opcional)");
+    private NumberField mensalidadeNaoSocio = new NumberField("Mensalidade não-sócio (opcional)");
 
     private Checkbox ativo = new Checkbox("Ativa");
 
@@ -97,6 +102,17 @@ public class TurmaForm extends Dialog {
         googleDriveFolderId.setHelperText("Ex: 1AL0JmcqwjYW87jjoKoG2w...");
         googleDriveFolderId.setClearButtonVisible(true);
 
+        // Mensalidade própria da turma — turmas de competição, workshops e níveis
+        // avançados têm preço fechado em vez da tabela criança/adulto do estúdio.
+        for (NumberField campo : new NumberField[] { mensalidadeSocio, mensalidadeNaoSocio }) {
+            campo.setMin(0);
+            campo.setStep(0.5);
+            campo.setSuffixComponent(new NativeLabel("€"));
+            campo.setClearButtonVisible(true);
+        }
+        mensalidadeSocio.setHelperText("Vazio = usa a tabela do estúdio (criança/adulto x frequência)");
+        mensalidadeNaoSocio.setHelperText("Vazio = valor de sócio + acréscimo de não-sócio do estúdio");
+
         // Configurar o Binder
         binder.forField(coProfessores).bind(
                 t -> t.getCoProfessores() == null ? java.util.Set.of() : t.getCoProfessores(),
@@ -106,7 +122,8 @@ public class TurmaForm extends Dialog {
 
         // Montar o Layout
         FormLayout formLayout = new FormLayout();
-        formLayout.add(codigo, descricao, professor, modalidade, sala, coProfessores, cor, ativo, whatsappGroupLink, googleDriveFolderId);
+        formLayout.add(codigo, descricao, professor, modalidade, sala, coProfessores, cor, ativo,
+                mensalidadeSocio, mensalidadeNaoSocio, whatsappGroupLink, googleDriveFolderId);
 
         formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("500px", 2));
 
