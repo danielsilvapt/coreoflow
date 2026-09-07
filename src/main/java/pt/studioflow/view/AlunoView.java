@@ -358,15 +358,27 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
 
     private void confirmarEliminacao(Aluno aluno) {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Eliminar");
-        dialog.add("Apagar " + aluno.getNomeCompleto() + "?");
-        Button confirm = new Button("Sim", e -> {
-            alunoRepository.delete(aluno);
-            updateList();
+        dialog.setHeaderTitle("Desativar aluno");
+        dialog.add(new Div(
+                new Span("Desativar " + aluno.getNomeCompleto() + "? "),
+                new Span("O aluno sai das listas de ativos mas o histórico (mensalidades, "
+                        + "presenças, avaliações) é mantido. Podes reativá-lo mais tarde na ficha.")));
+        Button confirm = new Button("Desativar", e -> {
+            try {
+                aluno.setStatus(Aluno.AlunoStatus.INATIVO);
+                aluno.setAtivo(false);
+                alunoRepository.save(aluno);
+                updateList();
+                Notification.show(aluno.getNomeCompleto() + " foi desativado.")
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (Exception ex) {
+                Notification.show("Não foi possível desativar o aluno: " + ex.getMessage())
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
             dialog.close();
         });
         confirm.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY);
-        dialog.getFooter().add(new Button("Não", e -> dialog.close()), confirm);
+        dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), confirm);
         dialog.open();
     }
 
