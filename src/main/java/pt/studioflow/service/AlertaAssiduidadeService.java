@@ -28,6 +28,8 @@ public class AlertaAssiduidadeService {
     private PresencaRepository presencaRepository;
     @Autowired
     private JavaMailSender mailSender;
+    @Autowired
+    private EmailGate emailGate;
 
     @Scheduled(cron = "0 0 9 * * MON")
     // TESTE
@@ -58,6 +60,7 @@ public class AlertaAssiduidadeService {
 
         // Ordenar e enviar
         ausenciasPorProfessor.forEach((professor, setAlunos) -> {
+            if (emailGate.bloqueado(professor.getStudio())) return;
             // Convertemos o Set para List para poder ordenar por nome
             List<Aluno> listaOrdenada = setAlunos.stream()
                     .sorted(Comparator.comparing(a -> a.getNomeCompleto().toLowerCase()))

@@ -19,10 +19,12 @@ public class BirthdayNotificationService {
 
     private final AlunoRepository repository;
     private final JavaMailSender mailSender;
+    private final EmailGate emailGate;
 
-    public BirthdayNotificationService(AlunoRepository repository, JavaMailSender mailSender) {
+    public BirthdayNotificationService(AlunoRepository repository, JavaMailSender mailSender, EmailGate emailGate) {
         this.repository = repository;
         this.mailSender = mailSender;
+        this.emailGate = emailGate;
     }
 
     @Scheduled(cron = "0 30 8 * * *")
@@ -38,6 +40,7 @@ public class BirthdayNotificationService {
         }
 
         for (Aluno aluno : aniversariantes) {
+            if (emailGate.bloqueado(aluno.getStudio())) continue;
             try {
                 enviarEmailIndividual(aluno);
             } catch (Exception e) {

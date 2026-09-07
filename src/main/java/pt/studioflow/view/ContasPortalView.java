@@ -125,11 +125,16 @@ public class ContasPortalView extends VerticalLayout {
         // a funcionar até definir a nova); num primeiro convite fica false.
         contaPortalRepository.save(conta);
 
-        emailService.enviarConvitePortal(conta.getEmail(), studio.getNome(),
+        emailService.enviarConvitePortal(conta.getEmail(), studio,
                 baseUrl + "/portal-ativar?token=" + conta.getTokenAtivacao());
 
-        Notification.show("Convite enviado para " + conta.getEmail())
-                .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        if (!studio.isEnviarEmails()) {
+            Notification.show("Conta criada, mas o envio de emails está desativado para este estúdio (contacta o suporte).")
+                    .addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+        } else {
+            Notification.show("Convite enviado para " + conta.getEmail())
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        }
         atualizar();
     }
 
