@@ -82,6 +82,26 @@ public class EmailService {
                 return mailFrom;
         }
 
+        /**
+         * Envia uma notificação interna para o estúdio (nova inscrição, renovação,
+         * aluno experimental, …) em HTML e já com a assinatura comum da plataforma
+         * (logo do estúdio + "powered by CoreoFlow"). Falha em silêncio para não
+         * quebrar a ação do utilizador final se o SMTP estiver em baixo.
+         */
+        private void enviarNotificacaoInterna(Studio studio, String assunto, String corpoHtml) {
+                try {
+                        MimeMessage mimeMessage = mailSender.createMimeMessage();
+                        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+                        helper.setFrom(mailFrom, "CoreoFlow");
+                        helper.setTo(emailAdmin(studio));
+                        helper.setSubject(assunto);
+                        helper.setText(corpoHtml + assinatura.html(studio), true);
+                        mailSender.send(mimeMessage);
+                } catch (Exception ex) {
+                        System.err.println("Falha ao enviar notificação interna \"" + assunto + "\": " + ex.getMessage());
+                }
+        }
+
         public void enviarEmailParaLista(Studio studio, Professor professorCorrespondente, List<String> destinatarios,
                         String assunto, String corpoMensagem)
                         throws Exception {
@@ -339,66 +359,48 @@ public class EmailService {
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacao(Aluno aluno) {
-                if (envioBloqueado(studioDe(aluno))) return;
-                try {
-                        SimpleMailMessage mensagem = new SimpleMailMessage();
-                        mensagem.setFrom(mailFrom);
-                        mensagem.setTo(emailAdmin(studioDe(aluno)));
-                        mensagem.setSubject("Nova Inscrição Pendente: " + aluno.getNomeCompleto());
+                Studio studio = studioDe(aluno);
+                if (envioBloqueado(studio)) return;
 
-                        String corpoEmail = String.format(
-                                        "Olá,\n\n" +
-                                                        "Uma nova ficha de inscrição foi submetida com sucesso no sistema da CoreoFlow.\n\n"
-                                                        +
-                                                        "Detalhes do Aluno:\n" +
-                                                        "- Nome: %s\n" +
-                                                        "- NIF: %s\n" +
-                                                        "- E-mail de contacto: %s\n\n" +
-                                                        "Por favor, aceda à área de administração e consulte o menu 'Validar Inscrições' para efetuar o tratamento e validação deste processo.\n\n"
-                                                        +
-                                                        "Mensagem gerada automaticamente pelo plataforma CoreoFlow.",
-                                        aluno.getNomeCompleto(),
-                                        aluno.getNumeroContribuinte(),
-                                        aluno.getEmail());
+                String corpo = String.format(
+                                "<div style='font-family: Arial, sans-serif; color: #333;'>" +
+                                                "<p>Olá,</p>" +
+                                                "<p>Uma nova ficha de inscrição foi submetida com sucesso no CoreoFlow.</p>" +
+                                                "<ul style='background-color: #f2f2f2; padding: 15px; border-left: 4px solid #666; list-style-type: none;'>" +
+                                                "  <li><b>Nome:</b> %s</li>" +
+                                                "  <li><b>NIF:</b> %s</li>" +
+                                                "  <li><b>E-mail de contacto:</b> %s</li>" +
+                                                "</ul>" +
+                                                "<p>Por favor, aceda à área de administração e consulte o menu 'Validar Inscrições' para efetuar o tratamento e validação deste processo.</p>" +
+                                                "<p style='font-size: 0.8em; color: #999;'>Mensagem gerada automaticamente pela plataforma CoreoFlow.</p>" +
+                                                "</div>",
+                                aluno.getNomeCompleto(),
+                                aluno.getNumeroContribuinte(),
+                                aluno.getEmail());
 
-                        mensagem.setText(corpoEmail);
-                        mailSender.send(mensagem);
-
-                } catch (Exception ex) {
-                        // Log do erro silencioso para não quebrar a experiência do utilizador final se
-                        // o SMTP falhar
-                        System.err.println("Falha ao enviar e-mail de notificação de inscrição: " + ex.getMessage());
-                }
+                enviarNotificacaoInterna(studio, "Nova Inscrição Pendente: " + aluno.getNomeCompleto(), corpo);
         }
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacaoRenovacao(Aluno aluno) {
-                if (envioBloqueado(studioDe(aluno))) return;
-                try {
-                        SimpleMailMessage mensagem = new SimpleMailMessage();
-                        mensagem.setFrom(mailFrom);
-                        mensagem.setTo(emailAdmin(studioDe(aluno)));
-                        mensagem.setSubject("Pedido de Renovação de Matrícula: " + aluno.getNomeCompleto());
+                Studio studio = studioDe(aluno);
+                if (envioBloqueado(studio)) return;
 
-                        String corpoEmail = String.format(
-                                        "Olá,\n\n" +
-                                                        "Um pedido de renovação de matrícula foi submetido no sistema da CoreoFlow.\n\n"
-                                                        +
-                                                        "Detalhes do Aluno:\n" +
-                                                        "- Nome: %s\n" +
-                                                        "- E-mail de contacto: %s\n\n" +
-                                                        "Por favor, aceda à área de administração e consulte o menu 'Validar Inscrições' para efetuar o tratamento e validação deste processo.\n\n"
-                                                        +
-                                                        "Mensagem gerada automaticamente pelo plataforma CoreoFlow.",
-                                        aluno.getNomeCompleto(),
-                                        aluno.getEmail());
+                String corpo = String.format(
+                                "<div style='font-family: Arial, sans-serif; color: #333;'>" +
+                                                "<p>Olá,</p>" +
+                                                "<p>Um pedido de renovação de matrícula foi submetido no CoreoFlow.</p>" +
+                                                "<ul style='background-color: #f2f2f2; padding: 15px; border-left: 4px solid #666; list-style-type: none;'>" +
+                                                "  <li><b>Nome:</b> %s</li>" +
+                                                "  <li><b>E-mail de contacto:</b> %s</li>" +
+                                                "</ul>" +
+                                                "<p>Por favor, aceda à área de administração e consulte o menu 'Validar Inscrições' para efetuar o tratamento e validação deste processo.</p>" +
+                                                "<p style='font-size: 0.8em; color: #999;'>Mensagem gerada automaticamente pela plataforma CoreoFlow.</p>" +
+                                                "</div>",
+                                aluno.getNomeCompleto(),
+                                aluno.getEmail());
 
-                        mensagem.setText(corpoEmail);
-                        mailSender.send(mensagem);
-
-                } catch (Exception ex) {
-                        System.err.println("Falha ao enviar e-mail de notificação de renovação: " + ex.getMessage());
-                }
+                enviarNotificacaoInterna(studio, "Pedido de Renovação de Matrícula: " + aluno.getNomeCompleto(), corpo);
         }
 
         /** Email de confirmação enviado diretamente ao candidato após submeter um pedido (inscrição ou renovação). */
@@ -475,7 +477,7 @@ public class EmailService {
                                                         "A tua renovação de matrícula foi confirmada. Estás inscrito para o novo período.\n\n"
                                                         +
                                                         "Bom trabalho e até breve!\n\n" +
-                                                        "Mensagem gerada automaticamente pelo plataforma CoreoFlow.",
+                                                        "Mensagem gerada automaticamente pela plataforma CoreoFlow.",
                                         aluno.getNomeCompleto());
 
                         mensagem.setText(corpoEmail);
@@ -488,36 +490,26 @@ public class EmailService {
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacaoExperimental(Aluno aluno, Turma turma) {
-                if (envioBloqueado(studioDe(aluno))) return;
-                try {
-                        SimpleMailMessage mensagem = new SimpleMailMessage();
-                        mensagem.setFrom(mailFrom);
-                        mensagem.setTo(emailAdmin(studioDe(aluno)));
-                        mensagem.setSubject("Novo Aluno Experimental: " + aluno.getNomeCompleto());
+                Studio studio = studioDe(aluno);
+                if (envioBloqueado(studio)) return;
 
-                        String corpoEmail = String.format(
-                                        "Olá,\n\n" +
-                                                        "Um aluno experimental foi adicionado pelo professor.\n\n"
-                                                        +
-                                                        "Detalhes do Aluno:\n" +
-                                                        "- Nome: %s\n" +
-                                                        "- Nº Telefone: %s\n" +
-                                                        "- Turma: %s\n\n" +
-                                                        "Por favor, aceda à área de administração e consulte o menu 'Validar Inscrições' para efetuar o tratamento e validação deste processo.\n\n"
-                                                        +
-                                                        "Mensagem gerada automaticamente pelo plataforma CoreoFlow.",
-                                        aluno.getNomeCompleto(),
-                                        aluno.getTelemovel(),
-                                        turma != null ? turma.getDescricao() : "N/A");
+                String corpo = String.format(
+                                "<div style='font-family: Arial, sans-serif; color: #333;'>" +
+                                                "<p>Olá,</p>" +
+                                                "<p>Um aluno experimental foi adicionado pelo professor.</p>" +
+                                                "<ul style='background-color: #f2f2f2; padding: 15px; border-left: 4px solid #666; list-style-type: none;'>" +
+                                                "  <li><b>Nome:</b> %s</li>" +
+                                                "  <li><b>Nº Telefone:</b> %s</li>" +
+                                                "  <li><b>Turma:</b> %s</li>" +
+                                                "</ul>" +
+                                                "<p>Por favor, aceda à área de administração e consulte o menu 'Validar Inscrições' para efetuar o tratamento e validação deste processo.</p>" +
+                                                "<p style='font-size: 0.8em; color: #999;'>Mensagem gerada automaticamente pela plataforma CoreoFlow.</p>" +
+                                                "</div>",
+                                aluno.getNomeCompleto(),
+                                aluno.getTelemovel(),
+                                turma != null ? turma.getDescricao() : "N/A");
 
-                        mensagem.setText(corpoEmail);
-                        mailSender.send(mensagem);
-
-                } catch (Exception ex) {
-                        // Log do erro silencioso para não quebrar a experiência do utilizador final se
-                        // o SMTP falhar
-                        System.err.println("Falha ao enviar e-mail de notificação de inscrição: " + ex.getMessage());
-                }
+                enviarNotificacaoInterna(studio, "Novo Aluno Experimental: " + aluno.getNomeCompleto(), corpo);
         }
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
