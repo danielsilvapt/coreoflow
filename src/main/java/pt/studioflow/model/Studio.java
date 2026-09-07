@@ -45,6 +45,14 @@ public class Studio {
     @Column(nullable = false)
     private Boolean ativo = true;
 
+    /**
+     * Se a plataforma envia emails (de qualquer tipo) para este estúdio.
+     * Controlado pelo SUPERADMIN na StudioAdminView. Desligado por defeito —
+     * cada estúdio tem de ser explicitamente autorizado (nulo = não envia).
+     */
+    @Column(name = "enviar_emails")
+    private Boolean enviarEmails = false;
+
     /** Plano de subscrição do estúdio. Nulo = sem plano atribuído. */
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "plano_id")
@@ -222,6 +230,10 @@ public class Studio {
 
     public boolean isAtivo() { return Boolean.TRUE.equals(ativo); }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
+
+    /** Desligado por defeito: só envia quando o SUPERADMIN autoriza explicitamente (nulo/false = não envia). */
+    public boolean isEnviarEmails() { return Boolean.TRUE.equals(enviarEmails); }
+    public void setEnviarEmails(boolean enviarEmails) { this.enviarEmails = enviarEmails; }
 
     public Double getMensalidadeCrianca1x() { return mensalidadeCrianca1x; }
     public void setMensalidadeCrianca1x(Double v) { this.mensalidadeCrianca1x = v; }
