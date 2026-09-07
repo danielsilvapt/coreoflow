@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import pt.studioflow.config.AsyncEmailConfig;
+import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Convite;
 import pt.studioflow.model.Professor;
@@ -38,9 +39,40 @@ public class EmailService {
         @Autowired
         private EmailAssinatura assinatura;
 
+        @Autowired
+        private EmailGate emailGate;
+
+        /**
+         * Verdadeiro se o SUPERADMIN desativou o envio de emails para este estúdio.
+         * Quando verdadeiro, o método de envio deve registar e sair sem enviar.
+         */
+        private boolean envioBloqueado(Studio studio) {
+                if (emailGate.bloqueado(studio)) {
+                        System.out.println("Emails desativados para o estúdio "
+                                        + (studio != null ? studio.getNome() : "?") + " — envio ignorado.");
+                        return true;
+                }
+                return false;
+        }
+
+        /** Estúdio do aluno, tolerando nulo. */
+        private Studio studioDe(Aluno aluno) {
+                return aluno != null ? aluno.getStudio() : null;
+        }
+
+        /** Estúdio ativo na sessão Vaadin (nulo em threads @Async ou contexto SUPERADMIN). */
+        private Studio studioDaSessao() {
+                try {
+                        return TenantContext.getCurrentStudio();
+                } catch (RuntimeException e) {
+                        return null;
+                }
+        }
+
         public void enviarEmailParaLista(Studio studio, Professor professorCorrespondente, List<String> destinatarios,
                         String assunto, String corpoMensagem)
                         throws Exception {
+                if (envioBloqueado(studio)) return;
                 MimeMessage mimeMessage = mailSender.createMimeMessage();
                 // Usamos o Helper para permitir HTML (assinatura com negrito, links, etc)
                 MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -73,6 +105,7 @@ public class EmailService {
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailAprovacaoSala(Studio studio, String destinatario, String nomeProfessor, String sala,
                         String data, String horaInicio, String horaFim) {
+                if (envioBloqueado(studio)) return;
                 try {
                         MimeMessage mimeMessage = mailSender.createMimeMessage();
                         MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -114,6 +147,7 @@ public class EmailService {
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void notificarAdminNovoPedido(Studio studio, String nomeProfessor, String tipo, String turma, String sala,
                         String data, String horaInicio, String horaFim, String observacoes) {
+                if (envioBloqueado(studio)) return;
                 try {
                         MimeMessage mimeMessage = mailSender.createMimeMessage();
                         MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -162,6 +196,7 @@ public class EmailService {
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailRecusaSala(Studio studio, String destinatario, String nomeProfessor, String sala,
                         String data, String horaInicio, String horaFim) {
+                if (envioBloqueado(studio)) return;
                 try {
                         MimeMessage mimeMessage = mailSender.createMimeMessage();
                         MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -203,6 +238,7 @@ public class EmailService {
         }
 
         public void enviarConvocatoria(Aluno aluno, Convite convite) {
+                if (envioBloqueado(studioDe(aluno))) return;
                 String urlBase = baseUrl + "/api/convocatoria";
                 String linkConfirmar = urlBase + "/confirmar?alunoId=" + aluno.getId() + "&conviteId="
                                 + convite.getId();
@@ -253,6 +289,7 @@ public class EmailService {
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void notificarProfessorConfirmacao(Aluno aluno, Convite convite, Professor professor) {
+                if (envioBloqueado(studioDe(aluno))) return;
                 try {
                         MimeMessage message = mailSender.createMimeMessage();
                         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -289,6 +326,7 @@ public class EmailService {
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacao(Aluno aluno) {
+                if (envioBloqueado(studioDe(aluno))) return;
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
                         mensagem.setFrom(mailFrom);
@@ -322,6 +360,7 @@ public class EmailService {
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacaoRenovacao(Aluno aluno) {
+                if (envioBloqueado(studioDe(aluno))) return;
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
                         mensagem.setFrom(mailFrom);
@@ -353,6 +392,7 @@ public class EmailService {
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailConfirmacaoCandidato(Aluno aluno, String nomeEstudio) {
                 if (aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
+                if (envioBloqueado(studioDe(aluno))) return;
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
                         mensagem.setFrom(mailFrom);
@@ -380,8 +420,10 @@ public class EmailService {
          * reposição de password.
          */
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
-        public void enviarConvitePortal(String email, String nomeEstudio, String linkAtivacao) {
+        public void enviarConvitePortal(String email, Studio studio, String linkAtivacao) {
                 if (email == null || email.isBlank()) return;
+                if (envioBloqueado(studio)) return;
+                String nomeEstudio = studio != null && studio.getNome() != null ? studio.getNome() : "CoreoFlow";
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
                         mensagem.setFrom(mailFrom);
@@ -408,6 +450,7 @@ public class EmailService {
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailAprovacaoRenovacao(Aluno aluno) {
                 if (aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
+                if (envioBloqueado(studioDe(aluno))) return;
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
                         mensagem.setFrom(mailFrom);
@@ -432,6 +475,7 @@ public class EmailService {
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacaoExperimental(Aluno aluno, Turma turma) {
+                if (envioBloqueado(studioDe(aluno))) return;
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
                         mensagem.setFrom(mailFrom);
@@ -466,6 +510,7 @@ public class EmailService {
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacaoProfessor(String emailDestinatario, Aluno aluno, String assunto,
                         String corpo) {
+                if (envioBloqueado(studioDe(aluno))) return;
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
                         mensagem.setFrom(mailFrom);
@@ -486,6 +531,7 @@ public class EmailService {
         // 1. Lançamento inicial: Notifica ambos em simultâneo
         public void notificarAssinantesNovaTransferencia(String desc, String valor, String destino, String email1,
                         String email2) {
+                if (envioBloqueado(studioDaSessao())) return;
                 String texto = "Nova transferência registada a aguardar validação: " + desc + " | Valor: " + valor
                                 + "€ para " + destino
                                 + "\nPor favor, aceda ao netbanco para assinar e à plataforma para confirmar.";
@@ -496,6 +542,7 @@ public class EmailService {
         // 2. Notificação intermédia: Um assinou, alerta o outro para fechar o circuito
         public void notificarSegundoAssinanteFaltaUma(String desc, String valor, String emailDestinatarioFalta,
                         String quemJaAssinou) {
+                if (envioBloqueado(studioDaSessao())) return;
                 String texto = "A transferência '" + desc + "' (" + valor + "€) já foi validada por " + quemJaAssinou
                                 + ".\nFalta a sua assinatura para o documento ser pago.";
                 enviarEmailInterno(emailDestinatarioFalta, "Falta a sua Assinatura - Tesouraria", texto);
@@ -503,6 +550,7 @@ public class EmailService {
 
         // 3. Circuito fechado: Notifica a carga de que pode pagar
         public void notificarGeralProntoParaPagamento(String desc, String valor, String emailGeral) {
+                if (envioBloqueado(studioDaSessao())) return;
                 String texto = "A transferência '" + desc + "' de " + valor
                                 + "€ recolheu ambas as assinaturas e está paga.";
                 enviarEmailInterno(emailGeral, "Transferência Autorizada para Pagamento", texto);
@@ -511,6 +559,7 @@ public class EmailService {
         // 4. Pagamento efetuado
         public void notificarEnvolvidosPagamentoEfetuado(String desc, String valor, String emailGeral, String email1,
                         String email2) {
+                if (envioBloqueado(studioDaSessao())) return;
                 String texto = "Pagamento concluído com sucesso: " + desc + " (" + valor + "€). Comprovativo anexado.";
                 enviarEmailInterno(emailGeral, "Liquidação Concluída", texto);
                 enviarEmailInterno(email1, "Liquidação Concluída", texto);

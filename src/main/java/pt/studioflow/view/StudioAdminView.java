@@ -119,6 +119,17 @@ public class StudioAdminView extends VerticalLayout {
             return badge;
         }).setHeader("Estado").setWidth("100px").setFlexGrow(0);
 
+        grid.addComponentColumn(studio -> {
+            Span badge = new Span(studio.isEnviarEmails() ? "Emails ON" : "Emails OFF");
+            badge.getStyle()
+                    .set("background", studio.isEnviarEmails() ? "#27AE60" : "#E74C3C")
+                    .set("color", "white")
+                    .set("padding", "2px 10px")
+                    .set("border-radius", "12px")
+                    .set("font-size", "12px");
+            return badge;
+        }).setHeader("Emails").setWidth("110px").setFlexGrow(0);
+
         grid.setSizeFull();
     }
 
@@ -253,13 +264,19 @@ public class StudioAdminView extends VerticalLayout {
         Checkbox ativo = new Checkbox("Estúdio ativo");
         ativo.setValue(studio.isAtivo());
 
+        Checkbox enviarEmails = new Checkbox("Enviar emails da plataforma");
+        enviarEmails.setValue(studio.isEnviarEmails());
+        enviarEmails.getElement().setProperty("title",
+                "Quando desligado, a plataforma não envia nenhum email (convites do portal, "
+                        + "notificações, avisos, aniversários, etc.) para este estúdio.");
+
         form.add(nome, slug, email, corPrimaria, corSecundaria, vendusApiKey, emailCriador,
                 emailAssinante1, emailAssinante2,
                 mensalidadeCrianca1x, mensalidadeCrianca2x,
                 mensalidadeAdulto1x, mensalidadeAdulto2x, naoSocioAdicional,
                 descontoFamiliares, descontoDirecao, descontoMaisModal, descontoMais65,
                 taxaInscricao, taxaRenovacao,
-                ativo);
+                ativo, enviarEmails);
 
         // --- Campos do aluno ---
         H4 secCampos = new H4("Campos do Formulário de Aluno");
@@ -456,6 +473,7 @@ public class StudioAdminView extends VerticalLayout {
             studio.setTaxaInscricao(taxaInscricao.getValue());
             studio.setTaxaRenovacao(taxaRenovacao.getValue());
             studio.setAtivo(ativo.getValue());
+            studio.setEnviarEmails(Boolean.TRUE.equals(enviarEmails.getValue()));
 
             // Faturação
             studio.setFaturacaoAutomatica(faturacaoAuto.getValue() ? true : false);
