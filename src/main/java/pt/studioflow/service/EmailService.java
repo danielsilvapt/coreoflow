@@ -429,6 +429,87 @@ public class EmailService {
                 }
         }
 
+        /** Uma turma na qual o aluno ficou inscrito, para o email de boas-vindas. */
+        public record TurmaInscrita(String nome, String professor, String horario, double mensalidade) {
+        }
+
+        /**
+         * Email de boas-vindas enviado ao aluno/encarregado quando a inscrição é
+         * ativada pela secretaria: dá as boas-vindas e resume as turmas, horários,
+         * professores e a mensalidade de cada uma. Vai assinado com o logo do
+         * estúdio + "powered by CoreoFlow" e com Reply-To para o estúdio.
+         */
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
+        public void enviarBoasVindasAluno(Aluno aluno, Studio studio, java.util.List<TurmaInscrita> turmas,
+                        double totalMensal) {
+                if (aluno == null || aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
+                if (turmas == null || turmas.isEmpty()) return;
+                if (envioBloqueado(studio)) return;
+
+                String nomeEstudio = studio != null && studio.getNome() != null ? studio.getNome() : "CoreoFlow";
+                String nome = aluno.getNomeCompleto() != null ? aluno.getNomeCompleto().trim() : "";
+                String primeiroNome = nome.isBlank() ? "" : nome.split("\\s+")[0];
+
+                try {
+                        MimeMessage mimeMessage = mailSender.createMimeMessage();
+                        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+                        helper.setFrom(mailFrom, nomeEstudio);
+                        helper.setTo(aluno.getEmail());
+                        helper.setReplyTo(emailAdmin(studio));
+                        helper.setSubject("Bem-vindo(a) ao " + nomeEstudio + "!");
+
+                        StringBuilder linhas = new StringBuilder();
+                        for (TurmaInscrita t : turmas) {
+                                String horario = t.horario() == null || t.horario().isBlank()
+                                                ? "Horário a combinar" : t.horario();
+                                String prof = t.professor() != null && !t.professor().isBlank()
+                                                ? "<br><span style='color:#888;font-size:13px;'>com "
+                                                                + t.professor() + "</span>"
+                                                : "";
+                                linhas.append("<tr>")
+                                                .append("<td style='padding:10px 8px;border-bottom:1px solid #eee;'><b>")
+                                                .append(t.nome()).append("</b>").append(prof).append("</td>")
+                                                .append("<td style='padding:10px 8px;border-bottom:1px solid #eee;color:#555;'>")
+                                                .append(horario).append("</td>")
+                                                .append("<td style='padding:10px 8px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;'>")
+                                                .append(String.format("%.2f €", t.mensalidade())).append("/mês</td>")
+                                                .append("</tr>");
+                        }
+
+                        String totalRow = turmas.size() > 1
+                                        ? "<tr><td colspan='2' style='padding:10px 8px;text-align:right;font-weight:bold;'>Total mensal</td>"
+                                                        + "<td style='padding:10px 8px;text-align:right;font-weight:bold;white-space:nowrap;'>"
+                                                        + String.format("%.2f €", totalMensal) + "/mês</td></tr>"
+                                        : "";
+
+                        String portal = baseUrl.replaceFirst("^https?://", "");
+
+                        String html = "<div style='font-family:Arial,Helvetica,sans-serif;color:#333;max-width:600px;'>"
+                                        + "<p>Olá " + primeiroNome + ",</p>"
+                                        + "<p>É com muito gosto que te damos as boas-vindas ao <b>" + nomeEstudio
+                                        + "</b>! A tua inscrição está confirmada e já tens lugar garantido"
+                                        + (turmas.size() > 1 ? " nas seguintes turmas:" : " na seguinte turma:") + "</p>"
+                                        + "<table style='border-collapse:collapse;width:100%;margin:18px 0;'>"
+                                        + "<thead><tr style='background:#f5f5f5;'>"
+                                        + "<th style='padding:10px 8px;text-align:left;'>Turma</th>"
+                                        + "<th style='padding:10px 8px;text-align:left;'>Horário</th>"
+                                        + "<th style='padding:10px 8px;text-align:right;'>Mensalidade</th>"
+                                        + "</tr></thead><tbody>" + linhas + totalRow + "</tbody></table>"
+                                        + "<p>No portal em <a href='" + baseUrl + "'>" + portal + "</a> podes acompanhar "
+                                        + "presenças, mensalidades, avaliações, contratos e os vídeos das aulas.</p>"
+                                        + "<p>Se tiveres qualquer dúvida, é só responderes a este email &mdash; estamos cá para ajudar.</p>"
+                                        + "<p>Até já!</p>"
+                                        + "</div>";
+
+                        helper.setText(html + assinatura.html(studio), true);
+                        mailSender.send(mimeMessage);
+                        System.out.println("Email de boas-vindas enviado para " + aluno.getEmail());
+                } catch (Exception ex) {
+                        System.err.println("Falha ao enviar email de boas-vindas a " + aluno.getEmail() + ": "
+                                        + ex.getMessage());
+                }
+        }
+
         /**
          * Convite para o portal do aluno/encarregado: link onde o destinatário
          * define a sua password. Usado tanto no primeiro acesso como na

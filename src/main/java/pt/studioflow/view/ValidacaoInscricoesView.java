@@ -1,6 +1,7 @@
 package pt.studioflow.view;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,10 +43,13 @@ import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Aluno.AlunoStatus;
 import pt.studioflow.model.AlunoTurma;
+import pt.studioflow.model.Aula;
+import pt.studioflow.model.Mensalidade;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
+import pt.studioflow.repository.AulaRepository;
 import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.repository.MensalidadeRepository;
 import pt.studioflow.repository.PresencaRepository;
@@ -61,6 +65,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     private final AlunoRepository repository;
     private final TurmaRepository turmaRepository;
     private final AlunoTurmaRepository alunoTurmaRepository;
+    private final AulaRepository aulaRepository;
     private final MensalidadeRepository mensalidadeRepository;
     private final PresencaRepository presencaRepository;
     private final MensalidadeService mensalidadeService;
@@ -82,6 +87,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     public ValidacaoInscricoesView(AlunoRepository repository,
             TurmaRepository turmaRepository,
             AlunoTurmaRepository alunoTurmaRepository,
+            AulaRepository aulaRepository,
             MensalidadeRepository mensalidadeRepository,
             PresencaRepository presencaRepository,
             MensalidadeService mensalidadeService,
@@ -90,6 +96,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         this.repository = repository;
         this.turmaRepository = turmaRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
+        this.aulaRepository = aulaRepository;
         this.mensalidadeRepository = mensalidadeRepository;
         this.presencaRepository = presencaRepository;
         this.mensalidadeService = mensalidadeService;
@@ -589,6 +596,8 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                 System.err.println("Erro ao notificar o aluno " + aluno.getNomeCompleto()
                         + " da renovação: " + e.getMessage());
             }
+        } else {
+            enviarBoasVindas(aluno);
         }
 
         atualizarGrid();
@@ -668,6 +677,68 @@ public class ValidacaoInscricoesView extends VerticalLayout {
             System.err
                     .println("Erro ao notificar o professor da turma " + turma.getDescricao() + ": " + e.getMessage());
         }
+    }
+
+    // Email de boas-vindas ao aluno recém-ativado: resume turmas, horários, professor
+    // e mensalidade de cada turma. Os dados são reunidos aqui (com acesso à sessão/BD) e
+    // passados ao EmailService já como texto, para o envio assíncrono não tocar em lazy.
+    private void enviarBoasVindas(Aluno aluno) {
+        try {
+            Studio studio = TenantContext.getCurrentStudio();
+            Aluno completo = repository.findByIdWithTurmas(aluno.getId()).orElse(aluno);
+            List<AlunoTurma> associacoes = completo.getTurmas();
+            if (associacoes == null || associacoes.isEmpty()) {
+                return;
+            }
+
+            Map<Long, Turma> turmasCompletas = turmasCache.stream()
+                    .collect(Collectors.toMap(Turma::getId, t -> t, (a, b) -> a));
+            List<Mensalidade> mensalidades = mensalidadeRepository.findByAluno(completo);
+
+            List<EmailService.TurmaInscrita> linhas = new ArrayList<>();
+            double total = 0;
+            for (AlunoTurma at : associacoes) {
+                Turma turma = turmasCompletas.getOrDefault(at.getTurma().getId(), at.getTurma());
+                double valor = mensalidades.stream()
+                        .filter(m -> m.getTurma() != null && turma.getId().equals(m.getTurma().getId()))
+                        .mapToDouble(Mensalidade::getValor)
+                        .findFirst().orElse(0);
+                total += valor;
+
+                String nome = (turma.getModalidade() != null ? turma.getModalidade().getDescricao() + " - " : "")
+                        + turma.getDescricao();
+                String professor = turma.getProfessor() != null ? turma.getProfessor().getNome() : null;
+                String horario = formatarHorario(aulaRepository.findByTurma(turma));
+                linhas.add(new EmailService.TurmaInscrita(nome, professor, horario, valor));
+            }
+
+            emailService.enviarBoasVindasAluno(completo, studio, linhas, total);
+        } catch (Exception e) {
+            System.err.println("Erro ao enviar email de boas-vindas a " + aluno.getNomeCompleto()
+                    + ": " + e.getMessage());
+        }
+    }
+
+    private static final String[] DIAS_ABREV = { "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom" };
+
+    private String formatarHorario(List<Aula> aulas) {
+        if (aulas == null || aulas.isEmpty()) {
+            return null;
+        }
+        return aulas.stream()
+                .filter(a -> a.getDia() != null)
+                .sorted(Comparator.comparingInt((Aula a) -> a.getDia().getValue())
+                        .thenComparing(a -> a.getHoraInicio() != null ? a.getHoraInicio() : LocalTime.MIN))
+                .map(a -> {
+                    String dia = DIAS_ABREV[a.getDia().getValue() - 1];
+                    if (a.getHoraInicio() == null) {
+                        return dia;
+                    }
+                    String fim = a.getHoraFim() != null ? "–" + a.getHoraFim() : "";
+                    return dia + " " + a.getHoraInicio() + fim;
+                })
+                .distinct()
+                .collect(Collectors.joining(", "));
     }
 
     @Transactional
