@@ -69,6 +69,19 @@ public class EmailService {
                 }
         }
 
+        /**
+         * Caixa que recebe as notificações internas de um estúdio (novas inscrições,
+         * renovações, pedidos de sala, etc.). Usa o email de contacto do estúdio e,
+         * na ausência dele, cai para o remetente da plataforma para não perder o aviso.
+         */
+        private String emailAdmin(Studio studio) {
+                if (studio != null && studio.getEmailContacto() != null
+                                && !studio.getEmailContacto().isBlank()) {
+                        return studio.getEmailContacto();
+                }
+                return mailFrom;
+        }
+
         public void enviarEmailParaLista(Studio studio, Professor professorCorrespondente, List<String> destinatarios,
                         String assunto, String corpoMensagem)
                         throws Exception {
@@ -79,19 +92,18 @@ public class EmailService {
 
                 helper.setFrom(mailFrom, "CoreoFlow");
 
-                // Alunos como destinatários ocultos (privacidade entre alunos)
-                helper.setBcc(destinatarios.toArray(new String[0]));
-
-                // Em cópia: apenas o email do estúdio e o professor da modalidade
-                List<String> emailsCc = new ArrayList<>();
-                emailsCc.add(mailFrom);
+                // Todos os destinatários em Bcc: alunos entre si (privacidade/RGPD) e
+                // também o estúdio e o professor da modalidade, para não expor os seus
+                // endereços na lista de cópia visível aos alunos.
+                List<String> emailsBcc = new ArrayList<>(destinatarios);
+                emailsBcc.add(emailAdmin(studio));
                 if (professorCorrespondente != null && professorCorrespondente.getEmail() != null
                                 && !professorCorrespondente.getEmail().isBlank()) {
-                        emailsCc.add(professorCorrespondente.getEmail());
+                        emailsBcc.add(professorCorrespondente.getEmail());
                 }
-                helper.setCc(emailsCc.toArray(new String[0]));
+                helper.setBcc(emailsBcc.toArray(new String[0]));
 
-                helper.setReplyTo(mailFrom);
+                helper.setReplyTo(emailAdmin(studio));
                 helper.setSubject(assunto);
 
                 // Junta a mensagem escrita no portal (mantendo as quebras de linha) com a
@@ -152,7 +164,7 @@ public class EmailService {
                         MimeMessage mimeMessage = mailSender.createMimeMessage();
                         MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
-                        helper.setTo(mailFrom);
+                        helper.setTo(emailAdmin(studio));
                         helper.setFrom(mailFrom, "CoreoFlow");
                         helper.setSubject("Novo Pedido de Reserva de Sala - Pendente de Aprovação");
 
@@ -298,9 +310,10 @@ public class EmailService {
                         helper.setTo(professor.getEmail());
                         helper.setSubject("Confirmação de Presença: " + aluno.getNomeCompleto());
 
-                        // Lógica para adicionar CC se for uma Competição
+                        // Se for uma Competição, o estúdio recebe cópia oculta (Bcc) — não
+                        // expõe o endereço do estúdio ao professor destinatário.
                         if (convite.getEvento() != null && convite.getEvento().contains("Competição")) {
-                                helper.addCc(mailFrom);
+                                helper.addBcc(emailAdmin(studioDe(aluno)));
                         }
 
                         String htmlContent = "<div style='font-family: Arial, sans-serif; color: #333; padding: 20px; border: 1px solid #eee;'>"
@@ -330,7 +343,7 @@ public class EmailService {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
                         mensagem.setFrom(mailFrom);
-                        mensagem.setTo(mailFrom);
+                        mensagem.setTo(emailAdmin(studioDe(aluno)));
                         mensagem.setSubject("Nova Inscrição Pendente: " + aluno.getNomeCompleto());
 
                         String corpoEmail = String.format(
@@ -364,7 +377,7 @@ public class EmailService {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
                         mensagem.setFrom(mailFrom);
-                        mensagem.setTo(mailFrom);
+                        mensagem.setTo(emailAdmin(studioDe(aluno)));
                         mensagem.setSubject("Pedido de Renovação de Matrícula: " + aluno.getNomeCompleto());
 
                         String corpoEmail = String.format(
@@ -479,7 +492,7 @@ public class EmailService {
                 try {
                         SimpleMailMessage mensagem = new SimpleMailMessage();
                         mensagem.setFrom(mailFrom);
-                        mensagem.setTo(mailFrom);
+                        mensagem.setTo(emailAdmin(studioDe(aluno)));
                         mensagem.setSubject("Novo Aluno Experimental: " + aluno.getNomeCompleto());
 
                         String corpoEmail = String.format(
