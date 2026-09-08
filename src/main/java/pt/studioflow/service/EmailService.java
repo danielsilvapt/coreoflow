@@ -102,6 +102,24 @@ public class EmailService {
                 }
         }
 
+        /**
+         * Envia um email HTML a um destinatário externo (aluno, encarregado, professor)
+         * já com a assinatura comum da plataforma (logo do estúdio + "powered by CoreoFlow").
+         * Reply-To vai para o email de contacto do estúdio.
+         */
+        private void enviarHtmlComAssinatura(String para, Studio studio, String remetenteNome,
+                        String assunto, String corpoHtml) throws Exception {
+                MimeMessage mimeMessage = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+                helper.setFrom(mailFrom, remetenteNome != null && !remetenteNome.isBlank() ? remetenteNome : "CoreoFlow");
+                helper.setTo(para);
+                String replyTo = emailAdmin(studio);
+                if (replyTo != null && !replyTo.isBlank()) helper.setReplyTo(replyTo);
+                helper.setSubject(assunto);
+                helper.setText(corpoHtml + assinatura.html(studio), true);
+                mailSender.send(mimeMessage);
+        }
+
         public void enviarEmailParaLista(Studio studio, Professor professorCorrespondente, List<String> destinatarios,
                         String assunto, String corpoMensagem)
                         throws Exception {
@@ -349,7 +367,7 @@ public class EmailService {
                                         +
                                         "</div>";
 
-                        helper.setText(htmlContent, true);
+                        helper.setText(htmlContent + assinatura.html(studioDe(aluno)), true);
                         mailSender.send(message);
 
                 } catch (Exception e) {
@@ -409,21 +427,13 @@ public class EmailService {
                 if (aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
                 if (envioBloqueado(studioDe(aluno))) return;
                 try {
-                        SimpleMailMessage mensagem = new SimpleMailMessage();
-                        mensagem.setFrom(mailFrom);
-                        mensagem.setTo(aluno.getEmail());
-                        mensagem.setSubject("Recebemos o teu pedido — " + nomeEstudio);
-
-                        String corpoEmail = String.format(
-                                        "Olá %s,\n\n" +
-                                                        "Recebemos o teu pedido com sucesso e entraremos em contacto muito em breve.\n\n"
-                                                        +
-                                                        "Obrigado,\n%s",
-                                        aluno.getNomeCompleto(), nomeEstudio);
-
-                        mensagem.setText(corpoEmail);
-                        mailSender.send(mensagem);
-
+                        String html = "<div style='font-family:Arial,Helvetica,sans-serif;color:#333;max-width:600px;'>"
+                                        + "<p>Olá " + escapeHtml(aluno.getNomeCompleto()) + ",</p>"
+                                        + "<p>Recebemos o teu pedido com sucesso e entraremos em contacto muito em breve.</p>"
+                                        + "<p>Obrigado,<br>" + escapeHtml(nomeEstudio) + "</p>"
+                                        + "</div>";
+                        enviarHtmlComAssinatura(aluno.getEmail(), studioDe(aluno), nomeEstudio,
+                                        "Recebemos o teu pedido — " + nomeEstudio, html);
                 } catch (Exception ex) {
                         System.err.println("Falha ao enviar e-mail de confirmação ao candidato: " + ex.getMessage());
                 }
@@ -520,22 +530,25 @@ public class EmailService {
                 if (email == null || email.isBlank()) return;
                 if (envioBloqueado(studio)) return;
                 String nomeEstudio = studio != null && studio.getNome() != null ? studio.getNome() : "CoreoFlow";
+                String portal = baseUrl.replaceFirst("^https?://", "");
                 try {
-                        SimpleMailMessage mensagem = new SimpleMailMessage();
-                        mensagem.setFrom(mailFrom);
-                        mensagem.setTo(email);
-                        mensagem.setSubject("Acesso ao portal — " + nomeEstudio);
-                        mensagem.setText(
-                                        "Olá,\n\n" +
-                                        "Foi criado um acesso ao portal do " + nomeEstudio + " para o email " + email + ".\n" +
-                                        "No portal pode acompanhar presenças, mensalidades, avaliações, contratos e os " +
-                                        "vídeos das aulas dos seus educandos.\n\n" +
-                                        "Para definir a sua palavra-passe, abra este link (válido por 7 dias):\n" +
-                                        linkAtivacao + "\n\n" +
-                                        "Depois entra em app.coreoflow.me com o seu email e a palavra-passe que definir.\n\n" +
-                                        "Se não esperava este email, pode ignorá-lo.\n\n" +
-                                        "CoreoFlow");
-                        mailSender.send(mensagem);
+                        String html = "<div style='font-family:Arial,Helvetica,sans-serif;color:#333;max-width:600px;'>"
+                                        + "<p>Olá,</p>"
+                                        + "<p>Foi criado um acesso ao portal do <b>" + escapeHtml(nomeEstudio)
+                                        + "</b> para o email <b>" + escapeHtml(email) + "</b>.</p>"
+                                        + "<p>No portal pode acompanhar presenças, mensalidades, avaliações, contratos "
+                                        + "e os vídeos das aulas dos seus educandos.</p>"
+                                        + "<p style='margin:24px 0;'>"
+                                        + "<a href='" + linkAtivacao + "' style='background:#4A90E2;color:#fff;padding:12px 24px;"
+                                        + "text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;'>"
+                                        + "Definir palavra-passe</a></p>"
+                                        + "<p style='font-size:13px;color:#888;'>O link é válido por 7 dias. Se o botão não "
+                                        + "funcionar, copia este endereço para o navegador:<br>" + linkAtivacao + "</p>"
+                                        + "<p style='font-size:13px;color:#888;'>Depois entra em <a href='" + baseUrl + "'>"
+                                        + portal + "</a> com o seu email e a palavra-passe que definir.</p>"
+                                        + "<p style='font-size:12px;color:#bbb;'>Se não esperava este email, pode ignorá-lo.</p>"
+                                        + "</div>";
+                        enviarHtmlComAssinatura(email, studio, nomeEstudio, "Acesso ao portal — " + nomeEstudio, html);
                         System.out.println("Convite do portal enviado para " + email + " (from=" + mailFrom + ")");
                 } catch (Exception ex) {
                         System.err.println("Falha ao enviar convite do portal para " + email + ": " + ex.getMessage());
@@ -548,22 +561,15 @@ public class EmailService {
                 if (aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
                 if (envioBloqueado(studioDe(aluno))) return;
                 try {
-                        SimpleMailMessage mensagem = new SimpleMailMessage();
-                        mensagem.setFrom(mailFrom);
-                        mensagem.setTo(aluno.getEmail());
-                        mensagem.setSubject("Renovação de matrícula confirmada");
-
-                        String corpoEmail = String.format(
-                                        "Olá %s,\n\n" +
-                                                        "A tua renovação de matrícula foi confirmada. Estás inscrito para o novo período.\n\n"
-                                                        +
-                                                        "Bom trabalho e até breve!\n\n" +
-                                                        "Mensagem gerada automaticamente pela plataforma CoreoFlow.",
-                                        aluno.getNomeCompleto());
-
-                        mensagem.setText(corpoEmail);
-                        mailSender.send(mensagem);
-
+                        Studio studio = studioDe(aluno);
+                        String nomeEstudio = studio != null && studio.getNome() != null ? studio.getNome() : "CoreoFlow";
+                        String html = "<div style='font-family:Arial,Helvetica,sans-serif;color:#333;max-width:600px;'>"
+                                        + "<p>Olá " + escapeHtml(aluno.getNomeCompleto()) + ",</p>"
+                                        + "<p>A tua renovação de matrícula foi confirmada. Estás inscrito para o novo período.</p>"
+                                        + "<p>Bom trabalho e até breve!</p>"
+                                        + "</div>";
+                        enviarHtmlComAssinatura(aluno.getEmail(), studio, nomeEstudio,
+                                        "Renovação de matrícula confirmada", html);
                 } catch (Exception ex) {
                         System.err.println("Falha ao enviar e-mail de aprovação de renovação: " + ex.getMessage());
                 }
@@ -598,15 +604,9 @@ public class EmailService {
                         String corpo) {
                 if (envioBloqueado(studioDe(aluno))) return;
                 try {
-                        SimpleMailMessage mensagem = new SimpleMailMessage();
-                        mensagem.setFrom(mailFrom);
-                        mensagem.setTo(emailDestinatario);
-                        mensagem.setSubject(assunto);
-
-                        mensagem.setText(corpo);
-
-                        mailSender.send(mensagem);
-
+                        String html = "<div style='font-family:Arial,Helvetica,sans-serif;color:#333;max-width:600px;'>"
+                                        + corpo.replace("\n", "<br>") + "</div>";
+                        enviarHtmlComAssinatura(emailDestinatario, studioDe(aluno), "CoreoFlow", assunto, html);
                 } catch (Exception ex) {
                         // Log do erro silencioso para não quebrar a experiência do utilizador final se
                         // o SMTP falhar
@@ -650,6 +650,11 @@ public class EmailService {
                 enviarEmailInterno(emailGeral, "Liquidação Concluída", texto);
                 enviarEmailInterno(email1, "Liquidação Concluída", texto);
                 enviarEmailInterno(email2, "Liquidação Concluída", texto);
+        }
+
+        private static String escapeHtml(String s) {
+                if (s == null) return "";
+                return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
         }
 
         public void enviarEmailInterno(String to, String subject, String body) {
