@@ -4,11 +4,15 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.timepicker.TimePicker;
+import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Convite;
+import pt.studioflow.model.Studio;
 import pt.studioflow.repository.ConviteRepository;
 import java.time.Duration;
 
@@ -54,16 +58,34 @@ public class ConviteDialog extends Dialog {
                 evento.setInvalid(true);
                 return;
             }
-            Convite c = new Convite();
-            c.setEvento(evento.getValue());
-            c.setData(data.getValue());
-            c.setHora(hora.getValue()); // Verifica se tens setHora na tua classe Convite!
-            c.setLocal(local.getValue());
-            c.setObservacoes(observacoes.getValue());
 
-            repository.save(c);
-            onSave.run();
-            close();
+            Studio studio = TenantContext.getCurrentStudio();
+            if (studio == null) {
+                Notification.show("Sessão sem estúdio associado. Volta a entrar e tenta de novo.",
+                        4000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+
+            try {
+                Convite c = new Convite();
+                c.setEvento(evento.getValue());
+                c.setData(data.getValue());
+                c.setHora(hora.getValue());
+                c.setLocal(local.getValue());
+                c.setObservacoes(observacoes.getValue());
+                c.setStudio(studio); // studio_id é NOT NULL — sem isto o save rebenta e o diálogo "bloqueia"
+
+                repository.save(c);
+                onSave.run();
+                close();
+                Notification.show("Evento criado.", 2500, Notification.Position.BOTTOM_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (Exception ex) {
+                Notification.show("Erro ao guardar o evento: " + ex.getMessage(),
+                        5000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
         });
         btnGuardar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         
