@@ -6,8 +6,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
@@ -35,12 +33,11 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.RolesAllowed;
+import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Turma;
-import pt.studioflow.model.User;
-import pt.studioflow.repository.UserRepository;
+import pt.studioflow.service.ProfessorTurmasService;
 import pt.studioflow.service.R2StorageService;
-import pt.studioflow.service.TurmaService;
 
 import java.time.Duration;
 
@@ -49,8 +46,7 @@ import java.time.Duration;
 @RolesAllowed({ "DELEG", "PROF", "ADMIN" })
 public class AlunosProfessorView extends VerticalLayout {
 
-    private final TurmaService turmaService;
-    private final UserRepository userRepository;
+    private final ProfessorTurmasService profTurmas;
     private final R2StorageService storageService;
 
     private Grid<AlunoDTO> grid;
@@ -58,10 +54,9 @@ public class AlunosProfessorView extends VerticalLayout {
     private final Map<String, String> filtrosAtivos = new HashMap<>();
 
     @Autowired
-    public AlunosProfessorView(TurmaService turmaService, UserRepository userRepository,
+    public AlunosProfessorView(ProfessorTurmasService profTurmas,
             R2StorageService storageService) {
-        this.turmaService = turmaService;
-        this.userRepository = userRepository;
+        this.profTurmas = profTurmas;
         this.storageService = storageService;
 
         setSizeFull();
@@ -225,13 +220,7 @@ public class AlunosProfessorView extends VerticalLayout {
     }
 
     private void carregarDados() {
-        String profNomeNormalizado = normalizar(getFirstNameFromDatabase());
-
-        List<Turma> turmasDoProf = turmaService.findAllComplete().stream()
-                .filter(t -> t.getTodosProfessores().stream()
-                        .anyMatch(p -> p.getNome() != null
-                                && normalizar(p.getNome().split(" ")[0]).equals(profNomeNormalizado)))
-                .collect(Collectors.toList());
+        List<Turma> turmasDoProf = profTurmas.turmasVisiveis(TenantContext.getCurrentStudio());
 
         Map<Aluno, Set<String>> alunoTurmasMap = new HashMap<>();
         for (Turma t : turmasDoProf) {
@@ -316,15 +305,4 @@ public class AlunosProfessorView extends VerticalLayout {
         dialog.open();
     }
 
-    private String getFirstNameFromDatabase() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth == null ? "" : userRepository.findByPrincipalName(auth.getName()).map(User::getFirstName).orElse("");
-    }
-
-    private String normalizar(String texto) {
-        if (texto == null)
-            return "";
-        return java.text.Normalizer.normalize(texto, java.text.Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "").toLowerCase().trim();
-    }
 }
