@@ -1,10 +1,12 @@
 package pt.studioflow.view;
 
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -21,8 +23,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import pt.studioflow.model.*;
 import pt.studioflow.repository.*;
 import pt.studioflow.service.EmailService;
+import pt.studioflow.view.component.ListaEventos;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -86,6 +92,8 @@ public class ConvitesProfessorView extends VerticalLayout {
         H2 titulo = new H2("Convocatória de Alunos para Eventos");
         titulo.getStyle().set("margin-top", "0");
         add(titulo);
+
+        add(criarSecaoProximosEventos(_studio));
 
         // 2. Filtros
         HorizontalLayout filtros = new HorizontalLayout();
@@ -170,6 +178,56 @@ public class ConvitesProfessorView extends VerticalLayout {
                 e -> processarConvocatoria());
         btnEnviarConvocatoria.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         add(btnEnviarConvocatoria);
+    }
+
+    /** Lista (só leitura) dos próximos eventos em que alguma das turmas do professor participa. */
+    private Component criarSecaoProximosEventos(Studio studio) {
+        VerticalLayout seccao = new VerticalLayout();
+        seccao.setPadding(false);
+        seccao.setSpacing(false);
+        seccao.setWidthFull();
+        seccao.getStyle().set("max-width", "640px");
+
+        H3 h = new H3("📅 Próximos Eventos");
+        h.getStyle().set("margin", "8px 0");
+        seccao.add(h);
+
+        Set<Long> turmaIds = minhasTurmas.stream().map(Turma::getId).collect(Collectors.toSet());
+        LocalDate hoje = LocalDate.now();
+
+        List<Convite> eventos = (studio != null
+                ? conviteRepository.findAllByStudio(studio) : conviteRepository.findAll())
+                .stream()
+                .filter(c -> c.getData() != null && !c.getData().isBefore(hoje))
+                .filter(c -> turmaIds.stream().anyMatch(tid -> {
+                    StatusParticipacao st = c.getParticipacoes().get(tid);
+                    return st != null && st != StatusParticipacao.NAO_VAI;
+                }))
+                .sorted(Comparator.comparing(Convite::getData)
+                        .thenComparing(c -> c.getHora() != null ? c.getHora() : LocalTime.MIN))
+                .collect(Collectors.toList());
+
+        if (eventos.isEmpty()) {
+            seccao.add(ListaEventos.vazio("Sem eventos agendados para as tuas turmas."));
+            return seccao;
+        }
+
+        for (Convite c : eventos) {
+            String infoTurmas = minhasTurmas.stream()
+                    .filter(t -> {
+                        StatusParticipacao st = c.getParticipacoes().get(t.getId());
+                        return st != null && st != StatusParticipacao.NAO_VAI;
+                    })
+                    .map(Turma::getDescricao)
+                    .collect(Collectors.joining(", "));
+
+            long interessados = inscricaoRepository.countByConviteAndInteressado(c, true);
+            Span badge = new Span(interessados + (interessados == 1 ? " interessado" : " interessados"));
+            badge.getElement().getThemeList().add(interessados > 0 ? "badge success" : "badge contrast");
+
+            seccao.add(ListaEventos.card(c, infoTurmas, badge));
+        }
+        return seccao;
     }
 
     private void atualizarGrid() {

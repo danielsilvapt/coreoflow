@@ -73,12 +73,16 @@ public class MensalidadeView extends VerticalLayout {
     private final Button btnFaturarTodos = new Button("Faturar Todos", VaadinIcon.FILE_TEXT.create());
     private List<Mensalidade> ultimaFiltragem = new ArrayList<>();
 
+    private final pt.studioflow.config.MensalidadeConfig mensalidadeConfig;
+
     public MensalidadeView(MensalidadeRepository mensalidadeRepository,
             TurmaRepository turmaRepository,
-            VendusApiService vendusService) {
+            VendusApiService vendusService,
+            pt.studioflow.config.MensalidadeConfig mensalidadeConfig) {
         this.mensalidadeRepository = mensalidadeRepository;
         this.turmaRepository = turmaRepository;
         this.vendusService = vendusService;
+        this.mensalidadeConfig = mensalidadeConfig;
 
         setSizeFull();
         setPadding(true);
@@ -615,12 +619,7 @@ public class MensalidadeView extends VerticalLayout {
     }
 
     private EstadoMensalidade calcularEstadoEfetivo(Mensalidade m) {
-        if (m.getEstado() == EstadoMensalidade.FATURADO) {
-            LocalDate dataLimite = LocalDate.of(m.getAno(), m.getMes(), 10);
-            if (LocalDate.now().isAfter(dataLimite))
-                return EstadoMensalidade.EM_DIVIDA;
-        }
-        return m.getEstado();
+        return mensalidadeConfig.estadoEfetivo(m, TenantContext.getCurrentStudio());
     }
 
     private String traduzEstadoFiltro(String pt) {

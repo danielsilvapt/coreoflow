@@ -142,6 +142,10 @@ public class Studio {
     @Column(name = "mensalidade_nao_socio_adicional")
     private Double mensalidadeNaoSocioAdicional = 10.0;
 
+    /** Dia do mês em que a mensalidade vence (1–28). Passado esse dia sem pagamento, fica "Em dívida". */
+    @Column(name = "dia_limite_pagamento")
+    private Integer diaLimitePagamento = 8;
+
     // =====================================================
     // CONFIGURAÇÕES DE DESCONTOS (por estúdio)
     // =====================================================
@@ -249,6 +253,9 @@ public class Studio {
 
     public Double getMensalidadeNaoSocioAdicional() { return mensalidadeNaoSocioAdicional; }
     public void setMensalidadeNaoSocioAdicional(Double v) { this.mensalidadeNaoSocioAdicional = v; }
+
+    public Integer getDiaLimitePagamento() { return diaLimitePagamento; }
+    public void setDiaLimitePagamento(Integer diaLimitePagamento) { this.diaLimitePagamento = diaLimitePagamento; }
 
     public Double getDescontoFamiliaresEuros() { return descontoFamiliaresEuros; }
     public void setDescontoFamiliaresEuros(Double v) { this.descontoFamiliaresEuros = v; }

@@ -241,6 +241,16 @@ public class StudioAdminView extends VerticalLayout {
         NumberField naoSocioAdicional = new NumberField("Adicional Não Sócio (€)");
         naoSocioAdicional.setValue(studio.getMensalidadeNaoSocioAdicional());
 
+        NumberField diaLimitePagamento = new NumberField("Dia limite de pagamento (1–28)");
+        diaLimitePagamento.setValue(studio.getDiaLimitePagamento() != null
+                ? studio.getDiaLimitePagamento().doubleValue() : 8.0);
+        diaLimitePagamento.setMin(1);
+        diaLimitePagamento.setMax(28);
+        diaLimitePagamento.setStep(1);
+        diaLimitePagamento.getElement().setProperty("title",
+                "Dia do mês em que a mensalidade vence. Passado esse dia sem pagamento, "
+                        + "aparece como \"Em dívida\" para o aluno.");
+
         NumberField descontoFamiliares = new NumberField("Desconto Familiares (€)");
         descontoFamiliares.setValue(studio.getDescontoFamiliaresEuros());
 
@@ -273,7 +283,7 @@ public class StudioAdminView extends VerticalLayout {
         form.add(nome, slug, email, corPrimaria, corSecundaria, vendusApiKey, emailCriador,
                 emailAssinante1, emailAssinante2,
                 mensalidadeCrianca1x, mensalidadeCrianca2x,
-                mensalidadeAdulto1x, mensalidadeAdulto2x, naoSocioAdicional,
+                mensalidadeAdulto1x, mensalidadeAdulto2x, naoSocioAdicional, diaLimitePagamento,
                 descontoFamiliares, descontoDirecao, descontoMaisModal, descontoMais65,
                 taxaInscricao, taxaRenovacao,
                 ativo, enviarEmails);
@@ -466,6 +476,8 @@ public class StudioAdminView extends VerticalLayout {
             studio.setMensalidadeAdulto1x(mensalidadeAdulto1x.getValue());
             studio.setMensalidadeAdulto2x(mensalidadeAdulto2x.getValue());
             studio.setMensalidadeNaoSocioAdicional(naoSocioAdicional.getValue());
+            studio.setDiaLimitePagamento(diaLimitePagamento.getValue() != null
+                    ? Math.max(1, Math.min(28, (int) Math.round(diaLimitePagamento.getValue()))) : 8);
             studio.setDescontoFamiliaresEuros(descontoFamiliares.getValue());
             studio.setDescontoDirecaoPercentagem(descontoDirecao.getValue());
             studio.setDescontoMaisModalidadesPercentagem(descontoMaisModal.getValue());
