@@ -22,12 +22,15 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Aluno;
+import pt.studioflow.model.AlunoTurma;
 import pt.studioflow.model.AvaliacaoAluno;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
 import pt.studioflow.repository.AlunoRepository;
+import pt.studioflow.repository.AlunoTurmaRepository;
 import pt.studioflow.repository.AvaliacaoAlunoRepository;
 import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.service.ProfessorTurmasService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -35,6 +38,8 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Route(value = "avaliacoes", layout = MainLayout.class)
 @PageTitle("Avaliações | CoreoFlow")
@@ -47,16 +52,32 @@ public class AvaliacoesView extends VerticalLayout {
     private final AvaliacaoAlunoRepository avaliacaoRepo;
     private final AlunoRepository alunoRepo;
     private final TurmaRepository turmaRepo;
+    private final AlunoTurmaRepository alunoTurmaRepo;
+    private final ProfessorTurmasService profTurmas;
+
+    /** true quando é um PROF (sem ADMIN): só avalia alunos das suas turmas. */
+    private final boolean restrito;
+    private final List<Turma> turmasVisiveis;
+    private final Set<Long> turmaIdsVisiveis;
 
     private Grid<AvaliacaoAluno> grid;
     private ComboBox<Turma> filtroTurma;
 
     public AvaliacoesView(AvaliacaoAlunoRepository avaliacaoRepo,
                           AlunoRepository alunoRepo,
-                          TurmaRepository turmaRepo) {
+                          TurmaRepository turmaRepo,
+                          AlunoTurmaRepository alunoTurmaRepo,
+                          ProfessorTurmasService profTurmas) {
         this.avaliacaoRepo = avaliacaoRepo;
         this.alunoRepo = alunoRepo;
         this.turmaRepo = turmaRepo;
+        this.alunoTurmaRepo = alunoTurmaRepo;
+        this.profTurmas = profTurmas;
+
+        Studio studioAtual = TenantContext.getCurrentStudio();
+        this.restrito = profTurmas.restritoAsProprias();
+        this.turmasVisiveis = profTurmas.turmasVisiveis(studioAtual);
+        this.turmaIdsVisiveis = turmasVisiveis.stream().map(Turma::getId).collect(Collectors.toSet());
 
         setSizeFull();
         setPadding(false);
@@ -70,9 +91,8 @@ public class AvaliacoesView extends VerticalLayout {
     }
 
     private HorizontalLayout criarToolbar() {
-        Studio s = TenantContext.getCurrentStudio();
         filtroTurma = new ComboBox<>("Turma");
-        filtroTurma.setItems(s != null ? turmaRepo.findAllByStudio(s) : turmaRepo.findAll());
+        filtroTurma.setItems(turmasVisiveis);
         filtroTurma.setItemLabelGenerator(t -> t.getDescricao() + " (" + t.getCodigo() + ")");
         filtroTurma.setClearButtonVisible(true);
         filtroTurma.setPlaceholder("Todas");
@@ -92,6 +112,11 @@ public class AvaliacoesView extends VerticalLayout {
             Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(a));
             editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             Button del = new Button(VaadinIcon.TRASH.create(), e -> {
+                if (!podeGerir(a.getTurma())) {
+                    Notification.show("Só podes apagar avaliações das tuas turmas.", 4000,
+                            Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    return;
+                }
                 avaliacaoRepo.delete(a);
                 atualizar();
             });
@@ -141,7 +166,27 @@ public class AvaliacoesView extends VerticalLayout {
                 ? avaliacaoRepo.findByTurmaAndStudioOrderByDataAvaliacaoDesc(t, s)
                 : (s != null ? avaliacaoRepo.findByStudioOrderByDataAvaliacaoDesc(s)
                              : avaliacaoRepo.findAll());
+        if (restrito) {
+            items = items.stream()
+                    .filter(a -> a.getTurma() != null && turmaIdsVisiveis.contains(a.getTurma().getId()))
+                    .collect(Collectors.toList());
+        }
         grid.setItems(items);
+    }
+
+    /** O utilizador atual pode criar/editar/apagar avaliações desta turma? */
+    private boolean podeGerir(Turma turma) {
+        if (!restrito) return true;
+        return turma != null && turma.getId() != null && turmaIdsVisiveis.contains(turma.getId());
+    }
+
+    private List<Aluno> alunosDaTurma(Turma turma) {
+        if (turma == null) return List.of();
+        return alunoTurmaRepo.findByTurma(turma).stream()
+                .map(AlunoTurma::getAluno)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     private void abrirDialog(AvaliacaoAluno av) {
@@ -149,26 +194,50 @@ public class AvaliacoesView extends VerticalLayout {
         AvaliacaoAluno avaliacao = novo ? new AvaliacaoAluno() : av;
         Studio studio = TenantContext.getCurrentStudio();
 
+        if (!novo && !podeGerir(avaliacao.getTurma())) {
+            Notification.show("Só podes editar avaliações das tuas turmas.", 4000,
+                    Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle(novo ? "Nova Avaliação" : "Editar Avaliação");
         dialog.setWidth("520px");
         dialog.setMaxWidth("98vw");
 
-        // Aluno
-        ComboBox<Aluno> alunoCombo = new ComboBox<>("Aluno");
-        List<Aluno> alunos = studio != null ? alunoRepo.findAllByStudio(studio) : alunoRepo.findAll();
-        alunoCombo.setItems(alunos);
-        alunoCombo.setItemLabelGenerator(Aluno::getNomeCompleto);
-        alunoCombo.setWidthFull();
-        if (avaliacao.getAluno() != null) alunoCombo.setValue(avaliacao.getAluno());
-
-        // Turma
+        // Turma (define o conjunto de alunos avaliáveis)
         ComboBox<Turma> turmaCombo = new ComboBox<>("Turma");
-        List<Turma> turmas = studio != null ? turmaRepo.findAllByStudio(studio) : turmaRepo.findAll();
-        turmaCombo.setItems(turmas);
+        turmaCombo.setItems(turmasVisiveis);
         turmaCombo.setItemLabelGenerator(Turma::getDescricao);
         turmaCombo.setWidthFull();
+        turmaCombo.setRequired(restrito);
         if (avaliacao.getTurma() != null) turmaCombo.setValue(avaliacao.getTurma());
+
+        // Aluno — restrito aos alunos da turma escolhida (ou de todas as turmas
+        // visíveis enquanto nenhuma estiver selecionada).
+        ComboBox<Aluno> alunoCombo = new ComboBox<>("Aluno");
+        alunoCombo.setItemLabelGenerator(Aluno::getNomeCompleto);
+        alunoCombo.setWidthFull();
+        Runnable recarregarAlunos = () -> {
+            Turma sel = turmaCombo.getValue();
+            List<Aluno> disponiveis;
+            if (sel != null) {
+                disponiveis = alunosDaTurma(sel);
+            } else if (restrito) {
+                disponiveis = turmasVisiveis.stream()
+                        .flatMap(t -> alunosDaTurma(t).stream())
+                        .distinct().collect(Collectors.toList());
+            } else {
+                disponiveis = studio != null ? alunoRepo.findAllByStudio(studio) : alunoRepo.findAll();
+            }
+            alunoCombo.setItems(disponiveis);
+            if (alunoCombo.getValue() != null && !disponiveis.contains(alunoCombo.getValue())) {
+                alunoCombo.clear();
+            }
+        };
+        recarregarAlunos.run();
+        if (avaliacao.getAluno() != null) alunoCombo.setValue(avaliacao.getAluno());
+        turmaCombo.addValueChangeListener(e -> recarregarAlunos.run());
 
         TextField periodo = new TextField("Período");
         periodo.setPlaceholder("ex: 2024/2025 · 1º Período");
@@ -212,6 +281,23 @@ public class AvaliacoesView extends VerticalLayout {
             if (alunoCombo.getValue() == null || periodo.isEmpty()) {
                 Notification.show("Aluno e Período são obrigatórios");
                 return;
+            }
+            Turma turmaSel = turmaCombo.getValue();
+            if (restrito) {
+                if (turmaSel == null) {
+                    Notification.show("Escolhe a turma.").addThemeVariants(NotificationVariant.LUMO_WARNING);
+                    return;
+                }
+                if (!podeGerir(turmaSel)) {
+                    Notification.show("Só podes avaliar alunos das tuas turmas.", 4000,
+                            Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    return;
+                }
+                if (!alunosDaTurma(turmaSel).contains(alunoCombo.getValue())) {
+                    Notification.show("Esse aluno não pertence à turma selecionada.", 4000,
+                            Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    return;
+                }
             }
             avaliacao.setAluno(alunoCombo.getValue());
             avaliacao.setTurma(turmaCombo.getValue());

@@ -19,26 +19,20 @@ import com.vaadin.flow.component.upload.receivers.FileBuffer;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
-import pt.studioflow.model.User;
 import pt.studioflow.model.VideoAula;
-import pt.studioflow.repository.TurmaRepository;
-import pt.studioflow.repository.UserRepository;
 import pt.studioflow.repository.VideoAulaRepository;
+import pt.studioflow.service.ProfessorTurmasService;
 import pt.studioflow.service.R2StorageService;
 
-import java.text.Normalizer;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Área do professor para enviar vídeos de uma aula concreta (turma + data)
@@ -50,9 +44,8 @@ import java.util.stream.Collectors;
 @RolesAllowed({"ADMIN", "PROF"})
 public class VideosAulaProfessorView extends VerticalLayout {
 
-    private final TurmaRepository turmaRepo;
     private final VideoAulaRepository videoAulaRepo;
-    private final UserRepository userRepo;
+    private final ProfessorTurmasService profTurmas;
     private final R2StorageService storageService;
 
     private final ComboBox<Turma> turmaCombo = new ComboBox<>("Turma");
@@ -68,11 +61,10 @@ public class VideosAulaProfessorView extends VerticalLayout {
     /** IDs das turmas onde o utilizador atual pode enviar/gerir vídeos (todas, se ADMIN). */
     private final Set<Long> turmasPermitidasIds = new HashSet<>();
 
-    public VideosAulaProfessorView(TurmaRepository turmaRepo, VideoAulaRepository videoAulaRepo,
-            UserRepository userRepo, R2StorageService storageService) {
-        this.turmaRepo = turmaRepo;
+    public VideosAulaProfessorView(VideoAulaRepository videoAulaRepo,
+            ProfessorTurmasService profTurmas, R2StorageService storageService) {
         this.videoAulaRepo = videoAulaRepo;
-        this.userRepo = userRepo;
+        this.profTurmas = profTurmas;
         this.storageService = storageService;
 
         setSizeFull();
@@ -273,55 +265,13 @@ public class VideosAulaProfessorView extends VerticalLayout {
 
     private void carregarTurmasPermitidas() {
         Studio studio = TenantContext.getCurrentStudio();
-        List<Turma> todas = studio != null ? turmaRepo.findAllByStudio(studio) : turmaRepo.findAllComplete();
-
-        List<Turma> permitidas;
-        if (isAdmin()) {
-            permitidas = todas;
-        } else {
-            User u = utilizadorAtual();
-            String emailUser = u != null && u.getEmail() != null ? u.getEmail().trim().toLowerCase() : "";
-            String primeiroNome = normalizar(u != null ? u.getFirstName() : "");
-            permitidas = todas.stream()
-                    .filter(t -> t.getTodosProfessores().stream().anyMatch(p -> lecionaPor(p, emailUser, primeiroNome)))
-                    .collect(Collectors.toList());
-        }
-
+        List<Turma> permitidas = profTurmas.turmasVisiveis(studio);
         turmasPermitidasIds.clear();
         permitidas.forEach(t -> turmasPermitidasIds.add(t.getId()));
         turmaCombo.setItems(permitidas);
     }
 
-    /**
-     * Um professor "é" o utilizador atual se o email coincidir (chave fiável) ou,
-     * em fallback, se o primeiro nome do utilizador for um dos nomes próprios do
-     * professor — comparação por palavra exata, não por {@code contains}, para
-     * "Ana" não abrir as turmas da "Mariana" / "Joana".
-     */
-    private boolean lecionaPor(pt.studioflow.model.Professor p, String emailUser, String primeiroNome) {
-        if (p == null) return false;
-        if (!emailUser.isBlank() && p.getEmail() != null && p.getEmail().trim().equalsIgnoreCase(emailUser)) {
-            return true;
-        }
-        if (primeiroNome.isBlank() || p.getNome() == null) return false;
-        for (String token : normalizar(p.getNome()).split("\\s+")) {
-            if (token.equals(primeiroNome)) return true;
-        }
-        return false;
-    }
-
-    private User utilizadorAtual() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth == null ? null : userRepo.findByPrincipalName(auth.getName()).orElse(null);
-    }
-
     private boolean isAdmin() {
-        return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-    }
-
-    private String normalizar(String t) {
-        return t == null ? ""
-                : Normalizer.normalize(t, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase().trim();
+        return profTurmas.isAdmin();
     }
 }
