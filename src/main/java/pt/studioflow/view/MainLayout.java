@@ -460,7 +460,7 @@ public class MainLayout extends AppLayout {
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.RELATORIOS))
                                 tabs.add(criarTab("Relatórios", VaadinIcon.CHART, "#607D8B", RelatoriosView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.AVALIACOES))
-                                tabs.add(criarTab("Avaliações", VaadinIcon.STAR, "#F1C40F", AvaliacoesView.class, null));
+                                tabs.add(criarTab("Avaliações", VaadinIcon.MEDAL, "#8E44AD", AvaliacoesView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.CAMPANHAS))
                                 tabs.add(criarTab("Campanhas", VaadinIcon.ENVELOPE, "#E91E63", CampanhasView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.CONTRATOS))
@@ -504,7 +504,7 @@ public class MainLayout extends AppLayout {
                         tabs.add(criarTab("Meus Alunos", VaadinIcon.USERS, "#1ABC9C", AlunosProfessorView.class, null));
                         tabs.add(criarTab("Planeamento de Aulas", VaadinIcon.CLIPBOARD_CHECK, "#1d4ed8", PlaneamentoAulasView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.AVALIACOES))
-                                tabs.add(criarTab("Avaliações", VaadinIcon.STAR, "#F1C40F", AvaliacoesView.class, null));
+                                tabs.add(criarTab("Avaliações", VaadinIcon.MEDAL, "#8E44AD", AvaliacoesView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.VIDEOS_AULA))
                                 tabs.add(criarTab("Vídeos das Aulas", VaadinIcon.PLAY_CIRCLE, "#D32F2F", VideosAulaProfessorView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.EVENTOS))
