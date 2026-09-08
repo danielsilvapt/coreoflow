@@ -34,7 +34,9 @@ import pt.studioflow.service.R2StorageService;
 import java.text.Normalizer;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -62,6 +64,9 @@ public class VideosAulaProfessorView extends VerticalLayout {
 
     /** Validade dos links assinados do R2 gerados para reproduzir/descarregar. */
     private static final Duration LINK_VALIDADE = Duration.ofHours(2);
+
+    /** IDs das turmas onde o utilizador atual pode enviar/gerir vídeos (todas, se ADMIN). */
+    private final Set<Long> turmasPermitidasIds = new HashSet<>();
 
     public VideosAulaProfessorView(TurmaRepository turmaRepo, VideoAulaRepository videoAulaRepo,
             UserRepository userRepo, R2StorageService storageService) {
@@ -114,6 +119,11 @@ public class VideosAulaProfessorView extends VerticalLayout {
         LocalDate data = dataPicker.getValue();
         if (turma == null || data == null) {
             Notification.show("Escolhe primeiro a turma e a data.").addThemeVariants(NotificationVariant.LUMO_WARNING);
+            return;
+        }
+        if (!isAdmin() && (turma.getId() == null || !turmasPermitidasIds.contains(turma.getId()))) {
+            Notification.show("Só podes enviar vídeos para as turmas que lecionas.", 4000,
+                    Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
         Studio studio = TenantContext.getCurrentStudio();
@@ -242,6 +252,12 @@ public class VideosAulaProfessorView extends VerticalLayout {
         cd.setConfirmText("Apagar");
         cd.setConfirmButtonTheme("error primary");
         cd.addConfirmListener(e -> {
+            if (!isAdmin() && (video.getTurma() == null || video.getTurma().getId() == null
+                    || !turmasPermitidasIds.contains(video.getTurma().getId()))) {
+                Notification.show("Só podes apagar vídeos das turmas que lecionas.", 4000,
+                        Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
             try {
                 storageService.apagar(video.getChaveArmazenamento());
             } catch (Exception ex) {
@@ -258,19 +274,45 @@ public class VideosAulaProfessorView extends VerticalLayout {
     private void carregarTurmasPermitidas() {
         Studio studio = TenantContext.getCurrentStudio();
         List<Turma> todas = studio != null ? turmaRepo.findAllByStudio(studio) : turmaRepo.findAllComplete();
-        String primeiroNome = normalizar(getFirstNameFromDatabase());
-        List<Turma> permitidas = isAdmin() ? todas
-                : todas.stream()
-                        .filter(t -> !primeiroNome.isBlank() && t.getTodosProfessores().stream()
-                                .anyMatch(p -> p.getNome() != null
-                                        && normalizar(p.getNome()).contains(primeiroNome)))
-                        .collect(Collectors.toList());
+
+        List<Turma> permitidas;
+        if (isAdmin()) {
+            permitidas = todas;
+        } else {
+            User u = utilizadorAtual();
+            String emailUser = u != null && u.getEmail() != null ? u.getEmail().trim().toLowerCase() : "";
+            String primeiroNome = normalizar(u != null ? u.getFirstName() : "");
+            permitidas = todas.stream()
+                    .filter(t -> t.getTodosProfessores().stream().anyMatch(p -> lecionaPor(p, emailUser, primeiroNome)))
+                    .collect(Collectors.toList());
+        }
+
+        turmasPermitidasIds.clear();
+        permitidas.forEach(t -> turmasPermitidasIds.add(t.getId()));
         turmaCombo.setItems(permitidas);
     }
 
-    private String getFirstNameFromDatabase() {
+    /**
+     * Um professor "é" o utilizador atual se o email coincidir (chave fiável) ou,
+     * em fallback, se o primeiro nome do utilizador for um dos nomes próprios do
+     * professor — comparação por palavra exata, não por {@code contains}, para
+     * "Ana" não abrir as turmas da "Mariana" / "Joana".
+     */
+    private boolean lecionaPor(pt.studioflow.model.Professor p, String emailUser, String primeiroNome) {
+        if (p == null) return false;
+        if (!emailUser.isBlank() && p.getEmail() != null && p.getEmail().trim().equalsIgnoreCase(emailUser)) {
+            return true;
+        }
+        if (primeiroNome.isBlank() || p.getNome() == null) return false;
+        for (String token : normalizar(p.getNome()).split("\\s+")) {
+            if (token.equals(primeiroNome)) return true;
+        }
+        return false;
+    }
+
+    private User utilizadorAtual() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth == null ? "" : userRepo.findByPrincipalName(auth.getName()).map(User::getFirstName).orElse("");
+        return auth == null ? null : userRepo.findByPrincipalName(auth.getName()).orElse(null);
     }
 
     private boolean isAdmin() {
