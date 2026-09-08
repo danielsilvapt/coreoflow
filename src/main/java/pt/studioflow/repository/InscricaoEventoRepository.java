@@ -44,6 +44,11 @@ public interface InscricaoEventoRepository extends JpaRepository<InscricaoEvento
 
     List<InscricaoEvento> findByConvite(Convite convite);
 
+    // Todas as inscrições de um aluno (para pré-carregar o estado "Tenho interesse" no portal)
+    List<InscricaoEvento> findByAluno(Aluno aluno);
+
+    long countByConviteAndInteressado(Convite convite, boolean interessado);
+
     // ===================== MULTI-TENANT =====================
     java.util.List<InscricaoEvento> findAllByStudio(Studio studio);
 

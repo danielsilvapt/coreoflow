@@ -1,13 +1,17 @@
 package pt.studioflow.view;
 
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.*;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -15,24 +19,36 @@ import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
+import pt.studioflow.config.MensalidadeConfig;
 import pt.studioflow.model.*;
 import pt.studioflow.repository.*;
 import pt.studioflow.service.AuthService;
 import pt.studioflow.service.R2StorageService;
+import pt.studioflow.view.component.ListaEventos;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.Month;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Route(value = "portal", layout = MainLayout.class)
 @PageTitle("Portal | CoreoFlow")
 @RolesAllowed("ALUNO")
 public class PortalAlunoView extends VerticalLayout {
+
+    private final MensalidadeConfig mensalidadeConfig;
 
     public PortalAlunoView(AuthService authService,
                             AlunoRepository alunoRepo,
@@ -41,7 +57,12 @@ public class PortalAlunoView extends VerticalLayout {
                             AvaliacaoAlunoRepository avaliacaoRepo,
                             ContratoDigitalRepository contratoRepo,
                             VideoAulaRepository videoAulaRepo,
-                            R2StorageService storageService) {
+                            R2StorageService storageService,
+                            MensalidadeConfig mensalidadeConfig,
+                            ConviteRepository conviteRepo,
+                            InscricaoEventoRepository inscricaoRepo) {
+
+        this.mensalidadeConfig = mensalidadeConfig;
 
         setSizeFull();
         setPadding(false);
@@ -63,9 +84,12 @@ public class PortalAlunoView extends VerticalLayout {
                 ? mensalidadeRepo.findByAlunoAndStudio(aluno, studio)
                 : mensalidadeRepo.findByAluno(aluno);
         long emDivida = mensalidades.stream()
-                .filter(m -> m.getEstado() == EstadoMensalidade.EM_DIVIDA
+                .filter(m -> mensalidadeConfig.estadoEfetivo(m, studio) == EstadoMensalidade.EM_DIVIDA
                           || m.getEstado() == EstadoMensalidade.POR_EMITIR)
                 .count();
+
+        // Destaque: próxima mensalidade a pagar + prazo do estúdio
+        add(criarCardProximaMensalidade(mensalidades, studio));
 
         List<Presenca> presencas = presencaRepo.findByAlunoId(aluno.getId());
         long presencasMes = presencas.stream()
@@ -85,7 +109,10 @@ public class PortalAlunoView extends VerticalLayout {
         tabs.getStyle().set("padding", "0 16px");
 
         tabs.add("📅 Presenças", criarTabPresencas(presencas, videoAulaRepo, storageService));
-        tabs.add("💳 Mensalidades", criarTabMensalidades(mensalidades));
+        tabs.add("💳 Mensalidades", criarTabMensalidades(mensalidades, studio));
+        if (studio == null || studio.hasModulo(StudioModulo.EVENTOS)) {
+            tabs.add("🎭 Eventos", criarTabEventos(aluno, studio, conviteRepo, inscricaoRepo));
+        }
         tabs.add("⭐ Avaliações", criarTabAvaliacoes(aluno, avaliacaoRepo));
         tabs.add("📄 Contratos", criarTabContratos(aluno, contratoRepo));
 
@@ -237,7 +264,129 @@ public class PortalAlunoView extends VerticalLayout {
         dialog.open();
     }
 
-    private VerticalLayout criarTabMensalidades(List<Mensalidade> mensalidades) {
+    private Component criarCardProximaMensalidade(List<Mensalidade> mensalidades, Studio studio) {
+        Mensalidade proxima = mensalidades.stream()
+                .filter(m -> m.getEstado() == EstadoMensalidade.FATURADO)
+                .min(Comparator.comparingInt(Mensalidade::getAno)
+                        .thenComparingInt(m -> m.getMes().getValue()))
+                .orElse(null);
+
+        VerticalLayout card = new VerticalLayout();
+        card.setSpacing(false);
+        card.setPadding(true);
+        card.getStyle()
+                .set("background", "white").set("border-radius", "12px")
+                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.08)")
+                .set("margin", "16px 16px 0");
+
+        int diaLimite = mensalidadeConfig.diaLimitePagamento(studio);
+
+        if (proxima == null) {
+            card.getStyle().set("border-left", "5px solid #27AE60");
+            H3 t = new H3("Sem mensalidades por pagar 🎉");
+            t.getStyle().set("margin", "0").set("font-size", "16px");
+            Span nota = new Span("As mensalidades vencem no dia " + diaLimite + " de cada mês.");
+            nota.getStyle().set("color", "#888").set("font-size", "13px");
+            card.add(t, nota);
+            return card;
+        }
+
+        LocalDate limite = mensalidadeConfig.dataLimite(proxima.getAno(), proxima.getMes(), studio);
+        long dias = ChronoUnit.DAYS.between(LocalDate.now(), limite);
+        boolean divida = mensalidadeConfig.estadoEfetivo(proxima, studio) == EstadoMensalidade.EM_DIVIDA;
+        String cor = divida ? "#E74C3C" : (dias <= 7 ? "#E67E22" : "#27AE60");
+        card.getStyle().set("border-left", "5px solid " + cor);
+
+        Span label = new Span("PRÓXIMA MENSALIDADE");
+        label.getStyle().set("font-size", "11px").set("color", "#888")
+                .set("font-weight", "700").set("letter-spacing", "0.05em");
+
+        String periodo = capitalizar(proxima.getMes().getDisplayName(TextStyle.FULL, new Locale("pt")))
+                + " " + proxima.getAno();
+        Span titulo = new Span(periodo + " · " + String.format("%.2f €", proxima.getValor()));
+        titulo.getStyle().set("font-size", "20px").set("font-weight", "700").set("color", "#2D3436");
+
+        Span venc = new Span("Vence a " + limite.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        venc.getStyle().set("color", "#555").set("font-size", "13px");
+
+        String estadoTxt;
+        if (divida) {
+            long atraso = ChronoUnit.DAYS.between(limite, LocalDate.now());
+            estadoTxt = "⚠️ Em dívida há " + atraso + (atraso == 1 ? " dia" : " dias");
+        } else if (dias <= 0) {
+            estadoTxt = "Vence hoje";
+        } else if (dias <= 7) {
+            estadoTxt = "Vence em " + dias + (dias == 1 ? " dia" : " dias");
+        } else {
+            estadoTxt = "Em dia";
+        }
+        Span badge = new Span(estadoTxt);
+        badge.getStyle().set("background", cor).set("color", "white")
+                .set("padding", "3px 10px").set("border-radius", "12px")
+                .set("font-size", "12px").set("font-weight", "700")
+                .set("margin-top", "6px").set("width", "fit-content");
+
+        card.add(label, titulo, venc, badge);
+        return card;
+    }
+
+    private static String capitalizar(String s) {
+        return s == null || s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    private VerticalLayout criarTabEventos(Aluno aluno, Studio studio,
+            ConviteRepository conviteRepo, InscricaoEventoRepository inscricaoRepo) {
+        VerticalLayout layout = new VerticalLayout();
+        layout.setPadding(true);
+        layout.add(new H3("Próximos Eventos"));
+
+        Set<Long> minhasTurmas = aluno.getTurmas() == null ? Set.of()
+                : aluno.getTurmas().stream()
+                        .map(AlunoTurma::getTurma).filter(Objects::nonNull)
+                        .map(Turma::getId).collect(Collectors.toSet());
+
+        LocalDate hoje = LocalDate.now();
+        List<Convite> eventos = (studio != null ? conviteRepo.findAllByStudio(studio) : conviteRepo.findAll())
+                .stream()
+                .filter(c -> c.getData() != null && !c.getData().isBefore(hoje))
+                .filter(c -> minhasTurmas.stream().anyMatch(tid -> {
+                    StatusParticipacao st = c.getParticipacoes().get(tid);
+                    return st != null && st != StatusParticipacao.NAO_VAI;
+                }))
+                .sorted(Comparator.comparing(Convite::getData)
+                        .thenComparing(c -> c.getHora() != null ? c.getHora() : LocalTime.MIN))
+                .toList();
+
+        if (eventos.isEmpty()) {
+            layout.add(ListaEventos.vazio("Não há eventos agendados para as tuas turmas."));
+            return layout;
+        }
+
+        Map<Long, InscricaoEvento> inscricoes = inscricaoRepo.findByAluno(aluno).stream()
+                .filter(i -> i.getConvite() != null)
+                .collect(Collectors.toMap(i -> i.getConvite().getId(), i -> i, (a, b) -> a));
+
+        for (Convite c : eventos) {
+            InscricaoEvento existente = inscricoes.get(c.getId());
+            Checkbox interesse = new Checkbox("Tenho interesse");
+            interesse.setValue(existente != null && existente.isInteressado());
+            interesse.addValueChangeListener(ev -> {
+                InscricaoEvento i = inscricoes.computeIfAbsent(c.getId(), k -> new InscricaoEvento(aluno, c));
+                i.setInteressado(ev.getValue());
+                i.setStudio(studio != null ? studio : aluno.getStudio());
+                i.setDataResposta(LocalDateTime.now());
+                inscricaoRepo.save(i);
+                Notification.show(Boolean.TRUE.equals(ev.getValue())
+                        ? "Interesse registado!" : "Interesse removido.",
+                        2500, Notification.Position.BOTTOM_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            });
+            layout.add(ListaEventos.card(c, null, interesse));
+        }
+        return layout;
+    }
+
+    private VerticalLayout criarTabMensalidades(List<Mensalidade> mensalidades, Studio studio) {
         VerticalLayout layout = new VerticalLayout();
         layout.setPadding(true);
 
@@ -249,7 +398,7 @@ public class PortalAlunoView extends VerticalLayout {
                 + " " + m.getAno()).setHeader("Período").setAutoWidth(true);
         grid.addColumn(m -> String.format("%.2f €", m.getValor())).setHeader("Valor").setAutoWidth(true);
         grid.addComponentColumn(m -> {
-            String[] cfg = switch (m.getEstado()) {
+            String[] cfg = switch (mensalidadeConfig.estadoEfetivo(m, studio)) {
                 case PAGO -> new String[]{"#e8f5e9","#27AE60","Pago"};
                 case FATURADO -> new String[]{"#e3f2fd","#1976D2","Faturado"};
                 case POR_EMITIR -> new String[]{"#fff3e0","#E67E22","Por Emitir"};

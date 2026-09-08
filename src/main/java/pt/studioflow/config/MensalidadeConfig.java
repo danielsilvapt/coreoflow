@@ -1,8 +1,14 @@
 package pt.studioflow.config;
 
 import org.springframework.stereotype.Component;
+import pt.studioflow.model.EstadoMensalidade;
+import pt.studioflow.model.Mensalidade;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
+
+import java.time.LocalDate;
+import java.time.Month;
+import java.time.Year;
 
 /**
  * Configuração de mensalidades por estúdio (multi-tenant).
@@ -11,6 +17,37 @@ import pt.studioflow.model.Turma;
  */
 @Component
 public class MensalidadeConfig {
+
+    /**
+     * Dia do mês em que a mensalidade vence, conforme configurado no estúdio.
+     * Valor por omissão (ou fora de 1–28): dia 8.
+     */
+    public int diaLimitePagamento(Studio studio) {
+        Integer d = studio != null ? studio.getDiaLimitePagamento() : null;
+        return (d != null && d >= 1 && d <= 28) ? d : 8;
+    }
+
+    /**
+     * Data-limite de pagamento da mensalidade de {@code mes}/{@code ano} para este estúdio.
+     * O dia é limitado ao número de dias do mês (defensivo — a configuração já é 1–28).
+     */
+    public LocalDate dataLimite(int ano, Month mes, Studio studio) {
+        int dia = Math.min(diaLimitePagamento(studio), mes.length(Year.of(ano).isLeap()));
+        return LocalDate.of(ano, mes, dia);
+    }
+
+    /**
+     * Estado "real" da mensalidade hoje: uma mensalidade {@code FATURADO} cuja
+     * data-limite já passou conta como {@code EM_DIVIDA}. Os restantes estados
+     * são devolvidos como estão.
+     */
+    public EstadoMensalidade estadoEfetivo(Mensalidade m, Studio studio) {
+        if (m.getEstado() == EstadoMensalidade.FATURADO
+                && LocalDate.now().isAfter(dataLimite(m.getAno(), m.getMes(), studio))) {
+            return EstadoMensalidade.EM_DIVIDA;
+        }
+        return m.getEstado();
+    }
 
     /**
      * Calcula o valor da mensalidade com base na configuração do studio.
