@@ -159,6 +159,27 @@ public class RemuneracaoService {
     }
 
     /**
+     * Custo <b>estimado</b> do professor para a turma no mês, calculado sempre a
+     * partir do previsto — aulas agendadas × valor/hora no modo HORA, projeção
+     * das mensalidades das inscrições ativas × percentagem no modo PERCENTAGEM —
+     * independentemente de o mês já ter registos de horas reais. Serve de termo
+     * de comparação com o custo real de {@link #custoProfessorTurma}.
+     */
+    public double custoProfessorEstimadoTurma(Turma t, Studio studio, YearMonth mes, Dados d) {
+        Professor p = t.getProfessor();
+        Studio s = studio;
+        if (tipoEfetivo(p, s) == TipoRemuneracao.PERCENTAGEM) {
+            return d.inscricoes.stream()
+                    .filter(at -> at.getTurma() != null && at.getTurma().getId().equals(t.getId()))
+                    .filter(at -> at.getAluno() != null && at.getAluno().isAtivo())
+                    .mapToDouble(at -> mensalidadeProjetada(s, at)
+                            * percentagem(p, s, at.getAulasPorSemana()) / 100.0)
+                    .sum();
+        }
+        return horasAgendadas(t, mes, d.aulas) * valorHoraRegular(p, s);
+    }
+
+    /**
      * Soma horas × taxa dos registos de horas desta turma/professor no mês.
      * @param apenasNaoRegulares se true, ignora "aula regular" (usado no modo percentagem)
      */

@@ -664,13 +664,22 @@ public class RelatoriosView extends VerticalLayout {
                         YearMonth mes = seletor.getValue();
                         boolean previsto = remuneracaoService.ehFuturo(mes);
                         Map<Long, double[]> rent = remuneracaoService.rentabilidadePorTurma(turmas, studio, mes, dados);
+                        Map<Long, Double> custoEst = new HashMap<>();
+                        for (Turma t : turmas) {
+                                custoEst.put(t.getId(),
+                                                remuneracaoService.custoProfessorEstimadoTurma(t, studio, mes, dados));
+                        }
+
+                        java.util.function.ToDoubleFunction<Turma> saldoEst = t -> rent.get(t.getId())[0]
+                                        - custoEst.get(t.getId());
 
                         List<Turma> ordenadas = turmas.stream()
                                         .filter(t -> {
                                                 double[] x = rent.get(t.getId());
                                                 return x != null && (x[0] != 0 || x[1] != 0);
                                         })
-                                        .sorted((a, b) -> Double.compare(rent.get(b.getId())[2], rent.get(a.getId())[2]))
+                                        .sorted((a, b) -> Double.compare(saldoEst.applyAsDouble(b),
+                                                        saldoEst.applyAsDouble(a)))
                                         .collect(Collectors.toList());
 
                         Grid<Turma> grid = new Grid<>();
@@ -678,19 +687,27 @@ public class RelatoriosView extends VerticalLayout {
                         grid.addColumn(Turma::getDescricao).setHeader("Turma");
                         grid.addColumn(t -> fmtEuro(rent.get(t.getId())[0])).setHeader("Receita").setAutoWidth(true);
                         grid.addColumn(t -> fmtEuro(rent.get(t.getId())[1])).setHeader("Custo Prof").setAutoWidth(true);
+                        grid.addColumn(t -> fmtEuro(custoEst.get(t.getId()))).setHeader("Custo Prof Est.")
+                                        .setAutoWidth(true);
                         grid.addColumn(t -> fmtEuro(rent.get(t.getId())[2])).setHeader("Saldo").setAutoWidth(true);
+                        grid.addColumn(t -> fmtEuro(saldoEst.applyAsDouble(t))).setHeader("Saldo Est.").setAutoWidth(true);
                         grid.addThemeVariants(GridVariant.LUMO_COMPACT, GridVariant.LUMO_ROW_STRIPES);
                         grid.setSizeFull();
 
-                        String[] headers = { "Turma", "Receita", "Custo Prof", "Saldo Final" };
+                        String[] headers = { "Turma", "Receita", "Custo Prof", "Custo Prof Estimado", "Saldo Final",
+                                        "Saldo Final Estimado" };
                         List<String[]> rows = ordenadas.stream()
                                         .map(t -> new String[] { t.getDescricao(),
                                                         fmtEuro(rent.get(t.getId())[0]), fmtEuro(rent.get(t.getId())[1]),
-                                                        fmtEuro(rent.get(t.getId())[2]) })
+                                                        fmtEuro(custoEst.get(t.getId())),
+                                                        fmtEuro(rent.get(t.getId())[2]),
+                                                        fmtEuro(saldoEst.applyAsDouble(t)) })
                                         .collect(Collectors.toList());
                         double tRec = ordenadas.stream().mapToDouble(t -> rent.get(t.getId())[0]).sum();
                         double tCusto = ordenadas.stream().mapToDouble(t -> rent.get(t.getId())[1]).sum();
-                        rows.add(new String[] { "TOTAL", fmtEuro(tRec), fmtEuro(tCusto), fmtEuro(tRec - tCusto) });
+                        double tCustoEst = ordenadas.stream().mapToDouble(t -> custoEst.get(t.getId())).sum();
+                        rows.add(new String[] { "TOTAL", fmtEuro(tRec), fmtEuro(tCusto), fmtEuro(tCustoEst),
+                                        fmtEuro(tRec - tCusto), fmtEuro(tRec - tCustoEst) });
 
                         Span aviso = new Span(previsto
                                         ? "⚠️ Mês futuro — previsão: receita das inscrições ativas menos custo estimado do professor."
@@ -734,10 +751,9 @@ public class RelatoriosView extends VerticalLayout {
         private List<Map<String, Object>> obterDadosDevedores() {
                 pt.studioflow.model.Studio _sDev = pt.studioflow.config.TenantContext.getCurrentStudio();
                 return (_sDev != null ? alunoRepository.findAllByStudio(_sDev) : alunoRepository.findAll()).stream().map(a -> {
-                        List<Mensalidade> div = mensalidadeRepository
-                                        .findByAlunoAndEstado(a, EstadoMensalidade.FATURADO).stream()
-                                        .filter(m -> LocalDate.now().isAfter(LocalDate.of(m.getAno(), m.getMes(), 10)))
-                                        .collect(Collectors.toList());
+                        List<Mensalidade> div = new ArrayList<>();
+                        div.addAll(mensalidadeRepository.findByAlunoAndEstado(a, EstadoMensalidade.FATURADO));
+                        div.addAll(mensalidadeRepository.findByAlunoAndEstado(a, EstadoMensalidade.EM_DIVIDA));
                         if (div.isEmpty())
                                 return null;
                         Map<String, Object> map = new HashMap<>();
@@ -746,7 +762,10 @@ public class RelatoriosView extends VerticalLayout {
                         map.put("email", a.getEmail() != null ? a.getEmail() : "-");
                         map.put("total", div.stream().mapToDouble(Mensalidade::getValor).sum());
                         return map;
-                }).filter(Objects::nonNull).collect(Collectors.toList());
+                }).filter(Objects::nonNull)
+                                .sorted(Comparator.comparingDouble((Map<String, Object> m) -> (Double) m.get("total"))
+                                                .reversed())
+                                .collect(Collectors.toList());
         }
 
         private String formatarNome(String nome) {
