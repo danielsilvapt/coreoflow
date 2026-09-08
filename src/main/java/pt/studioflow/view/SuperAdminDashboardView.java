@@ -12,6 +12,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
+import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Studio;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.StudioRepository;
@@ -45,6 +46,10 @@ public class SuperAdminDashboardView extends VerticalLayout {
         long totalAlunos = studios.stream()
                 .mapToLong(s -> alunoRepository.findAllByStudio(s).size())
                 .sum();
+        long totalAlunosAtivos = studios.stream()
+                .flatMap(s -> alunoRepository.findAllByStudio(s).stream())
+                .filter(a -> a.getStatus() == Aluno.AlunoStatus.ATIVO)
+                .count();
         long totalTurmas = studios.stream()
                 .mapToLong(s -> turmaRepository.findAllByStudio(s).size())
                 .sum();
@@ -56,21 +61,28 @@ public class SuperAdminDashboardView extends VerticalLayout {
                 criarCard("Estúdios", String.valueOf(totalStudios), VaadinIcon.BUILDING, "#4A90E2"),
                 criarCard("Ativos", String.valueOf(totalAtivos), VaadinIcon.CHECK_CIRCLE, "#27AE60"),
                 criarCard("Utilizadores", String.valueOf(totalUsers), VaadinIcon.USERS, "#7B61FF"),
-                criarCard("Alunos", String.valueOf(totalAlunos), VaadinIcon.USER_HEART, "#E67E22"),
+                criarCard("Alunos (total)", String.valueOf(totalAlunos), VaadinIcon.USER_HEART, "#E67E22"),
+                criarCard("Alunos ativos", String.valueOf(totalAlunosAtivos), VaadinIcon.USER_CHECK, "#16A085"),
                 criarCard("Turmas", String.valueOf(totalTurmas), VaadinIcon.GROUP, "#E91E63")
         );
         cards.setWidthFull();
         cards.setSpacing(true);
 
         // ---- Grid por estúdio ----
-        record StudioStats(Studio studio, int users, int alunos, int turmas) {}
+        record StudioStats(Studio studio, int users, int alunos, int alunosAtivos, int turmas) {}
 
-        List<StudioStats> rows = studios.stream().map(s -> new StudioStats(
-                s,
-                userRepository.findAllByStudio(s).size(),
-                alunoRepository.findAllByStudio(s).size(),
-                turmaRepository.findAllByStudio(s).size()
-        )).toList();
+        List<StudioStats> rows = studios.stream().map(s -> {
+            List<Aluno> alunos = alunoRepository.findAllByStudio(s);
+            int ativos = (int) alunos.stream()
+                    .filter(a -> a.getStatus() == Aluno.AlunoStatus.ATIVO)
+                    .count();
+            return new StudioStats(
+                    s,
+                    userRepository.findAllByStudio(s).size(),
+                    alunos.size(),
+                    ativos,
+                    turmaRepository.findAllByStudio(s).size());
+        }).toList();
 
         Grid<StudioStats> grid = new Grid<>();
         grid.setSizeFull();
@@ -102,7 +114,10 @@ public class SuperAdminDashboardView extends VerticalLayout {
                 .setHeader("Utilizadores").setAutoWidth(true).setSortable(true);
 
         grid.addColumn(StudioStats::alunos)
-                .setHeader("Alunos").setAutoWidth(true).setSortable(true);
+                .setHeader("Alunos (total)").setAutoWidth(true).setSortable(true);
+
+        grid.addColumn(StudioStats::alunosAtivos)
+                .setHeader("Alunos ativos").setAutoWidth(true).setSortable(true);
 
         grid.addColumn(StudioStats::turmas)
                 .setHeader("Turmas").setAutoWidth(true).setSortable(true);
