@@ -31,13 +31,12 @@ import pt.studioflow.model.Sala;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.SumarioAula;
 import pt.studioflow.model.Turma;
-import pt.studioflow.model.User;
 import pt.studioflow.repository.AulaRepository;
 import pt.studioflow.repository.MarcacaoSalaRepository;
 import pt.studioflow.repository.ProfessorRepository;
 import pt.studioflow.repository.SumarioAulaRepository;
-import pt.studioflow.repository.UserRepository;
 import pt.studioflow.service.EmailService;
+import pt.studioflow.service.ProfessorTurmasService;
 import pt.studioflow.service.TurmaService;
 import pt.studioflow.util.DataUtil;
 
@@ -51,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -72,12 +72,13 @@ public class PlaneamentoAulasView extends VerticalLayout {
     private final MarcacaoSalaRepository marcacaoRepository;
     private final SumarioAulaRepository sumarioRepository;
     private final ProfessorRepository professorRepository;
-    private final UserRepository userRepository;
     private final TurmaService turmaService;
     private final EmailService emailService;
+    private final ProfessorTurmasService profTurmas;
 
     private final boolean isAdmin;
-    private final String primeiroNomeUser;
+    /** IDs das turmas do professor com sessão iniciada (vazio para ADMIN — vê tudo). */
+    private final Set<Long> minhasTurmaIds;
 
     private final ComboBox<YearMonth> mesCombo = new ComboBox<>("Mês");
     private final ComboBox<Professor> profCombo = new ComboBox<>("Professor");
@@ -88,19 +89,19 @@ public class PlaneamentoAulasView extends VerticalLayout {
 
     public PlaneamentoAulasView(AulaRepository aulaRepository, MarcacaoSalaRepository marcacaoRepository,
             SumarioAulaRepository sumarioRepository, ProfessorRepository professorRepository,
-            UserRepository userRepository, TurmaService turmaService, EmailService emailService) {
+            ProfessorTurmasService profTurmas, TurmaService turmaService, EmailService emailService) {
         this.aulaRepository = aulaRepository;
         this.marcacaoRepository = marcacaoRepository;
         this.sumarioRepository = sumarioRepository;
         this.professorRepository = professorRepository;
-        this.userRepository = userRepository;
+        this.profTurmas = profTurmas;
         this.turmaService = turmaService;
         this.emailService = emailService;
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         this.isAdmin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        this.primeiroNomeUser = normalizar(userRepository.findByPrincipalName(auth.getName())
-                .map(User::getFirstName).orElse(""));
+        this.minhasTurmaIds = isAdmin ? Set.of()
+                : profTurmas.turmaIdsDoUtilizador(TenantContext.getCurrentStudio());
 
         setSizeFull();
         setPadding(true);
@@ -220,10 +221,8 @@ public class PlaneamentoAulasView extends VerticalLayout {
         List<Linha> linhas = ocorrencias.stream()
                 .filter(o -> {
                     if (!isAdmin) {
-                        Professor p = o.turma().getProfessor();
-                        return p != null && p.getNome() != null
-                                && !primeiroNomeUser.isBlank()
-                                && normalizar(p.getNome()).contains(primeiroNomeUser);
+                        return o.turma() != null && o.turma().getId() != null
+                                && minhasTurmaIds.contains(o.turma().getId());
                     }
                     if (profId != null) {
                         Professor p = o.turma().getProfessor();

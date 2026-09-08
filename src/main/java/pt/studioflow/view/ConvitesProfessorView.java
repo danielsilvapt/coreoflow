@@ -23,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import pt.studioflow.model.*;
 import pt.studioflow.repository.*;
 import pt.studioflow.service.EmailService;
+import pt.studioflow.service.ProfessorTurmasService;
 import pt.studioflow.view.component.ListaEventos;
 
 import java.time.LocalDate;
@@ -41,29 +42,25 @@ public class ConvitesProfessorView extends VerticalLayout {
     private final ConviteRepository conviteRepository;
     private final TurmaRepository turmaRepository;
     private final AlunoTurmaRepository alunoTurmaRepository;
-    private final ProfessorRepository professorRepository;
-    private final UserRepository userRepository;
     private final InscricaoEventoRepository inscricaoRepository;
     private final EmailService emailService;
+    private final ProfessorTurmasService profTurmas;
 
     private Grid<Aluno> gridAlunos;
     private ComboBox<Convite> comboConvites;
     private ComboBox<Turma> comboTurmas;
-    private Professor professorLogado;
     private List<Turma> minhasTurmas = new ArrayList<>();
 
     public ConvitesProfessorView(ConviteRepository conviteRepository, TurmaRepository turmaRepository,
-            AlunoTurmaRepository alunoTurmaRepository, ProfessorRepository professorRepository,
-            UserRepository userRepository, InscricaoEventoRepository inscricaoRepository,
-            EmailService emailService) {
+            AlunoTurmaRepository alunoTurmaRepository, InscricaoEventoRepository inscricaoRepository,
+            EmailService emailService, ProfessorTurmasService profTurmas) {
 
         this.conviteRepository = conviteRepository;
         this.turmaRepository = turmaRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
-        this.professorRepository = professorRepository;
-        this.userRepository = userRepository;
         this.inscricaoRepository = inscricaoRepository;
         this.emailService = emailService;
+        this.profTurmas = profTurmas;
 
         setSizeFull();
         setPadding(true);
@@ -73,21 +70,10 @@ public class ConvitesProfessorView extends VerticalLayout {
         boolean isDelegado = auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_DELEG") || a.getAuthority().equals("DELEG"));
 
-        String login = auth.getName();
-
-        // Inicializar a lista base de turmas dependendo do papel
+        // Turmas da sessão: DELEG vê todas as do estúdio; PROF só as suas
+        // (professor principal ou co-professor) — via ProfessorTurmasService.
         pt.studioflow.model.Studio _studio = pt.studioflow.config.TenantContext.getCurrentStudio();
-        if (isDelegado) {
-            this.minhasTurmas = _studio != null ? turmaRepository.findAllByStudio(_studio) : turmaRepository.findAll();
-        } else {
-            String firstName = userRepository.findByPrincipalName(login).map(User::getFirstName).orElse("");
-            (_studio != null ? professorRepository.findAllByStudio(_studio) : professorRepository.findAll()).stream()
-                    .filter(p -> p.getNome().toLowerCase().contains(firstName.toLowerCase()))
-                    .findFirst().ifPresent(p -> {
-                        this.professorLogado = p;
-                        this.minhasTurmas = turmaRepository.findByProfessor(p);
-                    });
-        }
+        this.minhasTurmas = profTurmas.turmasVisiveis(_studio);
 
         H2 titulo = new H2("Convocatória de Alunos para Eventos");
         titulo.getStyle().set("margin-top", "0");

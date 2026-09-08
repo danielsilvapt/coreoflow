@@ -1,6 +1,5 @@
 package pt.studioflow.view;
 
-import java.text.Normalizer;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -12,9 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
@@ -50,14 +46,13 @@ import pt.studioflow.model.AlunoTurma;
 import pt.studioflow.model.Aula;
 import pt.studioflow.model.Presenca;
 import pt.studioflow.model.Turma;
-import pt.studioflow.model.User;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
 import pt.studioflow.repository.PresencaRepository;
 import pt.studioflow.repository.TurmaRepository;
-import pt.studioflow.repository.UserRepository;
 import pt.studioflow.service.EmailService;
 import pt.studioflow.service.PdfService;
+import pt.studioflow.service.ProfessorTurmasService;
 import pt.studioflow.service.R2StorageService;
 import pt.studioflow.service.TurmaService;
 
@@ -75,7 +70,7 @@ public class PresencasView extends VerticalLayout {
     private final TurmaService turmaService;
     private final AlunoRepository alunoRepository;
     private final AlunoTurmaRepository alunoTurmaRepository;
-    private final UserRepository userRepository;
+    private final ProfessorTurmasService profTurmas;
     private final PdfService pdfService;
     private final R2StorageService storageService;
 
@@ -119,7 +114,7 @@ public class PresencasView extends VerticalLayout {
             TurmaService turmaService,
             AlunoRepository alunoRepository,
             AlunoTurmaRepository alunoTurmaRepository,
-            UserRepository userRepository,
+            ProfessorTurmasService profTurmas,
             PdfService pdfService,
             EmailService mailService,
             R2StorageService storageService) {
@@ -128,7 +123,7 @@ public class PresencasView extends VerticalLayout {
         this.turmaService = turmaService;
         this.alunoRepository = alunoRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
-        this.userRepository = userRepository;
+        this.profTurmas = profTurmas;
         this.pdfService = pdfService;
         this.mailService = mailService;
         this.storageService = storageService;
@@ -705,14 +700,7 @@ public class PresencasView extends VerticalLayout {
 
     private void carregarTurmasPermitidas() {
         pt.studioflow.model.Studio _s = pt.studioflow.config.TenantContext.getCurrentStudio();
-        List<Turma> turmasAll = _s != null ? turmaRepository.findAllByStudio(_s) : turmaRepository.findAllComplete();
-        String primeiroNomeProf = normalizar(getFirstNameFromDatabase());
-        List<Turma> turmas = isAdmin() ? turmasAll
-                : turmasAll.stream()
-                        .filter(t -> !primeiroNomeProf.isBlank() && t.getTodosProfessores().stream()
-                                .anyMatch(p -> p.getNome() != null
-                                        && normalizar(p.getNome()).contains(primeiroNomeProf)))
-                        .collect(Collectors.toList());
+        List<Turma> turmas = profTurmas.turmasVisiveis(_s);
 
         List<Turma> comTodas = new ArrayList<>();
         comTodas.add(TODAS);
@@ -783,21 +771,6 @@ public class PresencasView extends VerticalLayout {
         // Render inicial: por defeito entra no modo "Todos". Feito no onAttach
         // para o Chart.js e o DOM já estarem disponíveis ao correr o executeJs.
         carregarTudo();
-    }
-
-    private String getFirstNameFromDatabase() {
-        Authentication a = SecurityContextHolder.getContext().getAuthentication();
-        return userRepository.findByPrincipalName(a.getName()).map(User::getFirstName).orElse("");
-    }
-
-    private String normalizar(String t) {
-        return t == null ? ""
-                : Normalizer.normalize(t, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase().trim();
-    }
-
-    private boolean isAdmin() {
-        return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 
     private String traduzirDia(DayOfWeek d) {
