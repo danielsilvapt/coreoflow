@@ -115,7 +115,7 @@ public class CRMView extends VerticalLayout {
             whatsappBtn.getStyle().set("color", "#25D366");
             whatsappBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_PRIMARY);
             whatsappBtn.addClickListener(e -> {
-                String mensagem = "Olá " + a.getNomeCompleto().split(" ")[0] + "! A CoreoFlow deseja-te um dia de aniversário fantástico, com muita dança e alegria!";
+                String mensagem = "Olá " + a.getNomeCompleto().split(" ")[0] + "! A " + nomeEstudio() + " deseja-te um dia de aniversário fantástico, com muita dança e alegria!";
                 abrirWhatsApp(a.getTelemovel(), mensagem);
             });
             return whatsappBtn;
@@ -160,7 +160,7 @@ public class CRMView extends VerticalLayout {
             btn.getStyle().set("background", "white").set("color", "#E91E63").set("flex-shrink", "0");
             btn.addClickListener(e -> {
                 String mensagem = "Olá " + a.getNomeCompleto().split(" ")[0]
-                        + "! A CoreoFlow deseja-te um dia de aniversário fantástico, com muita dança e alegria!";
+                        + "! A " + nomeEstudio() + " deseja-te um dia de aniversário fantástico, com muita dança e alegria!";
                 abrirWhatsApp(a.getTelemovel(), mensagem);
             });
 
@@ -200,7 +200,7 @@ public class CRMView extends VerticalLayout {
             recuperarBtn.getStyle().set("color", "#25D366");
             recuperarBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
             recuperarBtn.addClickListener(e -> {
-                String mensagem = "Olá " + a.getNomeCompleto().split(" ")[0] + "! Temos sentido a tua falta nas aulas da CoreoFlow. Está tudo bem contigo? Esperamos ver-te em breve!";
+                String mensagem = "Olá " + a.getNomeCompleto().split(" ")[0] + "! Temos sentido a tua falta nas aulas da " + nomeEstudio() + ". Está tudo bem contigo? Esperamos ver-te em breve!";
                 abrirWhatsApp(a.getTelemovel(), mensagem);
             });
             return recuperarBtn;
@@ -216,6 +216,12 @@ public class CRMView extends VerticalLayout {
 
         grid.setSizeFull();
         containerConteudo.add(grid);
+    }
+
+    // Nome do estúdio atual para as mensagens aos alunos (ex.: "Ritmus"), com fallback.
+    private String nomeEstudio() {
+        pt.studioflow.model.Studio s = pt.studioflow.config.TenantContext.getCurrentStudio();
+        return (s != null && s.getNome() != null && !s.getNome().isBlank()) ? s.getNome() : "escola";
     }
 
     private void abrirWhatsApp(String telemovel, String mensagem) {
