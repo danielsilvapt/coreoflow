@@ -28,10 +28,15 @@ public class GroqService {
 
     private final ConfiguracaoPlataformaRepository configRepo;
     private final ObjectMapper mapper = new ObjectMapper();
-    private final RestTemplate rest = new RestTemplate();
+    private final RestTemplate rest;
 
     public GroqService(ConfiguracaoPlataformaRepository configRepo) {
         this.configRepo = configRepo;
+        org.springframework.http.client.SimpleClientHttpRequestFactory f =
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        f.setConnectTimeout(10_000);
+        f.setReadTimeout(60_000);
+        this.rest = new RestTemplate(f);
     }
 
     public record ChatMsg(String role, String conteudo) {
