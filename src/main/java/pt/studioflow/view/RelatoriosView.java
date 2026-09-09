@@ -62,6 +62,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -690,15 +691,22 @@ public class RelatoriosView extends VerticalLayout {
                         Map<Long, double[]> rent = remuneracaoService.rentabilidadeDetalhadaPorTurma(turmas, studio,
                                         mes, dados);
 
-                        // Peso do mês letivo (meio setembro; zero em julho/agosto) nas estimativas.
+                        // Fração real do mês por turma (datas das aulas no mapa de salas),
+                        // com o peso do mês letivo como chão. Aplicada às estimativas.
                         double peso = pesoMesLetivo(mes);
-                        if (peso != 1.0) {
-                                for (double[] x : rent.values()) {
-                                        x[RemuneracaoService.REC_EST] *= peso;
-                                        x[RemuneracaoService.CUSTO_EST] *= peso;
-                                        x[RemuneracaoService.SALDO_EST] = x[RemuneracaoService.REC_EST]
-                                                        - x[RemuneracaoService.CUSTO_EST];
-                                }
+                        Map<Long, Turma> turmaPorId = turmas.stream()
+                                        .collect(Collectors.toMap(Turma::getId, tt -> tt));
+                        for (Map.Entry<Long, double[]> e2 : rent.entrySet()) {
+                                Turma tt = turmaPorId.get(e2.getKey());
+                                double frac = tt != null ? fracaoAtividadeTurma(tt, mes, dados.aulas) : 1.0;
+                                double fator = Math.min(peso, frac);
+                                if (fator == 1.0)
+                                        continue;
+                                double[] x = e2.getValue();
+                                x[RemuneracaoService.REC_EST] *= fator;
+                                x[RemuneracaoService.CUSTO_EST] *= fator;
+                                x[RemuneracaoService.SALDO_EST] = x[RemuneracaoService.REC_EST]
+                                                - x[RemuneracaoService.CUSTO_EST];
                         }
 
                         // Agrupar as turmas por professor, com subtotal por professor
@@ -887,14 +895,43 @@ public class RelatoriosView extends VerticalLayout {
                                 fmtEuro(x[4]), fmtEuro(x[5]) };
         }
 
-        // Peso do mês no ano letivo (Set–Jun). Julho/Agosto: 0 (férias). Setembro: 0,5
-        // (as aulas só arrancam a meio do mês). Restantes meses: 1. Só afeta estimativas.
+        // Peso do mês no ano letivo — usado como "chão" quando as aulas da turma não
+        // têm datas de início/fim no mapa de salas. Julho/Agosto: 0. Setembro: 0,5.
         private double pesoMesLetivo(YearMonth mes) {
                 return switch (mes.getMonthValue()) {
                         case 7, 8 -> 0.0;
                         case 9 -> 0.5;
                         default -> 1.0;
                 };
+        }
+
+        // Fração do mês em que a turma tem aulas a decorrer (dentro do período
+        // início/fim de cada aula), face a um mês cheio. 1,0 se nada limitar.
+        private double fracaoAtividadeTurma(Turma t, YearMonth mes, List<Aula> aulas) {
+                double reais = 0, cheio = 0;
+                for (Aula a : aulas) {
+                        if (a.getTurma() == null || !a.getTurma().getId().equals(t.getId()))
+                                continue;
+                        if (a.getDia() == null || "ENSAIO".equalsIgnoreCase(a.getTipo()))
+                                continue;
+                        reais += ocorrenciasNoMes(a.getDia(), mes, a.getDataInicio(), a.getDataFim());
+                        cheio += ocorrenciasNoMes(a.getDia(), mes, null, null);
+                }
+                return cheio == 0 ? 1.0 : Math.min(1.0, reais / cheio);
+        }
+
+        private long ocorrenciasNoMes(DayOfWeek dia, YearMonth mes, LocalDate ini, LocalDate fim) {
+                LocalDate from = mes.atDay(1);
+                LocalDate to = mes.atEndOfMonth();
+                if (ini != null && ini.isAfter(from))
+                        from = ini;
+                if (fim != null && fim.isBefore(to))
+                        to = fim;
+                long c = 0;
+                for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1))
+                        if (d.getDayOfWeek() == dia)
+                                c++;
+                return c;
         }
 
         // Turma "no mapa de salas": tem pelo menos uma aula com sala, dia e horas

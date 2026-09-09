@@ -32,6 +32,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.timepicker.TimePicker;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -964,7 +965,16 @@ public class SalaScheduleView extends VerticalLayout {
         tempoLayout.setWidthFull();
         tempoLayout.getStyle().set("flex-wrap", "wrap");
 
-        VerticalLayout form = new VerticalLayout(comboTurma, comboSala, comboDia, tempoLayout);
+        DatePicker dataInicio = new DatePicker("Início do período (opcional)");
+        dataInicio.setWidthFull();
+        dataInicio.setHelperText("Ex.: arranque a 14/09. Vazio = todo o ano letivo.");
+        DatePicker dataFim = new DatePicker("Fim do período (opcional)");
+        dataFim.setWidthFull();
+        HorizontalLayout periodoLayout = new HorizontalLayout(dataInicio, dataFim);
+        periodoLayout.setWidthFull();
+        periodoLayout.getStyle().set("flex-wrap", "wrap");
+
+        VerticalLayout form = new VerticalLayout(comboTurma, comboSala, comboDia, tempoLayout, periodoLayout);
         form.setPadding(false);
         form.setSpacing(true);
         dialog.add(form);
@@ -976,6 +986,8 @@ public class SalaScheduleView extends VerticalLayout {
             aula.setDia(comboDia.getValue());
             aula.setHoraInicio(inicio.getValue());
             aula.setHoraFim(fim.getValue());
+            aula.setDataInicio(dataInicio.getValue());
+            aula.setDataFim(dataFim.getValue());
             aula.setTipo("NORMAL");
             aulaRepository.save(aula);
             dialog.close();
@@ -1147,12 +1159,21 @@ public class SalaScheduleView extends VerticalLayout {
         tempo.setWidthFull();
         tempo.getStyle().set("flex-wrap", "wrap");
 
+        DatePicker dataInicio = new DatePicker("Início do período (opcional)", aula.getDataInicio());
+        dataInicio.setWidthFull();
+        dataInicio.setHelperText("Vazio = todo o ano letivo");
+        DatePicker dataFim = new DatePicker("Fim do período (opcional)", aula.getDataFim());
+        dataFim.setWidthFull();
+        HorizontalLayout periodo = new HorizontalLayout(dataInicio, dataFim);
+        periodo.setWidthFull();
+        periodo.getStyle().set("flex-wrap", "wrap");
+
         Button btnVideos = new Button("🎬 Vídeos da aula (" + DataUtil.formatar(data) + ")",
                 e -> abrirDialogVideosAula(aula.getTurma(), data));
         btnVideos.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         btnVideos.setEnabled(aula.getTurma() != null && data != null);
 
-        VerticalLayout layout = new VerticalLayout(comboTurma, tempo, btnVideos);
+        VerticalLayout layout = new VerticalLayout(comboTurma, tempo, periodo, btnVideos);
         layout.setPadding(false);
         dialog.add(layout);
 
@@ -1160,6 +1181,8 @@ public class SalaScheduleView extends VerticalLayout {
             aula.setTurma(comboTurma.getValue());
             aula.setHoraInicio(inicio.getValue());
             aula.setHoraFim(fim.getValue());
+            aula.setDataInicio(dataInicio.getValue());
+            aula.setDataFim(dataFim.getValue());
             aulaRepository.save(aula);
             dialog.close();
             atualizarTudo();
@@ -1425,7 +1448,16 @@ public class SalaScheduleView extends VerticalLayout {
         tempo.setWidthFull();
         tempo.getStyle().set("flex-wrap", "wrap");
 
-        VerticalLayout content = new VerticalLayout(comboTurma, tempo);
+        DatePicker dataInicio = new DatePicker("Início do período (opcional)");
+        dataInicio.setWidthFull();
+        dataInicio.setHelperText("Vazio = todo o ano letivo");
+        DatePicker dataFim = new DatePicker("Fim do período (opcional)");
+        dataFim.setWidthFull();
+        HorizontalLayout periodo = new HorizontalLayout(dataInicio, dataFim);
+        periodo.setWidthFull();
+        periodo.getStyle().set("flex-wrap", "wrap");
+
+        VerticalLayout content = new VerticalLayout(comboTurma, tempo, periodo);
         content.setPadding(false);
         dialog.add(content);
 
@@ -1436,6 +1468,8 @@ public class SalaScheduleView extends VerticalLayout {
             a.setDia(data.getDayOfWeek());
             a.setHoraInicio(inicio.getValue());
             a.setHoraFim(fim.getValue());
+            a.setDataInicio(dataInicio.getValue());
+            a.setDataFim(dataFim.getValue());
             a.setTipo("NORMAL");
             aulaRepository.save(a);
             dialog.close();
