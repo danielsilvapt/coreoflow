@@ -60,7 +60,11 @@ public class TreinadorDancaService {
 
     public boolean disponivel() {
         ConfiguracaoPlataforma c = configRepo.findById(1L).orElse(null);
-        return c != null && c.treinadorIaDisponivel();
+        if (c == null || !c.treinadorIaDisponivel()) {
+            return false;
+        }
+        Studio s = TenantContext.getCurrentStudio();
+        return s == null || s.hasModulo(pt.studioflow.model.StudioModulo.TREINADOR_IA);
     }
 
     // ---- Geração de plano ----
@@ -237,6 +241,52 @@ public class TreinadorDancaService {
             // histórico ilegível — recomeça vazio
         }
         return out;
+    }
+
+    // ---- Modo prática (feedback de movimento por câmara) ----
+
+    private static final String SISTEMA_PRATICA = """
+            És o treinador de dança que acompanha este aluno. Recebes MÉTRICAS
+            aproximadas do movimento dele, captadas pela câmara durante uma
+            prática curta de um passo — NÃO vês o vídeo. Dá 3 a 5 pontos de
+            feedback curtos, concretos e encorajadores, em português de Portugal,
+            ligados à técnica do passo. Se uma métrica estiver baixa, diz o que
+            fazer para melhorar; se estiver boa, reforça. Não inventes pormenores
+            visuais que as métricas não suportam. Termina com uma frase de ânimo.
+            """;
+
+    private static final String GUIA_METRICAS = """
+            Como ler as métricas (0 a 1, salvo indicação):
+            - movimento: quantidade de movimento (0 = parado, 1 = muito ativo)
+            - amplitude: alcance dos braços e pernas (passos pequenos vs. amplos)
+            - simetria: 1 = usa os dois lados do corpo por igual
+            - postura: 1 = tronco direito e ombros nivelados
+            - ritmo: fração de movimentos no tempo do metrónomo (null = sem metrónomo)
+            - variabilidade: irregularidade da velocidade do movimento
+            """;
+
+    public String contextoPassoPratica(Long planoId, int passoIdx) {
+        PlanoDanca p = obter(planoId);
+        if (p == null) {
+            return "";
+        }
+        PlanoConteudo c = conteudo(p);
+        StringBuilder sb = new StringBuilder("Estilo ").append(p.getEstilo())
+                .append(", nível ").append(p.getNivel()).append(". ");
+        if (passoIdx >= 0 && passoIdx < c.passos().size()) {
+            Passo passo = c.passos().get(passoIdx);
+            sb.append("Passo: ").append(passo.nome()).append(". ").append(passo.descricao())
+                    .append(" Erros comuns: ").append(passo.errosComuns())
+                    .append(" Dica: ").append(passo.dica());
+        }
+        return sb.toString();
+    }
+
+    public String analisarMovimento(String contextoPasso, String metricasJson) {
+        String prompt = "PASSO A PRATICAR: " + contextoPasso
+                + "\n\nMÉTRICAS captadas (JSON): " + metricasJson
+                + "\n\n" + GUIA_METRICAS;
+        return groq.perguntar(SISTEMA_PRATICA, prompt);
     }
 
     @Transactional

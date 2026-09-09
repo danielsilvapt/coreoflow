@@ -597,7 +597,8 @@ public class MainLayout extends AppLayout {
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.INQUERITOS))
                                 tabs.add(criarTab("Inquéritos", VaadinIcon.CLIPBOARD_TEXT, "#F4511E", InqueritosView.class, null));
                         tabs.add(criarTab("Previsão de Receita", VaadinIcon.TRENDING_UP, "#2E7D32", PrevisaoReceitaView.class, null));
-                        if (iaAtiva)
+                        if (iaAtiva && (studioParaModulos == null
+                                        || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.TREINADOR_IA)))
                                 tabs.add(criarTab("Treinador IA", VaadinIcon.MAGIC, "#8B5CF6", TreinadorDancaView.class, null));
 
                         tabs.add(criarHeaderMenu("Configurações"));
@@ -628,7 +629,8 @@ public class MainLayout extends AppLayout {
                                 tabs.add(criarTab("Vídeos das Aulas", VaadinIcon.PLAY_CIRCLE, "#D32F2F", VideosAulaProfessorView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.EVENTOS))
                                 tabs.add(criarTab("Eventos", VaadinIcon.STAR, "#F1C40F", ConvitesProfessorView.class, null));
-                        if (iaAtiva)
+                        if (iaAtiva && (studioParaModulos == null
+                                        || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.TREINADOR_IA)))
                                 tabs.add(criarTab("Treinador IA", VaadinIcon.MAGIC, "#8B5CF6", TreinadorDancaView.class, null));
                 }
 
@@ -638,7 +640,8 @@ public class MainLayout extends AppLayout {
                         tabs.add(criarTab("Portal", VaadinIcon.DASHBOARD, "#4A90E2", PortalAlunoView.class, null));
                         tabs.add(criarTab("Vídeos das Aulas", VaadinIcon.PLAY_CIRCLE, "#D32F2F", AlunoVideosView.class,
                                         null));
-                        if (iaAtiva)
+                        if (iaAtiva && (studioParaModulos == null
+                                        || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.TREINADOR_IA)))
                                 tabs.add(criarTab("Treinador IA", VaadinIcon.MAGIC, "#8B5CF6", TreinadorDancaView.class, null));
                 }
 

@@ -312,13 +312,13 @@ public class TreinadorDancaView extends VerticalLayout {
         d.addOpenedChangeListener(e -> {
             if (e.isOpened() && !carregado[0]) {
                 carregado[0] = true;
-                d.add(conteudoPasso(passo));
+                d.add(conteudoPasso(p, idx, passo));
             }
         });
         return d;
     }
 
-    private Component conteudoPasso(Passo passo) {
+    private Component conteudoPasso(PlanoDanca plano, int idx, Passo passo) {
         VerticalLayout v = new VerticalLayout();
         v.setPadding(false);
         v.setSpacing(false);
@@ -347,7 +347,83 @@ public class TreinadorDancaView extends VerticalLayout {
             a.getStyle().set("font-size", "13px");
             v.add(a);
         }
+
+        Button praticar = new Button("Praticar com a câmara", VaadinIcon.CAMERA.create(),
+                e -> abrirPratica(plano, idx, passo));
+        praticar.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+        praticar.getStyle().set("margin-top", "8px");
+        v.add(praticar);
         return v;
+    }
+
+    // ---------- Modo prática (câmara + pose) ----------
+
+    private Long praticaPlanoId;
+    private int praticaPassoIdx;
+    private String praticaContId;
+
+    private void abrirPratica(PlanoDanca plano, int idx, Passo passo) {
+        praticaPlanoId = plano.getId();
+        praticaPassoIdx = idx;
+        praticaContId = "cfprat-" + Long.toHexString(System.nanoTime());
+
+        com.vaadin.flow.component.dialog.Dialog dlg = new com.vaadin.flow.component.dialog.Dialog();
+        dlg.setHeaderTitle("Praticar: " + passo.nome());
+        dlg.setWidth("640px");
+        dlg.setDraggable(true);
+        dlg.setResizable(true);
+
+        Span nota = new Span("A câmara é processada só no teu dispositivo — nada é gravado nem enviado. "
+                + "Só as métricas resumidas vão para o treinador.");
+        nota.getStyle().set("font-size", "12px").set("color", "#6b7280");
+
+        com.vaadin.flow.component.html.Div cont = new com.vaadin.flow.component.html.Div();
+        cont.setId(praticaContId);
+        cont.setMinHeight("420px");
+        cont.setWidthFull();
+
+        dlg.add(new VerticalLayout(nota, cont));
+
+        Button fechar = new Button("Terminar", e -> {
+            getElement().executeJs("window.cfPratica && window.cfPratica.parar()");
+            dlg.close();
+        });
+        dlg.getFooter().add(fechar);
+        dlg.addDialogCloseActionListener(e -> {
+            getElement().executeJs("window.cfPratica && window.cfPratica.parar()");
+            dlg.close();
+        });
+        dlg.open();
+
+        getElement().executeJs(scriptPratica());
+        getElement().executeJs(
+                "setTimeout(function(){ window.cfPratica && window.cfPratica.iniciar($0, $1, {bpm: 100}); }, 60);",
+                praticaContId, getElement());
+    }
+
+    @com.vaadin.flow.component.ClientCallable
+    public void analisarPratica(String metricasJson) {
+        String texto;
+        try {
+            String ctx = service.contextoPassoPratica(praticaPlanoId, praticaPassoIdx);
+            texto = service.analisarMovimento(ctx, metricasJson);
+        } catch (Exception e) {
+            texto = "Não foi possível analisar agora: " + e.getMessage();
+        }
+        getElement().executeJs("window.cfPratica && window.cfPratica.mostrar($0, $1)", praticaContId, texto);
+    }
+
+    private static String scriptCache;
+
+    private static synchronized String scriptPratica() {
+        if (scriptCache == null) {
+            try (var in = TreinadorDancaView.class.getResourceAsStream("/js/treinador-pratica.js")) {
+                scriptCache = in == null ? "" : new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                scriptCache = "";
+            }
+        }
+        return scriptCache;
     }
 
     private Component cartaoVideo(YoutubeService.Video v) {

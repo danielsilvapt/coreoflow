@@ -29,7 +29,8 @@ public enum StudioModulo {
     SUBSIDIOS("Subsídios e Apoios"),
     REFERENCIAS("Referências"),
     INQUERITOS("Inquéritos de Satisfação"),
-    VIDEOS_AULA("Vídeos das Aulas");
+    VIDEOS_AULA("Vídeos das Aulas"),
+    TREINADOR_IA("Treinador de Dança IA");
 
     private final String label;
 
