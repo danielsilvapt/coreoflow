@@ -27,6 +27,11 @@ public interface MensalidadeRepository extends JpaRepository<Mensalidade, Long> 
 
     List<Mensalidade> findByAlunoAndEstado(Aluno aluno, EstadoMensalidade estado);
 
+    List<Mensalidade> findByAlunoAndTurmaAndEstado(Aluno aluno, Turma turma, EstadoMensalidade estado);
+
+    @Transactional
+    void deleteByAlunoAndTurmaAndEstado(Aluno aluno, Turma turma, EstadoMensalidade estado);
+
         @Query("SELECT m FROM Mensalidade m WHERE m.aluno = :aluno AND m.turma = :turma " + 
            "AND m.ano = :ano AND m.mes > :mesAtual")
     List<Mensalidade> findMensalidadesFuturas(

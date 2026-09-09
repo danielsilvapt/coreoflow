@@ -68,6 +68,11 @@ public class MensalidadeService {
 
         AlunoTurma at = atOptional.get();
 
+        // Inscrição só para presenças (ex.: pré-competição) → não gera mensalidade
+        if (at.isSemMensalidade()) {
+            return;
+        }
+
         // 🔹 Determinar aulas por semana e tipo de aluno
         int aulasPorSemana = at.getAulasPorSemana(); // 1 ou 2
         boolean crianca = aluno.isCrianca();
