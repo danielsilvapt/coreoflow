@@ -395,10 +395,11 @@ public class TreinadorDancaView extends VerticalLayout {
         });
         dlg.open();
 
+        String estiloPlano = plano.getEstilo() != null ? plano.getEstilo() : "";
         getElement().executeJs(scriptPratica());
         getElement().executeJs(
-                "setTimeout(function(){ window.cfPratica && window.cfPratica.iniciar($0, $1, {bpm: 100}); }, 60);",
-                praticaContId, getElement());
+                "setTimeout(function(){ window.cfPratica && window.cfPratica.iniciar($0, $1, {estilo: $2}); }, 60);",
+                praticaContId, getElement(), estiloPlano);
     }
 
     @com.vaadin.flow.component.ClientCallable
@@ -427,20 +428,74 @@ public class TreinadorDancaView extends VerticalLayout {
     }
 
     private Component cartaoVideo(YoutubeService.Video v) {
+        com.vaadin.flow.component.html.Div thumb = new com.vaadin.flow.component.html.Div();
+        thumb.getStyle().set("position", "relative").set("width", "200px").set("border-radius", "8px")
+                .set("overflow", "hidden");
         Image img = new Image(v.thumbnail(), v.titulo());
         img.setWidth("200px");
-        img.getStyle().set("border-radius", "8px").set("display", "block");
+        img.getStyle().set("display", "block");
+        Span play = new Span("▶");
+        play.getStyle().set("position", "absolute").set("left", "0").set("top", "0").set("right", "0")
+                .set("bottom", "0").set("display", "flex").set("align-items", "center")
+                .set("justify-content", "center").set("font-size", "32px").set("color", "white")
+                .set("text-shadow", "0 2px 10px rgba(0,0,0,0.7)");
+        thumb.add(img, play);
+
         Span t = new Span(v.titulo());
         t.getStyle().set("font-size", "12px").set("max-width", "200px").set("display", "block");
         Span ch = new Span(v.canal());
         ch.getStyle().set("font-size", "11px").set("color", "#6b7280");
-        VerticalLayout box = new VerticalLayout(img, t, ch);
+        VerticalLayout box = new VerticalLayout(thumb, t, ch);
         box.setPadding(false);
         box.setSpacing(false);
-        Anchor a = new Anchor(v.urlWatch(), box);
-        a.setTarget("_blank");
-        a.getStyle().set("text-decoration", "none").set("color", "inherit");
-        return a;
+        box.setWidth("200px");
+        box.getStyle().set("cursor", "pointer");
+        box.addClickListener(e -> abrirVideo(v));
+        return box;
+    }
+
+    private void abrirVideo(YoutubeService.Video v) {
+        com.vaadin.flow.component.dialog.Dialog d = new com.vaadin.flow.component.dialog.Dialog();
+        d.setHeaderTitle(v.titulo());
+        d.setDraggable(true);
+        d.setResizable(true);
+
+        com.vaadin.flow.component.html.IFrame frame = new com.vaadin.flow.component.html.IFrame(
+                "https://www.youtube.com/embed/" + v.id() + "?autoplay=1&rel=0&modestbranding=1");
+        frame.setSizeFull();
+        frame.getStyle().set("border", "0").set("display", "block");
+        frame.getElement().setAttribute("allow",
+                "autoplay; encrypted-media; picture-in-picture; fullscreen");
+        frame.getElement().setAttribute("allowfullscreen", true);
+
+        com.vaadin.flow.component.html.Div wrap = new com.vaadin.flow.component.html.Div(frame);
+        wrap.setSizeFull();
+        wrap.getStyle().set("background", "#000");
+        d.add(wrap);
+
+        String largura = "780px";
+        String altura = "480px";
+        d.setWidth(largura);
+        d.setHeight(altura);
+
+        boolean[] max = { false };
+        Button expandir = new Button(VaadinIcon.EXPAND_FULL.create());
+        expandir.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        expandir.getElement().setAttribute("title", "Aumentar / reduzir");
+        expandir.addClickListener(e -> {
+            max[0] = !max[0];
+            d.setWidth(max[0] ? "96vw" : largura);
+            d.setHeight(max[0] ? "92vh" : altura);
+            expandir.setIcon((max[0] ? VaadinIcon.COMPRESS : VaadinIcon.EXPAND_FULL).create());
+        });
+
+        Anchor abrirYt = new Anchor(v.urlWatch(), "YouTube ↗");
+        abrirYt.setTarget("_blank");
+        abrirYt.getStyle().set("font-size", "12px").set("align-self", "center").set("margin-right", "4px");
+
+        d.getHeader().add(abrirYt, expandir);
+        d.getFooter().add(new Button("Fechar", e -> d.close()));
+        d.open();
     }
 
     // ---------- Chat ----------

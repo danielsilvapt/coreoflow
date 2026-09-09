@@ -15,6 +15,37 @@
     return 'padding:7px 12px;border-radius:8px;border:1px solid #d1d5db;background:'
       + (bg || '#fff') + ';color:' + (fg || '#111') + ';cursor:pointer;font:13px system-ui';
   }
+  // BPM típico por estilo (aproximado — o metrónomo marca o tempo de dança)
+  var BPM_ESTILO = {
+    'kizomba': 95, 'semba': 130, 'salsa': 180, 'bachata': 125, 'merengue': 140,
+    'tango': 120, 'valsa': 170, 'foxtrote': 120, 'chachacha': 120, 'cha cha': 120,
+    'rumba': 100, 'samba': 100, 'jive': 176, 'paso doble': 120,
+    'hip hop': 95, 'hip-hop': 95, 'hiphop': 95, 'breakdance': 110, 'popping': 100,
+    'house': 125, 'dancehall': 100, 'afro': 108, 'afrobeat': 108,
+    'contemporaneo': 100, 'moderno': 100, 'lirico': 90, 'jazz': 120,
+    'ballet': 100, 'classico': 100, 'sapateado': 180, 'tap': 180,
+    'danca do ventre': 100, 'flamenco': 120, 'zumba': 130, 'danca de salao': 120,
+    'ballroom': 120, 'swing': 160, 'lindy hop': 165, 'rock and roll': 180
+  };
+  function norml(s) {
+    var t = (s || '').toLowerCase().normalize('NFD');
+    var out = '';
+    for (var i = 0; i < t.length; i++) {
+      var c = t.charCodeAt(i);
+      if (c < 0x0300 || c > 0x036f) out += t[i];
+    }
+    return out.trim();
+  }
+  function bpmSugerido(estilo) {
+    var k = norml(estilo);
+    if (!k) return 100;
+    var keys = Object.keys(BPM_ESTILO);
+    for (var i = 0; i < keys.length; i++) {
+      if (k.indexOf(norml(keys[i])) >= 0 || norml(keys[i]).indexOf(k) >= 0) return BPM_ESTILO[keys[i]];
+    }
+    return 100;
+  }
+
   function clamp(v) { return Math.max(0, Math.min(1, v)); }
   function pct(v) { return Math.round(v * 100) + '%'; }
   function avg(a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : 0; }
@@ -74,6 +105,7 @@
       var mMov = mk('Movimento'), mAmp = mk('Amplitude'), mSim = mk('Simetria'),
           mPost = mk('Postura'), mRit = mk('No ritmo');
 
+      var bpmSug = bpmSugerido(opts.estilo);
       var controls = document.createElement('div');
       controls.style.cssText = 'display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap';
       box.appendChild(controls);
@@ -81,14 +113,18 @@
       bpmL.style.cssText = 'font:13px system-ui;color:#374151';
       bpmL.textContent = 'BPM: ';
       var bpm = document.createElement('input');
-      bpm.type = 'number'; bpm.value = opts.bpm || 100; bpm.min = 40; bpm.max = 200;
+      bpm.type = 'number'; bpm.value = opts.bpm || bpmSug; bpm.min = 40; bpm.max = 240;
       bpm.style.cssText = 'width:64px';
       bpmL.appendChild(bpm);
+      var bpmHint = document.createElement('span');
+      bpmHint.style.cssText = 'font:12px system-ui;color:#8B5CF6';
+      bpmHint.textContent = opts.estilo ? ('sugerido p/ ' + opts.estilo + ': ' + bpmSug) : '';
       var metroBtn = document.createElement('button');
       metroBtn.textContent = '▶ Metrónomo'; metroBtn.style.cssText = btnCss();
       var recBtn = document.createElement('button');
       recBtn.textContent = '● Gravar 15s e analisar'; recBtn.style.cssText = btnCss('#8B5CF6', '#fff');
-      controls.appendChild(bpmL); controls.appendChild(metroBtn); controls.appendChild(recBtn);
+      controls.appendChild(bpmL); controls.appendChild(bpmHint);
+      controls.appendChild(metroBtn); controls.appendChild(recBtn);
 
       var fb = document.createElement('div');
       fb.id = containerId + '-fb';
@@ -129,25 +165,56 @@
       var prev = null, lastT = performance.now();
       var histMov = [], ampBuf = {}, motionPeaks = [];
       var recording = false, recFrames = [];
-      var metroOn = false, actx = null, beatTimes = [];
+      var metroOn = false, actx = null, beatTimes = [], beatCount = 0;
+
+      function curBpm() { return Math.max(40, Math.min(240, +bpm.value || bpmSug || 100)); }
+
+      function tick() {
+        try {
+          var now = actx.currentTime;
+          var o = actx.createOscillator(), g = actx.createGain();
+          // acento no 1º tempo de cada 4
+          var acento = (beatCount % 4) === 0;
+          o.frequency.value = acento ? 1400 : 900;
+          o.type = 'square';
+          g.gain.setValueAtTime(acento ? 0.22 : 0.13, now);
+          g.gain.exponentialRampToValueAtTime(0.0008, now + 0.06);
+          o.connect(g); g.connect(actx.destination);
+          o.start(now); o.stop(now + 0.07);
+        } catch (e) {}
+        beatCount++;
+        beatTimes.push(performance.now());
+        if (beatTimes.length > 16) beatTimes.shift();
+        metroBtn.style.background = '#8B5CF6'; metroBtn.style.color = '#fff';
+        setTimeout(function () { metroBtn.style.background = '#fff'; metroBtn.style.color = '#111'; }, 90);
+      }
+
+      function pararMetro() {
+        metroOn = false;
+        clearInterval(s.metroTimer);
+        metroBtn.textContent = '▶ Metrónomo';
+        metroBtn.style.background = '#fff'; metroBtn.style.color = '#111';
+      }
 
       metroBtn.onclick = function () {
-        metroOn = !metroOn;
-        if (metroOn) {
+        if (metroOn) { pararMetro(); return; }
+        try {
           actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-          var iv = 60000 / Math.max(40, Math.min(200, +bpm.value || 100));
-          var tick = function () {
-            var o = actx.createOscillator(), g = actx.createGain();
-            o.frequency.value = 900; g.gain.value = 0.12;
-            o.connect(g); g.connect(actx.destination);
-            o.start(); o.stop(actx.currentTime + 0.04);
-            beatTimes.push(performance.now());
-            if (beatTimes.length > 16) beatTimes.shift();
-          };
-          tick(); s.metroTimer = setInterval(tick, iv);
-          metroBtn.textContent = '■ Parar';
-        } else {
-          clearInterval(s.metroTimer); metroBtn.textContent = '▶ Metrónomo';
+          if (actx.state === 'suspended' && actx.resume) { actx.resume(); }
+        } catch (e) {
+          status.textContent = 'Sem áudio neste navegador: ' + (e && e.message ? e.message : e);
+          return;
+        }
+        metroOn = true; beatCount = 0;
+        tick();
+        s.metroTimer = setInterval(tick, 60000 / curBpm());
+        metroBtn.textContent = '■ Parar metrónomo';
+      };
+
+      bpm.onchange = function () {
+        if (metroOn) {
+          clearInterval(s.metroTimer);
+          s.metroTimer = setInterval(tick, 60000 / curBpm());
         }
       };
 
