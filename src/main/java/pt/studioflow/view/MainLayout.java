@@ -105,32 +105,41 @@ public class MainLayout extends AppLayout {
 
         private void injectGlobalStyles() {
                 String styles = "html { --lumo-primary-color: " + getPrimaryColor() + "; }" +
-                                // --- Loader central com bailarina a dançar ---
+                                // --- Loader central: o C e o F a dançar aos pares ---
                                 ".v-loading-indicator { display: none !important; }" +
                                 ".v-loading-indicator.first, .v-loading-indicator.second, .v-loading-indicator.third {"
-                                + " display: flex !important; flex-direction: column; align-items: center;"
-                                + " justify-content: center; gap: 14px; position: fixed !important; inset: 0 !important;"
+                                + " display: block !important; position: fixed !important; inset: 0 !important;"
                                 + " top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;"
                                 + " margin: 0 !important; padding: 0 !important; background: rgba(255,255,255,0.62) !important;"
                                 + " backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 2147483647 !important;"
                                 + " pointer-events: all; border: none !important; box-shadow: none !important;"
                                 + " animation: none !important; transition: opacity .15s ease; }" +
                                 ".v-loading-indicator.first::before, .v-loading-indicator.second::before, .v-loading-indicator.third::before {"
-                                + " content: ''; display: block; width: 66px; height: 66px;"
-                                + " background: url('/icons/icon.png') center / contain no-repeat;"
-                                + " animation: cf-dance 1.2s cubic-bezier(.5,0,.5,1) infinite;"
-                                + " filter: drop-shadow(0 10px 16px rgba(0,0,0,0.22)); }" +
+                                + " content: 'C'; position: absolute; left: 50%; top: 50%;"
+                                + " font: 900 46px/1 'Trebuchet MS','Segoe UI',system-ui,sans-serif; color: #3B6CB7;"
+                                + " transform-origin: right center; transform: translate(-100%,-50%);"
+                                + " animation: cf-par 1.5s linear infinite;"
+                                + " filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25)); }" +
                                 ".v-loading-indicator.first::after, .v-loading-indicator.second::after, .v-loading-indicator.third::after {"
-                                + " content: 'a carregar'; font: 700 12px/1 system-ui,-apple-system,sans-serif;"
-                                + " letter-spacing: 3px; text-transform: uppercase; color: #667; border: none !important; }" +
-                                "@keyframes cf-dance {"
-                                + " 0%{transform: translateY(0) rotate(0deg) scale(1)}"
-                                + " 45%{transform: translateY(-9px) rotate(200deg) scale(1.12)}"
-                                + " 70%{transform: translateY(0) rotate(300deg) scale(1)}"
-                                + " 100%{transform: translateY(0) rotate(360deg) scale(1)} }" +
+                                + " content: 'F'; position: absolute; left: 50%; top: 50%;"
+                                + " font: 900 46px/1 'Trebuchet MS','Segoe UI',system-ui,sans-serif; color: #00C9A7;"
+                                + " transform-origin: left center; transform: translate(0,-50%);"
+                                + " animation: cf-par2 1.5s linear infinite; border: none !important;"
+                                + " filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25)); }" +
+                                "@keyframes cf-par {"
+                                + " 0%{transform: translate(-100%,-50%) rotate(0deg)}"
+                                + " 25%{transform: translate(-100%,-64%) rotate(80deg)}"
+                                + " 50%{transform: translate(-100%,-50%) rotate(180deg)}"
+                                + " 75%{transform: translate(-100%,-38%) rotate(280deg)}"
+                                + " 100%{transform: translate(-100%,-50%) rotate(360deg)} }" +
+                                "@keyframes cf-par2 {"
+                                + " 0%{transform: translate(0,-50%) rotate(0deg)}"
+                                + " 25%{transform: translate(0,-36%) rotate(80deg)}"
+                                + " 50%{transform: translate(0,-50%) rotate(180deg)}"
+                                + " 75%{transform: translate(0,-62%) rotate(280deg)}"
+                                + " 100%{transform: translate(0,-50%) rotate(360deg)} }" +
                                 "html[theme~='dark'] .v-loading-indicator.first, html[theme~='dark'] .v-loading-indicator.second, html[theme~='dark'] .v-loading-indicator.third {"
                                 + " background: rgba(15,15,26,0.66) !important; }" +
-                                "html[theme~='dark'] .v-loading-indicator.first::after, html[theme~='dark'] .v-loading-indicator.second::after, html[theme~='dark'] .v-loading-indicator.third::after { color: #aab; }" +
                                 "vaadin-app-layout { background: " + BG_GRADIENT + " !important; }" +
                                 "vaadin-tab[selected] { color: " + getPrimaryColor() + " !important; font-weight: 700; }" +
                                 ".drawer-content { background: rgba(255, 255, 255, 0.8) !important; backdrop-filter: blur(10px); }"
