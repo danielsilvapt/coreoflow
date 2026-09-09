@@ -25,6 +25,9 @@ public class PedidoSuporte {
     @Column(length = 150)
     private String utilizador;
 
+    @Column(length = 200)
+    private String emailUtilizador;
+
     @Column(length = 60)
     private String tipo;
 
@@ -40,6 +43,11 @@ public class PedidoSuporte {
     private boolean emailEnviado = false;
 
     private boolean resolvido = false;
+
+    @Column(length = 4000)
+    private String resposta;
+
+    private LocalDateTime dataResposta;
 
     public Long getId() {
         return id;
@@ -59,6 +67,34 @@ public class PedidoSuporte {
 
     public void setUtilizador(String utilizador) {
         this.utilizador = utilizador;
+    }
+
+    public String getEmailUtilizador() {
+        return emailUtilizador;
+    }
+
+    public void setEmailUtilizador(String emailUtilizador) {
+        this.emailUtilizador = emailUtilizador;
+    }
+
+    public String getResposta() {
+        return resposta;
+    }
+
+    public void setResposta(String resposta) {
+        this.resposta = resposta;
+    }
+
+    public LocalDateTime getDataResposta() {
+        return dataResposta;
+    }
+
+    public void setDataResposta(LocalDateTime dataResposta) {
+        this.dataResposta = dataResposta;
+    }
+
+    public boolean isRespondido() {
+        return resposta != null && !resposta.isBlank();
     }
 
     public String getTipo() {

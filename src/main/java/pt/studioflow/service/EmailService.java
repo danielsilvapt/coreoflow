@@ -671,19 +671,52 @@ public class EmailService {
         private String emailSuporteDefault;
 
         /** Destino configurável (via superadmin). Chamado pelo SuporteService. */
-        public void enviarEmailSuporte(String destino, String studio, String utilizador, String tipoProbema,
-                        String assunto, String descricao) {
+        public void enviarEmailSuporte(String destino, String bcc, String studio, String utilizador,
+                        String emailUtilizador, String tipoProbema, String assunto, String descricao) {
                 SimpleMailMessage msg = new SimpleMailMessage();
                 msg.setFrom(mailFrom);
                 msg.setTo(destino != null && !destino.isBlank() ? destino : emailSuporteDefault);
+                if (bcc != null && !bcc.isBlank()) {
+                        msg.setBcc(bcc.trim());
+                }
+                if (emailUtilizador != null && !emailUtilizador.isBlank()) {
+                        msg.setReplyTo(emailUtilizador.trim());
+                }
                 msg.setSubject("[Suporte CoreoFlow] " + assunto);
                 msg.setText(
                         "Estúdio: " + studio + "\n" +
-                        "Utilizador: " + utilizador + "\n" +
+                        "Utilizador: " + utilizador + (emailUtilizador != null ? " <" + emailUtilizador + ">" : "") + "\n" +
                         "Tipo de problema: " + tipoProbema + "\n" +
                         "Data: " + java.time.LocalDateTime.now() + "\n\n" +
                         "Descrição:\n" + descricao
                 );
                 mailSender.send(msg);
+        }
+
+        /** Resposta do suporte enviada ao cliente. */
+        public void enviarRespostaSuporte(String paraEmail, String bcc, String nomeRemetente, String assuntoOriginal,
+                        String textoResposta, String descricaoOriginal) throws Exception {
+                jakarta.mail.internet.MimeMessage m = mailSender.createMimeMessage();
+                org.springframework.mail.javamail.MimeMessageHelper h =
+                                new org.springframework.mail.javamail.MimeMessageHelper(m, true, "UTF-8");
+                h.setFrom(mailFrom, nomeRemetente != null && !nomeRemetente.isBlank() ? nomeRemetente : "CoreoFlow");
+                h.setTo(paraEmail);
+                if (bcc != null && !bcc.isBlank()) {
+                        h.setBcc(bcc.trim());
+                }
+                h.setSubject("Re: " + assuntoOriginal);
+                String html = "<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;max-width:560px\">"
+                                + "<p style=\"font-size:15px;line-height:1.55;white-space:pre-wrap\">"
+                                + esc(textoResposta) + "</p>"
+                                + "<hr style=\"border:none;border-top:1px solid #eee;margin:18px 0\">"
+                                + "<p style=\"font-size:12px;color:#999\">Em resposta ao teu pedido:<br>"
+                                + "<i>" + esc(descricaoOriginal != null ? descricaoOriginal : "") + "</i></p>"
+                                + "</div>";
+                h.setText(html, true);
+                mailSender.send(m);
+        }
+
+        private static String esc(String s) {
+                return s == null ? "" : s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
         }
 }
