@@ -88,14 +88,19 @@ public class RelatoriosView extends VerticalLayout {
         private final ProfessorRepository professorRepository;
         private final AulaRepository aulaRepository;
         private final RemuneracaoService remuneracaoService;
+        private final pt.studioflow.repository.InterrupcaoLetivaRepository interrupcaoRepository;
 
         private final Color LARANJA_DANCE = new Color(255, 140, 0);
         private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        // Interrupções letivas do estúdio, carregadas ao abrir o relatório de rentabilidade.
+        private List<pt.studioflow.model.InterrupcaoLetiva> interrupcoesLetivas = new ArrayList<>();
 
         public RelatoriosView(AlunoRepository alunoRepository, TurmaRepository turmaRepository,
                         AlunoTurmaRepository alunoTurmaRepository, MensalidadeRepository mensalidadeRepository,
                         RegistoHorasRepository registoHorasRepository, ProfessorRepository professorRepository,
-                        AulaRepository aulaRepository, RemuneracaoService remuneracaoService) {
+                        AulaRepository aulaRepository, RemuneracaoService remuneracaoService,
+                        pt.studioflow.repository.InterrupcaoLetivaRepository interrupcaoRepository) {
+                this.interrupcaoRepository = interrupcaoRepository;
                 this.alunoRepository = alunoRepository;
                 this.turmaRepository = turmaRepository;
                 this.alunoTurmaRepository = alunoTurmaRepository;
@@ -656,6 +661,9 @@ public class RelatoriosView extends VerticalLayout {
         // --- 3. RELATÓRIO RENTABILIDADE MENSAL (com seletor de mês) ---
         private void abrirRelatorioRentabilidade() {
                 Studio studio = TenantContext.getCurrentStudio();
+                interrupcoesLetivas = studio != null
+                                ? interrupcaoRepository.findByStudioOrderByDataInicioAsc(studio)
+                                : new ArrayList<>();
                 List<Turma> todasTurmas = studio != null ? turmaRepository.findAllByStudio(studio)
                                 : turmaRepository.findAll();
                 RemuneracaoService.Dados dados = carregarDadosRemuneracao(studio, todasTurmas);
@@ -906,7 +914,8 @@ public class RelatoriosView extends VerticalLayout {
         }
 
         // Fração do mês em que a turma tem aulas a decorrer (dentro do período
-        // início/fim de cada aula), face a um mês cheio. 1,0 se nada limitar.
+        // início/fim de cada aula e fora das interrupções letivas), face a um mês
+        // cheio. 1,0 se nada limitar.
         private double fracaoAtividadeTurma(Turma t, YearMonth mes, List<Aula> aulas) {
                 double reais = 0, cheio = 0;
                 for (Aula a : aulas) {
@@ -914,13 +923,14 @@ public class RelatoriosView extends VerticalLayout {
                                 continue;
                         if (a.getDia() == null || "ENSAIO".equalsIgnoreCase(a.getTipo()))
                                 continue;
-                        reais += ocorrenciasNoMes(a.getDia(), mes, a.getDataInicio(), a.getDataFim());
-                        cheio += ocorrenciasNoMes(a.getDia(), mes, null, null);
+                        reais += ocorrenciasNoMes(a.getDia(), mes, a.getDataInicio(), a.getDataFim(), true);
+                        cheio += ocorrenciasNoMes(a.getDia(), mes, null, null, false);
                 }
                 return cheio == 0 ? 1.0 : Math.min(1.0, reais / cheio);
         }
 
-        private long ocorrenciasNoMes(DayOfWeek dia, YearMonth mes, LocalDate ini, LocalDate fim) {
+        private long ocorrenciasNoMes(DayOfWeek dia, YearMonth mes, LocalDate ini, LocalDate fim,
+                        boolean comInterrupcoes) {
                 LocalDate from = mes.atDay(1);
                 LocalDate to = mes.atEndOfMonth();
                 if (ini != null && ini.isAfter(from))
@@ -928,9 +938,14 @@ public class RelatoriosView extends VerticalLayout {
                 if (fim != null && fim.isBefore(to))
                         to = fim;
                 long c = 0;
-                for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1))
-                        if (d.getDayOfWeek() == dia)
-                                c++;
+                for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
+                        if (d.getDayOfWeek() != dia)
+                                continue;
+                        final LocalDate dia0 = d;
+                        if (comInterrupcoes && interrupcoesLetivas.stream().anyMatch(x -> x.contem(dia0)))
+                                continue;
+                        c++;
+                }
                 return c;
         }
 
