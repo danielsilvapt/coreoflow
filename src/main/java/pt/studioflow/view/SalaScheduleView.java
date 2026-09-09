@@ -33,6 +33,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.timepicker.TimePicker;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -57,6 +59,7 @@ import pt.studioflow.model.User;
 import pt.studioflow.model.VideoAula;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AulaRepository;
+import pt.studioflow.repository.InterrupcaoLetivaRepository;
 import pt.studioflow.repository.MarcacaoSalaRepository;
 import pt.studioflow.repository.OcorrenciaAulaRepository;
 import pt.studioflow.repository.ProfessorRepository;
@@ -91,6 +94,7 @@ public class SalaScheduleView extends VerticalLayout {
     private final R2StorageService storageService;
     private final SumarioAulaRepository sumarioAulaRepository;
     private final TurmaService turmaService;
+    private final InterrupcaoLetivaRepository interrupcaoRepository;
 
     /** Professor associado ao utilizador (null se admin ou não resolvido). */
     private Professor professorLogado;
@@ -114,7 +118,7 @@ public class SalaScheduleView extends VerticalLayout {
             ProfessorRepository professorRepository, TurmaService turmaService, AlunoRepository alunoRepository,
             EmailService emailService, UserRepository userRepository, OcorrenciaAulaRepository ocorrenciaAulaRepository,
             VideoAulaRepository videoAulaRepository, R2StorageService storageService,
-            SumarioAulaRepository sumarioAulaRepository) {
+            SumarioAulaRepository sumarioAulaRepository, InterrupcaoLetivaRepository interrupcaoRepository) {
 
         this.salaRepository = salaRepository;
         this.turmaRepository = turmaRepository;
@@ -129,6 +133,7 @@ public class SalaScheduleView extends VerticalLayout {
         this.storageService = storageService;
         this.sumarioAulaRepository = sumarioAulaRepository;
         this.turmaService = turmaService;
+        this.interrupcaoRepository = interrupcaoRepository;
 
         this.isAdmin = VaadinServletRequest.getCurrent().getHttpServletRequest().isUserInRole("ADMIN");
         this.professorLogado = isAdmin ? null : resolverProfessorLogado();
@@ -218,7 +223,12 @@ public class SalaScheduleView extends VerticalLayout {
         btnAdicionarPontual.addThemeVariants(isAdmin ? ButtonVariant.LUMO_SUCCESS : ButtonVariant.LUMO_PRIMARY);
         btnAdicionarPontual.addClickListener(e -> abrirDialogAdicionarAulaPontual());
 
-        HorizontalLayout actions = new HorizontalLayout(btnAdicionarRegular, btnAdicionarPontual);
+        Button btnInterrupcoes = new Button("🚫 Interrupções", e -> abrirDialogInterrupcoes());
+        btnInterrupcoes.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        btnInterrupcoes.getElement().setAttribute("title", "Períodos sem aulas (Natal, Páscoa, feriados)");
+        btnInterrupcoes.setVisible(isAdmin);
+
+        HorizontalLayout actions = new HorizontalLayout(btnAdicionarRegular, btnAdicionarPontual, btnInterrupcoes);
         actions.setSpacing(true);
 
         HorizontalLayout topBar = new HorizontalLayout(titulo, navLayout, actions);
@@ -1139,6 +1149,68 @@ public class SalaScheduleView extends VerticalLayout {
         cancelar.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
         dialog.getFooter().add(cancelar, guardar);
+        dialog.open();
+    }
+
+    // Gestão dos períodos do ano letivo sem aulas (Natal, Páscoa, feriados),
+    // por estúdio. Usados nas estimativas do relatório de rentabilidade.
+    private void abrirDialogInterrupcoes() {
+        pt.studioflow.model.Studio studio = TenantContext.getCurrentStudio();
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Interrupções letivas");
+        dialog.setWidth("560px");
+        dialog.setMaxWidth("100%");
+
+        Grid<pt.studioflow.model.InterrupcaoLetiva> grid = new Grid<>();
+        grid.addThemeVariants(GridVariant.LUMO_COMPACT, GridVariant.LUMO_ROW_STRIPES);
+        grid.addColumn(pt.studioflow.model.InterrupcaoLetiva::getDescricao).setHeader("Descrição").setFlexGrow(1);
+        grid.addColumn(i -> i.getDataInicio() != null ? DataUtil.formatar(i.getDataInicio()) : "-")
+                .setHeader("De").setAutoWidth(true);
+        grid.addColumn(i -> i.getDataFim() != null ? DataUtil.formatar(i.getDataFim()) : "-")
+                .setHeader("Até").setAutoWidth(true);
+        grid.addComponentColumn(i -> {
+            Button rem = new Button(VaadinIcon.TRASH.create(), e -> {
+                interrupcaoRepository.delete(i);
+                grid.setItems(interrupcaoRepository.findByStudioOrderByDataInicioAsc(studio));
+            });
+            rem.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            return rem;
+        }).setHeader("").setAutoWidth(true);
+        grid.setItems(interrupcaoRepository.findByStudioOrderByDataInicioAsc(studio));
+        grid.setAllRowsVisible(true);
+
+        TextField desc = new TextField("Descrição");
+        desc.setWidthFull();
+        DatePicker de = new DatePicker("De");
+        DatePicker ate = new DatePicker("Até");
+        HorizontalLayout datas = new HorizontalLayout(de, ate);
+        datas.setWidthFull();
+        datas.getStyle().set("flex-wrap", "wrap");
+
+        Button adicionar = new Button("Adicionar", e -> {
+            if (de.getValue() == null || ate.getValue() == null) {
+                Notification.show("Indica as duas datas.").addThemeVariants(NotificationVariant.LUMO_WARNING);
+                return;
+            }
+            if (ate.getValue().isBefore(de.getValue())) {
+                Notification.show("A data final é anterior à inicial.")
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+            interrupcaoRepository.save(new pt.studioflow.model.InterrupcaoLetiva(studio,
+                    desc.getValue() != null && !desc.getValue().isBlank() ? desc.getValue() : "Interrupção",
+                    de.getValue(), ate.getValue()));
+            desc.clear();
+            de.clear();
+            ate.clear();
+            grid.setItems(interrupcaoRepository.findByStudioOrderByDataInicioAsc(studio));
+        });
+        adicionar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        VerticalLayout form = new VerticalLayout(grid, desc, datas, adicionar);
+        form.setPadding(false);
+        dialog.add(form);
+        dialog.getFooter().add(new Button("Fechar", e -> dialog.close()));
         dialog.open();
     }
 
