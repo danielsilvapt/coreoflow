@@ -31,6 +31,14 @@ public class AlunoTurma {
     @Column(name = "data_pedido_renovacao")
     private java.time.LocalDate dataPedidoRenovacao;
 
+    /**
+     * Inscrição só para efeitos de presenças, sem gerar mensalidade (ex.: alunos de
+     * pré-competição que assistem a parte da aula de competição mas pagam só a de
+     * iniciação). Quando true, não se geram mensalidades para esta turma.
+     */
+    @Column(name = "sem_mensalidade")
+    private Boolean semMensalidade = false;
+
     public int getAulasPorSemana() {
         return aulasPorSemana;
     }
@@ -82,5 +90,13 @@ public class AlunoTurma {
 
     public void setDataPedidoRenovacao(java.time.LocalDate dataPedidoRenovacao) {
         this.dataPedidoRenovacao = dataPedidoRenovacao;
+    }
+
+    public boolean isSemMensalidade() {
+        return semMensalidade != null && semMensalidade;
+    }
+
+    public void setSemMensalidade(boolean semMensalidade) {
+        this.semMensalidade = semMensalidade;
     }
 }

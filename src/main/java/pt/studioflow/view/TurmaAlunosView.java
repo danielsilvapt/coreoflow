@@ -43,6 +43,7 @@ public class TurmaAlunosView extends VerticalLayout {
     private final AlunoTurmaRepository alunoTurmaRepository;
     private final AlunoTurmaService alunoTurmaService;
     private final MensalidadeService mensalidadeService;
+    private final pt.studioflow.repository.MensalidadeRepository mensalidadeRepository;
 
     private ComboBox<Turma> turmaCombo;
     private TextField searchAluno;
@@ -55,13 +56,15 @@ public class TurmaAlunosView extends VerticalLayout {
 
     public TurmaAlunosView(TurmaRepository turmaRepository, AlunoRepository alunoRepository,
             AlunoTurmaRepository alunoTurmaRepository, AlunoTurmaService alunoTurmaService,
-            MensalidadeService mensalidadeService) {
+            MensalidadeService mensalidadeService,
+            pt.studioflow.repository.MensalidadeRepository mensalidadeRepository) {
 
         this.turmaRepository = turmaRepository;
         this.alunoRepository = alunoRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
         this.alunoTurmaService = alunoTurmaService;
         this.mensalidadeService = mensalidadeService;
+        this.mensalidadeRepository = mensalidadeRepository;
 
         setSizeFull();
         setSpacing(false);
@@ -165,11 +168,20 @@ public class TurmaAlunosView extends VerticalLayout {
             Span nome = new Span(aluno.getNomeCompleto());
             nome.getStyle().set("font-weight", "600");
 
+            com.vaadin.flow.component.checkbox.Checkbox fatura = new com.vaadin.flow.component.checkbox.Checkbox(
+                    "Fatura");
+            fatura.getStyle().set("margin-left", "auto").set("font-size", "0.8em");
+            fatura.setTooltipText("Desliga para inscrições só de presenças (não gera mensalidade), ex.: pré-competição");
+            AlunoTurma at = turmaCombo.getValue() != null
+                    ? alunoTurmaRepository.findByAlunoAndTurma(aluno, turmaCombo.getValue()).orElse(null)
+                    : null;
+            fatura.setValue(at == null || !at.isSemMensalidade());
+            fatura.addValueChangeListener(e -> alternarFaturacao(aluno, e.getValue()));
+
             Button remove = new Button(VaadinIcon.TRASH.create(), e -> removerAluno(aluno));
             remove.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-            remove.getStyle().set("margin-left", "auto");
 
-            card.add(avatar, nome, remove);
+            card.add(avatar, nome, fatura, remove);
             card.setAlignItems(Alignment.CENTER);
             return card;
         });
@@ -271,6 +283,33 @@ public class TurmaAlunosView extends VerticalLayout {
         mensalidadeService.gerarMensalidadesParaAluno(aluno, turma);
         atualizarGrids();
         Notification.show("Aluno Inscrito!").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    }
+
+    // Liga/desliga a faturação da inscrição do aluno nesta turma. Ao desligar,
+    // apaga as mensalidades ainda por emitir dessa inscrição; ao ligar, gera-as.
+    private void alternarFaturacao(Aluno aluno, boolean fatura) {
+        Turma turma = turmaCombo.getValue();
+        if (turma == null) {
+            return;
+        }
+        alunoTurmaRepository.findByAlunoAndTurma(aluno, turma).ifPresent(at -> {
+            if (at.isSemMensalidade() == !fatura) {
+                return; // já está no estado pedido
+            }
+            at.setSemMensalidade(!fatura);
+            alunoTurmaRepository.save(at);
+            if (fatura) {
+                mensalidadeService.gerarMensalidadesParaAluno(aluno, turma);
+                Notification.show("Faturação ativada — mensalidades geradas.")
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } else {
+                mensalidadeRepository.deleteByAlunoAndTurmaAndEstado(aluno, turma,
+                        pt.studioflow.model.EstadoMensalidade.POR_EMITIR);
+                Notification.show("Inscrição só para presenças — mensalidades por emitir removidas.")
+                        .addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+            }
+            atualizarGrids();
+        });
     }
 
     private void removerAluno(Aluno aluno) {

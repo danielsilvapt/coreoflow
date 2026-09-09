@@ -143,6 +143,7 @@ public class RelatorioHorasService {
     }
 
     private double calcularHoras(RegistoHoras r) {
-        return Duration.between(r.getInicio(), r.getFim()).toMinutes() / 60.0;
+        // O professor recebe sempre por horas completas (aula de 45 min = 1 h).
+        return pt.studioflow.util.HorasUtil.faturaveis(r.getInicio(), r.getFim());
     }
 }
