@@ -18,10 +18,12 @@ import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vaadin.flow.component.ClickEvent;
 import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
+import software.xdev.vaadin.chartjs.ChartContainer;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -651,8 +653,8 @@ public class RelatoriosView extends VerticalLayout {
 
                 Dialog d = new Dialog();
                 d.setHeaderTitle("Rentabilidade Mensal");
-                d.setWidth("950px");
-                d.setHeight("650px");
+                d.setWidth("1000px");
+                d.setHeight("800px");
 
                 ComboBox<YearMonth> seletor = criarSeletorMes(YearMonth.now().minusMonths(1));
                 Div container = new Div();
@@ -715,7 +717,9 @@ public class RelatoriosView extends VerticalLayout {
                         aviso.getStyle().set("font-size", "12px").set("color", previsto ? "#e65100" : "#888");
 
                         String tituloExport = "Rentabilidade - " + mesLabel(mes) + (previsto ? " (previsao)" : "");
-                        VerticalLayout v = new VerticalLayout(aviso, grid, linhaDownloads(tituloExport, headers, rows));
+                        Component grafico = criarGraficoRentabilidadeMensal(mes, turmas, studio, dados);
+                        VerticalLayout v = new VerticalLayout(grafico, aviso, grid,
+                                        linhaDownloads(tituloExport, headers, rows));
                         v.setSizeFull();
                         v.setPadding(false);
                         v.expand(grid);
@@ -730,6 +734,114 @@ public class RelatoriosView extends VerticalLayout {
                 d.add(wrap);
                 d.getFooter().add(new Button("Fechar", e -> d.close()));
                 d.open();
+        }
+
+        // Gráfico de barras com a rentabilidade geral (soma de todas as turmas) mês a
+        // mês, numa janela de 12 meses à volta do mês selecionado. Meses fechados
+        // mostram o valor real; os futuros mostram a estimativa, em cor distinta; o
+        // mês selecionado fica realçado com contorno.
+        private Component criarGraficoRentabilidadeMensal(YearMonth mesSel, List<Turma> turmas, Studio studio,
+                        RemuneracaoService.Dados dados) {
+                List<String> labels = new ArrayList<>();
+                List<Double> valores = new ArrayList<>();
+                List<String> cores = new ArrayList<>();
+                List<String> bordas = new ArrayList<>();
+                List<Integer> larguraBorda = new ArrayList<>();
+
+                YearMonth inicio = mesSel.minusMonths(6);
+                for (int i = 0; i < 12; i++) {
+                        YearMonth m = inicio.plusMonths(i);
+                        boolean futuro = remuneracaoService.ehFuturo(m);
+                        double total = remuneracaoService.rentabilidadePorTurma(turmas, studio, m, dados)
+                                        .values().stream().mapToDouble(x -> x[2]).sum();
+                        labels.add(m.getMonth().getDisplayName(TextStyle.SHORT, new Locale("pt")).replace(".", "")
+                                        + " " + String.valueOf(m.getYear()).substring(2));
+                        valores.add(Math.round(total * 100.0) / 100.0);
+                        cores.add(futuro ? "rgba(255,193,7,0.55)" : "rgba(255,140,0,0.85)");
+                        boolean sel = m.equals(mesSel);
+                        bordas.add(sel ? "#2D3436" : "rgba(0,0,0,0)");
+                        larguraBorda.add(sel ? 2 : 0);
+                }
+
+                Map<String, Object> dataset = new LinkedHashMap<>();
+                dataset.put("data", valores);
+                dataset.put("backgroundColor", cores);
+                dataset.put("borderColor", bordas);
+                dataset.put("borderWidth", larguraBorda);
+                dataset.put("borderRadius", 6);
+                dataset.put("maxBarThickness", 46);
+
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("labels", labels);
+                data.put("datasets", List.of(dataset));
+
+                Map<String, Object> legend = new LinkedHashMap<>();
+                legend.put("display", false);
+                Map<String, Object> tooltip = new LinkedHashMap<>();
+                tooltip.put("backgroundColor", "#2D3436");
+                tooltip.put("padding", 10);
+                tooltip.put("cornerRadius", 8);
+                Map<String, Object> plugins = new LinkedHashMap<>();
+                plugins.put("legend", legend);
+                plugins.put("tooltip", tooltip);
+
+                Map<String, Object> gridY = new LinkedHashMap<>();
+                gridY.put("color", "#f0f0f0");
+                Map<String, Object> scaleY = new LinkedHashMap<>();
+                scaleY.put("grid", gridY);
+                Map<String, Object> gridX = new LinkedHashMap<>();
+                gridX.put("display", false);
+                Map<String, Object> scaleX = new LinkedHashMap<>();
+                scaleX.put("grid", gridX);
+                Map<String, Object> scales = new LinkedHashMap<>();
+                scales.put("y", scaleY);
+                scales.put("x", scaleX);
+
+                Map<String, Object> options = new LinkedHashMap<>();
+                options.put("responsive", true);
+                options.put("maintainAspectRatio", false);
+                options.put("plugins", plugins);
+                options.put("scales", scales);
+
+                Map<String, Object> config = new LinkedHashMap<>();
+                config.put("type", "bar");
+                config.put("data", data);
+                config.put("options", options);
+
+                String json;
+                try {
+                        json = new ObjectMapper().writeValueAsString(config);
+                } catch (Exception ex) {
+                        json = "{}";
+                }
+
+                ChartContainer chart = new ChartContainer() {
+                };
+                chart.setWidthFull();
+                chart.setHeight("210px");
+                chart.showChart(json);
+
+                HorizontalLayout legenda = new HorizontalLayout(
+                                legendaItem("rgba(255,140,0,0.85)", "Real (meses fechados)"),
+                                legendaItem("rgba(255,193,7,0.75)", "Estimativa (meses futuros)"));
+                legenda.getStyle().set("gap", "18px").set("flex-wrap", "wrap").set("margin-top", "8px")
+                                .set("font-size", "0.8em").set("color", "#555");
+
+                VerticalLayout wrap = new VerticalLayout(chart, legenda);
+                wrap.setPadding(false);
+                wrap.setSpacing(false);
+                wrap.setWidthFull();
+                wrap.getStyle().set("border", "1px solid #eee").set("border-radius", "10px").set("padding", "12px");
+                return wrap;
+        }
+
+        private Span legendaItem(String cor, String texto) {
+                Span dot = new Span();
+                dot.getStyle().set("display", "inline-block").set("width", "10px").set("height", "10px")
+                                .set("border-radius", "3px").set("background", cor).set("margin-right", "6px");
+                Span item = new Span(dot, new Span(texto));
+                item.getStyle().set("display", "inline-flex").set("align-items", "center");
+                return item;
         }
 
         private void abrirRelatorioSeguros() {
