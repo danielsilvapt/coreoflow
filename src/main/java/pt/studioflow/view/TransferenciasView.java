@@ -102,20 +102,27 @@ public class TransferenciasView extends VerticalLayout {
     }
 
 
+    // Transferências APENAS do estúdio atual (multi-tenant). Nunca usar repo.findAll() aqui.
+    private java.util.List<Transferencia> transferenciasDoStudio() {
+        pt.studioflow.model.Studio s = TenantContext.getCurrentStudio();
+        return s != null ? repo.findAllByStudio(s) : java.util.List.of();
+    }
+
     private void atualizarTudo() {
         cardsLayout.removeAll();
-        long totalAguardaAprovacao = repo.findAll().stream()
+        java.util.List<Transferencia> minhas = transferenciasDoStudio();
+        long totalAguardaAprovacao = minhas.stream()
                 .filter(t -> "AGUARDA_ASSINATURAS".equals(t.getEstado())
                         || "AGUARDA_UMA_ASSINATURA".equals(t.getEstado()))
                 .count();
-        long totalAguardaPagamento = repo.findAll().stream().filter(t -> "AGUARDA_PAGAMENTO".equals(t.getEstado()))
+        long totalAguardaPagamento = minhas.stream().filter(t -> "AGUARDA_PAGAMENTO".equals(t.getEstado()))
                 .count();
 
         cardsLayout.add(
                 criarCardKpi("PENDENTES DE ASSINATURA", String.valueOf(totalAguardaAprovacao), "#df9a00", "#fffbeb"));
         cardsLayout.add(criarCardKpi("PRONTOS A PAGAR", String.valueOf(totalAguardaPagamento), "#2b6cb0", "#ebf8ff"));
 
-        grid.setItems(repo.findAll());
+        grid.setItems(minhas);
     }
 
     private Div criarCardKpi(String labelText, String valorText, String corTexto, String corFundo) {
@@ -284,6 +291,7 @@ public class TransferenciasView extends VerticalLayout {
             }
 
             Transferencia t = new Transferencia();
+            t.setStudio(TenantContext.getCurrentStudio());
             t.setUrgencia(urgencia.getValue());
             t.setCategoria(categoria.getValue());
             t.setDescricao(desc.getValue());

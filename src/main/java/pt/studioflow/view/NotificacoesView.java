@@ -183,9 +183,10 @@ public class NotificacoesView extends VerticalLayout {
                       || a.getStatus() == Aluno.AlunoStatus.EXPERIMENTAL)
             .collect(Collectors.toList());
 
-        // 3. Transferências pendentes
-        List<Transferencia> transferPendentes = transferenciaRepository.findAll().stream()
-            .filter(t -> studio == null || (t.getStudio() != null && t.getStudio().getId().equals(studio.getId())))
+        // 3. Transferências pendentes (só do estúdio atual)
+        List<Transferencia> transferPendentes = (studio != null
+            ? transferenciaRepository.findAllByStudio(studio)
+            : transferenciaRepository.findAll()).stream()
             .filter(t -> "AGUARDA_ASSINATURAS".equals(t.getEstado())
                       || "AGUARDA_UMA_ASSINATURA".equals(t.getEstado())
                       || "AGUARDA_PAGAMENTO".equals(t.getEstado()))

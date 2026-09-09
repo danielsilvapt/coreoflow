@@ -171,7 +171,7 @@ public class PlanoAulasView extends VerticalLayout {
         tipo.setWidthFull();
 
         ComboBox<Professor> profSubstituto = new ComboBox<>("Professor Substituto");
-        profSubstituto.setItems(professorRepo.findAll());
+        profSubstituto.setItems(studio != null ? professorRepo.findAllByStudio(studio) : professorRepo.findAll());
         profSubstituto.setItemLabelGenerator(Professor::getNome);
         profSubstituto.setWidthFull();
         profSubstituto.setVisible(true);
