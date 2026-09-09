@@ -131,12 +131,19 @@ public class MainLayout extends AppLayout {
                                 + " filter: drop-shadow(0 6px 14px rgba(0,0,0,0.22));"
                                 + " animation: cf-brilho 1.8s ease-in-out infinite; }" +
                                 ".v-loading-indicator.first::after, .v-loading-indicator.second::after, .v-loading-indicator.third::after {"
-                                + " content: none !important; }" +
+                                + " content: 'a carregar\\2026'; position: absolute; left: 50%; top: 50%;"
+                                + " transform: translate(-50%, 44px); white-space: nowrap;"
+                                + " font: 600 13px/1 'Segoe UI',system-ui,sans-serif; letter-spacing: 2px;"
+                                + " color: #5b6472; border: none !important;"
+                                + " animation: cf-carregar 1.8s ease-in-out infinite; }" +
                                 "@keyframes cf-brilho {"
                                 + " 0%, 18% { background-position: 130% 0, 0 0; }"
                                 + " 72%, 100% { background-position: -30% 0, 0 0; } }" +
+                                "@keyframes cf-carregar { 0%,100% { opacity: .45; } 50% { opacity: 1; } }" +
                                 "html[theme~='dark'] .v-loading-indicator.first, html[theme~='dark'] .v-loading-indicator.second, html[theme~='dark'] .v-loading-indicator.third {"
                                 + " background: rgba(15,15,26,0.66) !important; }" +
+                                "html[theme~='dark'] .v-loading-indicator.first::after, html[theme~='dark'] .v-loading-indicator.second::after, html[theme~='dark'] .v-loading-indicator.third::after {"
+                                + " color: #b9c1cf; }" +
                                 "vaadin-app-layout { background: " + BG_GRADIENT + " !important; }" +
                                 "vaadin-tab[selected] { color: " + getPrimaryColor() + " !important; font-weight: 700; }" +
                                 ".drawer-content { background: rgba(255, 255, 255, 0.8) !important; backdrop-filter: blur(10px); }"
