@@ -667,18 +667,21 @@ public class EmailService {
                 mailSender.send(message);
         }
 
-        @org.springframework.beans.factory.annotation.Value("${app.suporte.email}")
-        private String emailSuporte;
+        @org.springframework.beans.factory.annotation.Value("${app.suporte.email:dfc.daniel@gmail.com}")
+        private String emailSuporteDefault;
 
-        public void enviarEmailSuporte(String studio, String utilizador, String tipoProbema, String assunto, String descricao) {
+        /** Destino configurável (via superadmin). Chamado pelo SuporteService. */
+        public void enviarEmailSuporte(String destino, String studio, String utilizador, String tipoProbema,
+                        String assunto, String descricao) {
                 SimpleMailMessage msg = new SimpleMailMessage();
                 msg.setFrom(mailFrom);
-                msg.setTo(emailSuporte);
+                msg.setTo(destino != null && !destino.isBlank() ? destino : emailSuporteDefault);
                 msg.setSubject("[Suporte CoreoFlow] " + assunto);
                 msg.setText(
                         "Estúdio: " + studio + "\n" +
                         "Utilizador: " + utilizador + "\n" +
-                        "Tipo de problema: " + tipoProbema + "\n\n" +
+                        "Tipo de problema: " + tipoProbema + "\n" +
+                        "Data: " + java.time.LocalDateTime.now() + "\n\n" +
                         "Descrição:\n" + descricao
                 );
                 mailSender.send(msg);
