@@ -60,6 +60,7 @@ public class MensalidadeView extends VerticalLayout {
     private List<Mensalidade> listaMensalidades = new ArrayList<>();
 
     // Stats Cards dinâmicos
+    private final Span receitaEstimadaLabel = new Span("0.00€");
     private final Span totalPagoLabel = new Span("0.00€");
     private final Span totalDividaLabel = new Span("0.00€");
     private final Span pendentesLabel = new Span("0");
@@ -155,6 +156,7 @@ public class MensalidadeView extends VerticalLayout {
         layout.getStyle().set("margin-top", "10px");
 
         layout.add(
+                criarStatCard("Receita Estimada", receitaEstimadaLabel, "#8E24AA", VaadinIcon.TRENDING_UP),
                 criarStatCard("Liquidado", totalPagoLabel, "#1E8E3E", VaadinIcon.CHECK_CIRCLE),
                 criarStatCard("Em Dívida", totalDividaLabel, "#D93025", VaadinIcon.CLOSE_CIRCLE),
                 criarStatCard("Por Faturar", pendentesLabel, "#5F6368", VaadinIcon.FILE_PROCESS));
@@ -489,11 +491,15 @@ public class MensalidadeView extends VerticalLayout {
     }
 
     private void updateStats(List<Mensalidade> filtradas) {
+        // Receita estimada: soma de TODAS as mensalidades filtradas, incluindo as
+        // POR_EMITIR — o que se espera faturar com os filtros atuais.
+        double estimada = filtradas.stream().mapToDouble(Mensalidade::getValor).sum();
         double pago = filtradas.stream().filter(m -> m.getEstado() == EstadoMensalidade.PAGO)
                 .mapToDouble(Mensalidade::getValor).sum();
         double divida = filtradas.stream().filter(m -> calcularEstadoEfetivo(m) == EstadoMensalidade.EM_DIVIDA)
                 .mapToDouble(Mensalidade::getValor).sum();
         long pendentes = filtradas.stream().filter(m -> m.getEstado() == EstadoMensalidade.POR_EMITIR).count();
+        receitaEstimadaLabel.setText(String.format("%.2f€", estimada));
         totalPagoLabel.setText(String.format("%.2f€", pago));
         totalDividaLabel.setText(String.format("%.2f€", divida));
         pendentesLabel.setText(String.valueOf(pendentes));
