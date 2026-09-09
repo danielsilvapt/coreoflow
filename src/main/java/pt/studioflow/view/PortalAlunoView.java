@@ -176,6 +176,7 @@ public class PortalAlunoView extends VerticalLayout {
             R2StorageService storageService) {
         VerticalLayout layout = new VerticalLayout();
         layout.setPadding(true);
+        layout.setSizeFull();
 
         // Últimas 20 presenças
         List<Presenca> ultimas = presencas.stream()
@@ -196,7 +197,7 @@ public class PortalAlunoView extends VerticalLayout {
 
         Grid<Presenca> grid = new Grid<>(Presenca.class, false);
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
-        grid.setHeight("300px");
+        grid.setSizeFull();
 
         grid.addColumn(p -> p.getData().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
                 .setHeader("Data").setAutoWidth(true);
@@ -220,7 +221,9 @@ public class PortalAlunoView extends VerticalLayout {
         }).setHeader("Vídeo").setAutoWidth(true);
 
         grid.setItems(ultimas);
-        layout.add(new H3("Últimas Presenças"), grid);
+        H3 t = new H3("Últimas Presenças");
+        layout.add(t, grid);
+        layout.expand(grid);
         return layout;
     }
 
@@ -389,10 +392,11 @@ public class PortalAlunoView extends VerticalLayout {
     private VerticalLayout criarTabMensalidades(List<Mensalidade> mensalidades, Studio studio) {
         VerticalLayout layout = new VerticalLayout();
         layout.setPadding(true);
+        layout.setSizeFull();
 
         Grid<Mensalidade> grid = new Grid<>(Mensalidade.class, false);
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
-        grid.setHeight("300px");
+        grid.setSizeFull();
 
         grid.addColumn(m -> m.getMes().getDisplayName(TextStyle.SHORT, new Locale("pt"))
                 + " " + m.getAno()).setHeader("Período").setAutoWidth(true);
@@ -418,6 +422,7 @@ public class PortalAlunoView extends VerticalLayout {
                 }).toList();
         grid.setItems(ordenadas);
         layout.add(new H3("Histórico de Mensalidades"), grid);
+        layout.expand(grid);
         return layout;
     }
 
