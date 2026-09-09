@@ -416,6 +416,7 @@ public class MainLayout extends AppLayout {
                         tabs.add(criarTab("Saúde", VaadinIcon.HEALTH_CARD, "#E74C3C", PainelSaudeView.class, null));
                         tabs.add(criarTab("Estúdios", VaadinIcon.GLOBE, "#7B61FF", StudioAdminView.class, null));
                         tabs.add(criarTab("Utilizadores", VaadinIcon.SHIELD, "#27AE60", UserView.class, null));
+                        tabs.add(criarTab("Logs & Erros", VaadinIcon.FILE_TEXT_O, "#E74C3C", LogsView.class, null));
                         tabs.add(criarTab("Configurações", VaadinIcon.COG, "#607D8B", ConfiguracoesPlataformaView.class, null));
                         tabs.add(criarHeaderMenu("Comercial"));
                         long leadsAtivos = leadRepository.findAll().stream()
