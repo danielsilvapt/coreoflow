@@ -655,8 +655,7 @@ public class RelatoriosView extends VerticalLayout {
 
                 Dialog d = new Dialog();
                 d.setHeaderTitle("Rentabilidade Mensal");
-                d.setWidth("1000px");
-                d.setHeight("800px");
+                dialogRedimensionavel(d, "1000px", "800px");
 
                 ComboBox<YearMonth> seletor = criarSeletorMes(YearMonth.now().minusMonths(1));
                 Div container = new Div();
@@ -671,7 +670,8 @@ public class RelatoriosView extends VerticalLayout {
                                 + "vaadin-grid::part(rent-est){background-color:#FFFDE7 !important;}"
                                 + "vaadin-grid::part(rent-pos){color:#2E7D32 !important;font-weight:700;}"
                                 + "vaadin-grid::part(rent-neg){color:#C62828 !important;font-weight:700;}"
-                                + "vaadin-grid::part(rent-grp){font-weight:700;border-top:1px solid #cfd8dc;}");
+                                + "vaadin-grid::part(rent-grp){font-weight:700;border-top:1px solid #cfd8dc;}"
+                                + "vaadin-grid::part(rent-sep){border-right:2px solid #b0bec5 !important;}");
 
                 Runnable render = () -> {
                         container.removeAll();
@@ -717,17 +717,17 @@ public class RelatoriosView extends VerticalLayout {
 
                         grid.addHierarchyColumn(LinhaRent::nome).setHeader("Professor / Turma")
                                         .setAutoWidth(true).setFlexGrow(1);
-                        Grid.Column<LinhaRent> cRecR = colRent(grid, RemuneracaoService.REC_REAL, "Real", false, false);
-                        Grid.Column<LinhaRent> cRecE = colRent(grid, RemuneracaoService.REC_EST, "Estimada", true, false);
-                        Grid.Column<LinhaRent> cCusR = colRent(grid, RemuneracaoService.CUSTO_REAL, "Real", false, false);
-                        Grid.Column<LinhaRent> cCusE = colRent(grid, RemuneracaoService.CUSTO_EST, "Estimado", true, false);
-                        Grid.Column<LinhaRent> cSalR = colRent(grid, RemuneracaoService.SALDO_REAL, "Real", false, true);
-                        Grid.Column<LinhaRent> cSalE = colRent(grid, RemuneracaoService.SALDO_EST, "Estimado", true, true);
+                        Grid.Column<LinhaRent> cRecR = colRent(grid, RemuneracaoService.REC_REAL, "Real", false, false, false);
+                        Grid.Column<LinhaRent> cRecE = colRent(grid, RemuneracaoService.REC_EST, "Estimada", true, false, true);
+                        Grid.Column<LinhaRent> cCusR = colRent(grid, RemuneracaoService.CUSTO_REAL, "Real", false, false, false);
+                        Grid.Column<LinhaRent> cCusE = colRent(grid, RemuneracaoService.CUSTO_EST, "Estimado", true, false, true);
+                        Grid.Column<LinhaRent> cSalR = colRent(grid, RemuneracaoService.SALDO_REAL, "Real", false, true, false);
+                        Grid.Column<LinhaRent> cSalE = colRent(grid, RemuneracaoService.SALDO_EST, "Estimado", true, true, false);
 
                         com.vaadin.flow.component.grid.HeaderRow topo = grid.prependHeaderRow();
-                        topo.join(cRecR, cRecE).setComponent(grupoHeader("Receita"));
-                        topo.join(cCusR, cCusE).setComponent(grupoHeader("Custo Prof."));
-                        topo.join(cSalR, cSalE).setComponent(grupoHeader("Saldo"));
+                        topo.join(cRecR, cRecE).setComponent(grupoHeader("Receita", true));
+                        topo.join(cCusR, cCusE).setComponent(grupoHeader("Custo Prof.", true));
+                        topo.join(cSalR, cSalE).setComponent(grupoHeader("Saldo", false));
 
                         String[] headers = { "Professor / Turma", "Receita Real", "Receita Estimada", "Custo Prof Real",
                                         "Custo Prof Estimado", "Saldo Real", "Saldo Estimado" };
@@ -778,32 +778,70 @@ public class RelatoriosView extends VerticalLayout {
                 d.open();
         }
 
+        /**
+         * Torna a modal redimensionável e arrastável, e acrescenta ao cabeçalho um
+         * botão que alterna entre o tamanho normal e quase ecrã inteiro.
+         */
+        private void dialogRedimensionavel(Dialog d, String larguraDefault, String alturaDefault) {
+                d.setWidth(larguraDefault);
+                d.setHeight(alturaDefault);
+                d.setResizable(true);
+                d.setDraggable(true);
+
+                boolean[] maximizado = { false };
+                Button btn = new Button(VaadinIcon.EXPAND_FULL.create());
+                btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                btn.getElement().setAttribute("aria-label", "Aumentar / reduzir janela");
+                btn.getElement().setAttribute("title", "Aumentar / reduzir janela");
+                btn.addClickListener(e -> {
+                        maximizado[0] = !maximizado[0];
+                        if (maximizado[0]) {
+                                d.setWidth("96vw");
+                                d.setHeight("94vh");
+                                btn.setIcon(VaadinIcon.COMPRESS.create());
+                        } else {
+                                d.setWidth(larguraDefault);
+                                d.setHeight(alturaDefault);
+                                btn.setIcon(VaadinIcon.EXPAND_FULL.create());
+                        }
+                });
+                d.getHeader().add(btn);
+        }
+
         /** Linha do relatório de rentabilidade: grupo (professor) ou turma. v = [recR, recE, custoR, custoE, saldoR, saldoE]. */
         private record LinhaRent(String nome, boolean grupo, double[] v, List<LinhaRent> filhos) {
         }
 
         private Grid.Column<LinhaRent> colRent(Grid<LinhaRent> grid, int idx, String sub,
-                        boolean estimado, boolean saldo) {
+                        boolean estimado, boolean saldo, boolean separador) {
                 Grid.Column<LinhaRent> c = grid.addColumn(lr -> fmtEuro(lr.v()[idx]))
                                 .setHeader(subHeader(sub, estimado)).setAutoWidth(true)
-                                .setTextAlign(ColumnTextAlign.END);
+                                .setTextAlign(ColumnTextAlign.CENTER);
                 c.setPartNameGenerator(lr -> {
                         String base = estimado ? "rent-est" : "rent-real";
-                        return saldo ? base + (lr.v()[idx] >= 0 ? " rent-pos" : " rent-neg") : base;
+                        if (saldo)
+                                base += lr.v()[idx] >= 0 ? " rent-pos" : " rent-neg";
+                        if (separador)
+                                base += " rent-sep";
+                        return base;
                 });
                 return c;
         }
 
         private Span subHeader(String txt, boolean estimado) {
                 Span s = new Span(txt);
-                s.getStyle().set("font-size", "0.78em").set("font-weight", "600")
+                s.getStyle().set("width", "100%").set("text-align", "center")
+                                .set("font-size", "0.78em").set("font-weight", "600")
                                 .set("color", estimado ? "#F9A825" : "#E65100");
                 return s;
         }
 
-        private Span grupoHeader(String txt) {
+        private Span grupoHeader(String txt, boolean separador) {
                 Span s = new Span(txt);
-                s.getStyle().set("font-weight", "700");
+                s.getStyle().set("display", "block").set("width", "100%").set("text-align", "center")
+                                .set("font-weight", "700");
+                if (separador)
+                        s.getStyle().set("border-right", "2px solid #b0bec5").set("padding-right", "0");
                 return s;
         }
 
