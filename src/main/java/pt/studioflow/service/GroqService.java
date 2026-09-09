@@ -112,4 +112,32 @@ public class GroqService {
     public String perguntarJson(String sistema, String pergunta) {
         return conversar(sistema, List.of(ChatMsg.utilizador(pergunta)), true);
     }
+
+    /** IDs dos modelos a que a chave configurada tem acesso. Lança em caso de erro. */
+    public List<String> listarModelos() {
+        ConfiguracaoPlataforma cfg = configRepo.findById(1L).orElse(null);
+        if (cfg == null || cfg.getGroqApiKey() == null || cfg.getGroqApiKey().isBlank()) {
+            throw new IllegalStateException("Chave GROQ não configurada.");
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(cfg.getGroqApiKey());
+        try {
+            String raw = rest.exchange("https://api.groq.com/openai/v1/models",
+                    org.springframework.http.HttpMethod.GET, new org.springframework.http.HttpEntity<>(headers),
+                    String.class).getBody();
+            List<String> ids = new ArrayList<>();
+            for (JsonNode n : mapper.readTree(raw).path("data")) {
+                String id = n.path("id").asText(null);
+                if (id != null) {
+                    ids.add(id);
+                }
+            }
+            ids.sort(String::compareToIgnoreCase);
+            return ids;
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            throw new IllegalStateException("GROQ " + e.getStatusCode() + ": " + e.getResponseBodyAsString(), e);
+        } catch (Exception e) {
+            throw new IllegalStateException("Falha a listar modelos: " + e.getMessage(), e);
+        }
+    }
 }

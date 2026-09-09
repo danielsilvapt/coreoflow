@@ -50,7 +50,7 @@ public class ConfiguracaoPlataforma {
 
     /** Modelo GROQ a usar para gerar planos e responder no chat. */
     @Column(length = 80)
-    private String groqModelo = "llama-3.3-70b-versatile";
+    private String groqModelo = "llama-3.1-8b-instant";
 
     /** Chave da API YouTube Data v3 (Google Cloud) para procurar vídeos de tutoriais. */
     @Column(length = 200)
@@ -145,7 +145,7 @@ public class ConfiguracaoPlataforma {
     }
 
     public String getGroqModelo() {
-        return groqModelo != null && !groqModelo.isBlank() ? groqModelo : "llama-3.3-70b-versatile";
+        return groqModelo != null && !groqModelo.isBlank() ? groqModelo : "llama-3.1-8b-instant";
     }
 
     public void setGroqModelo(String groqModelo) {

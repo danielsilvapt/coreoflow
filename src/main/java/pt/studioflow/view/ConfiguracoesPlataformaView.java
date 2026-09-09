@@ -18,6 +18,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.model.ConfiguracaoPlataforma;
+import pt.studioflow.service.GroqService;
 import pt.studioflow.service.SuporteService;
 
 @Route(value = "admin/configuracoes", layout = MainLayout.class)
@@ -26,9 +27,11 @@ import pt.studioflow.service.SuporteService;
 public class ConfiguracoesPlataformaView extends VerticalLayout {
 
     private final SuporteService suporteService;
+    private final GroqService groqService;
 
-    public ConfiguracoesPlataformaView(SuporteService suporteService) {
+    public ConfiguracoesPlataformaView(SuporteService suporteService, GroqService groqService) {
         this.suporteService = suporteService;
+        this.groqService = groqService;
 
         setSizeFull();
         setPadding(true);
@@ -150,25 +153,66 @@ public class ConfiguracoesPlataformaView extends VerticalLayout {
     // ---- Treinador de Dança IA ----
     private Checkbox iaAtiva;
     private com.vaadin.flow.component.textfield.PasswordField groqKey;
-    private TextField groqModelo;
+    private ComboBox<String> groqModelo;
     private com.vaadin.flow.component.textfield.PasswordField youtubeKey;
 
     private VerticalLayout campoIa(ConfiguracaoPlataforma c) {
-        iaAtiva = new Checkbox("Ativar o Treinador IA para os estúdios");
+        iaAtiva = new Checkbox("Ativar o Treinador IA (depois escolhe-se por estúdio em Estúdios → módulos)");
         iaAtiva.setValue(c.isTreinadorIaAtivo());
+
         groqKey = new com.vaadin.flow.component.textfield.PasswordField("Chave da API GROQ");
         groqKey.setValue(nvl(c.getGroqApiKey()));
         groqKey.setWidthFull();
-        groqKey.setHelperText("console.groq.com — necessária para gerar planos e para o chat.");
-        groqModelo = new TextField("Modelo GROQ");
+        groqKey.setHelperText("console.groq.com → API Keys. Necessária para gerar planos e para o chat.");
+
+        groqModelo = new ComboBox<>("Modelo GROQ");
+        groqModelo.setAllowCustomValue(true);
+        groqModelo.setItems("llama-3.1-8b-instant", "llama-3.3-70b-versatile",
+                "meta-llama/llama-4-scout-17b-16e-instruct", "openai/gpt-oss-20b", "openai/gpt-oss-120b");
+        groqModelo.addCustomValueSetListener(e -> groqModelo.setValue(e.getDetail()));
         groqModelo.setValue(nvl(c.getGroqModelo()));
-        groqModelo.setWidth("320px");
-        groqModelo.setHelperText("Ex.: llama-3.3-70b-versatile");
+        groqModelo.setWidth("360px");
+        groqModelo.setHelperText("Usa \"Ver modelos da chave\" para confirmar quais funcionam.");
+
+        Button verModelos = new Button("Ver modelos da chave", VaadinIcon.LIST.create(), e -> {
+            try {
+                java.util.List<String> ms = groqService.listarModelos();
+                groqModelo.setItems(ms);
+                Notification.show("Modelos disponíveis: " + String.join(", ", ms), 8000,
+                        Notification.Position.BOTTOM_START);
+            } catch (Exception ex) {
+                Notification.show(ex.getMessage(), 7000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        verModelos.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+        Button testar = new Button("Guardar e testar", VaadinIcon.MAGIC.create(), e -> {
+            try {
+                aplicarIa(c);
+                suporteService.guardarConfig(c);
+                String r = groqService.perguntar("Responde apenas com a palavra OK.", "Diz OK.");
+                Notification.show("GROQ (" + c.getGroqModelo() + ") respondeu: " + r)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (Exception ex) {
+                Notification.show(ex.getMessage(), 8000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        testar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
         youtubeKey = new com.vaadin.flow.component.textfield.PasswordField("Chave da API YouTube Data v3 (opcional)");
         youtubeKey.setValue(nvl(c.getYoutubeApiKey()));
         youtubeKey.setWidthFull();
-        youtubeKey.setHelperText("Google Cloud — sem ela, os planos são criados na mesma mas sem vídeos sugeridos.");
-        return grupo(iaAtiva, groqKey, groqModelo, youtubeKey);
+        youtubeKey.setHelperText("Google Cloud Console → APIs → ativar \"YouTube Data API v3\" → Credenciais → "
+                + "Chave de API. Sem ela, os planos são criados na mesma mas sem vídeos sugeridos.");
+
+        com.vaadin.flow.component.orderedlayout.HorizontalLayout botoes =
+                new com.vaadin.flow.component.orderedlayout.HorizontalLayout(groqModelo, verModelos, testar);
+        botoes.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.END);
+        botoes.getStyle().set("flex-wrap", "wrap");
+
+        return grupo(iaAtiva, groqKey, botoes, youtubeKey);
     }
 
     private void aplicarIa(ConfiguracaoPlataforma c) {
