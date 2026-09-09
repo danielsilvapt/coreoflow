@@ -39,6 +39,23 @@ public class ConfiguracaoPlataforma {
     @Column(length = 200)
     private String emailBccSuporte;
 
+    // --- Treinador de Dança IA ---
+
+    /** Liga a secção "Treinador IA" no menu dos estúdios. */
+    private boolean treinadorIaAtivo = false;
+
+    /** Chave da API GROQ (https://console.groq.com). */
+    @Column(length = 200)
+    private String groqApiKey;
+
+    /** Modelo GROQ a usar para gerar planos e responder no chat. */
+    @Column(length = 80)
+    private String groqModelo = "llama-3.3-70b-versatile";
+
+    /** Chave da API YouTube Data v3 (Google Cloud) para procurar vídeos de tutoriais. */
+    @Column(length = 200)
+    private String youtubeApiKey;
+
     public Long getId() {
         return id;
     }
@@ -109,5 +126,42 @@ public class ConfiguracaoPlataforma {
 
     public void setEmailBccSuporte(String emailBccSuporte) {
         this.emailBccSuporte = emailBccSuporte;
+    }
+
+    public boolean isTreinadorIaAtivo() {
+        return treinadorIaAtivo;
+    }
+
+    public void setTreinadorIaAtivo(boolean treinadorIaAtivo) {
+        this.treinadorIaAtivo = treinadorIaAtivo;
+    }
+
+    public String getGroqApiKey() {
+        return groqApiKey;
+    }
+
+    public void setGroqApiKey(String groqApiKey) {
+        this.groqApiKey = groqApiKey;
+    }
+
+    public String getGroqModelo() {
+        return groqModelo != null && !groqModelo.isBlank() ? groqModelo : "llama-3.3-70b-versatile";
+    }
+
+    public void setGroqModelo(String groqModelo) {
+        this.groqModelo = groqModelo;
+    }
+
+    public String getYoutubeApiKey() {
+        return youtubeApiKey;
+    }
+
+    public void setYoutubeApiKey(String youtubeApiKey) {
+        this.youtubeApiKey = youtubeApiKey;
+    }
+
+    /** IA disponível para os estúdios: ativa + chave GROQ presente. */
+    public boolean treinadorIaDisponivel() {
+        return treinadorIaAtivo && groqApiKey != null && !groqApiKey.isBlank();
     }
 }

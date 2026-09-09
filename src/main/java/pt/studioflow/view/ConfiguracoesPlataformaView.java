@@ -48,12 +48,15 @@ public class ConfiguracoesPlataformaView extends VerticalLayout {
                 campoEmails(c)));
         add(seccao("Onboarding",
                 campoOnboarding(c)));
+        add(seccao("Treinador de Dança IA",
+                campoIa(c)));
 
         Button guardar = new Button("Guardar tudo", VaadinIcon.CHECK.create(), e -> {
             aplicarSuporte(c);
             aplicarAviso(c);
             aplicarEmails(c);
             aplicarOnboarding(c);
+            aplicarIa(c);
             suporteService.guardarConfig(c);
             Notification.show("Configurações guardadas.").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         });
@@ -142,6 +145,37 @@ public class ConfiguracoesPlataformaView extends VerticalLayout {
 
     private void aplicarOnboarding(ConfiguracaoPlataforma c) {
         c.setPermitirNovosEstudios(novosEstudios.getValue());
+    }
+
+    // ---- Treinador de Dança IA ----
+    private Checkbox iaAtiva;
+    private com.vaadin.flow.component.textfield.PasswordField groqKey;
+    private TextField groqModelo;
+    private com.vaadin.flow.component.textfield.PasswordField youtubeKey;
+
+    private VerticalLayout campoIa(ConfiguracaoPlataforma c) {
+        iaAtiva = new Checkbox("Ativar o Treinador IA para os estúdios");
+        iaAtiva.setValue(c.isTreinadorIaAtivo());
+        groqKey = new com.vaadin.flow.component.textfield.PasswordField("Chave da API GROQ");
+        groqKey.setValue(nvl(c.getGroqApiKey()));
+        groqKey.setWidthFull();
+        groqKey.setHelperText("console.groq.com — necessária para gerar planos e para o chat.");
+        groqModelo = new TextField("Modelo GROQ");
+        groqModelo.setValue(nvl(c.getGroqModelo()));
+        groqModelo.setWidth("320px");
+        groqModelo.setHelperText("Ex.: llama-3.3-70b-versatile");
+        youtubeKey = new com.vaadin.flow.component.textfield.PasswordField("Chave da API YouTube Data v3 (opcional)");
+        youtubeKey.setValue(nvl(c.getYoutubeApiKey()));
+        youtubeKey.setWidthFull();
+        youtubeKey.setHelperText("Google Cloud — sem ela, os planos são criados na mesma mas sem vídeos sugeridos.");
+        return grupo(iaAtiva, groqKey, groqModelo, youtubeKey);
+    }
+
+    private void aplicarIa(ConfiguracaoPlataforma c) {
+        c.setTreinadorIaAtivo(iaAtiva.getValue());
+        c.setGroqApiKey(trimOrNull(groqKey.getValue()));
+        c.setGroqModelo(trimOrNull(groqModelo.getValue()));
+        c.setYoutubeApiKey(trimOrNull(youtubeKey.getValue()));
     }
 
     // ---- helpers ----
