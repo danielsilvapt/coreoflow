@@ -636,8 +636,11 @@ public class RelatoriosView extends VerticalLayout {
                 grid.addComponentColumn(m -> {
                         Button b = new Button(VaadinIcon.CHAT.create(), e -> {
                                 String pNome = m.get("nome").toString().split(" ")[0];
+                                pt.studioflow.model.Studio _stCob = TenantContext.getCurrentStudio();
+                                String nomeEsc = (_stCob != null && _stCob.getNome() != null
+                                                && !_stCob.getNome().isBlank()) ? _stCob.getNome() : "escola";
                                 String msg = "Olá " + pNome
-                                                + "! Notamos que a mensalidade da CoreoFlow está pendente ("
+                                                + "! Notamos que a mensalidade da " + nomeEsc + " está pendente ("
                                                 + String.format("%.2f", (Double) m.get("total"))
                                                 + "€). Pedimos que regularize. Obrigado!";
                                 getUI().ifPresent(ui -> ui.getPage()
