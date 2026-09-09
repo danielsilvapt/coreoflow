@@ -27,6 +27,8 @@ import software.xdev.vaadin.chartjs.ChartContainer;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Anchor;
@@ -661,64 +663,104 @@ public class RelatoriosView extends VerticalLayout {
                 container.setWidthFull();
                 container.getStyle().set("flex-grow", "1").set("overflow", "auto");
 
+                UI.getCurrent().getElement().executeJs(
+                                "if(!document.getElementById('rent-styles')){"
+                                + "const s=document.createElement('style');s.id='rent-styles';s.textContent=$0;"
+                                + "document.head.appendChild(s);}",
+                                "vaadin-grid::part(rent-real){background-color:#FFF3E0 !important;}"
+                                + "vaadin-grid::part(rent-est){background-color:#FFFDE7 !important;}"
+                                + "vaadin-grid::part(rent-pos){color:#2E7D32 !important;font-weight:700;}"
+                                + "vaadin-grid::part(rent-neg){color:#C62828 !important;font-weight:700;}"
+                                + "vaadin-grid::part(rent-grp){font-weight:700;border-top:1px solid #cfd8dc;}");
+
                 Runnable render = () -> {
                         container.removeAll();
                         YearMonth mes = seletor.getValue();
                         boolean previsto = remuneracaoService.ehFuturo(mes);
-                        Map<Long, double[]> rent = remuneracaoService.rentabilidadePorTurma(turmas, studio, mes, dados);
-                        Map<Long, Double> custoEst = new HashMap<>();
+                        Map<Long, double[]> rent = remuneracaoService.rentabilidadeDetalhadaPorTurma(turmas, studio,
+                                        mes, dados);
+
+                        // Agrupar as turmas por professor, com subtotal por professor
+                        Map<String, List<Turma>> porProf = new LinkedHashMap<>();
                         for (Turma t : turmas) {
-                                custoEst.put(t.getId(),
-                                                remuneracaoService.custoProfessorEstimadoTurma(t, studio, mes, dados));
+                                double[] x = rent.get(t.getId());
+                                if (x == null || java.util.Arrays.stream(x).allMatch(vv -> vv == 0))
+                                        continue;
+                                String prof = t.getProfessor() != null ? t.getProfessor().getNome() : "Sem professor";
+                                porProf.computeIfAbsent(prof, k -> new ArrayList<>()).add(t);
                         }
+                        List<LinhaRent> raizes = new ArrayList<>();
+                        for (Map.Entry<String, List<Turma>> e : porProf.entrySet()) {
+                                List<LinhaRent> filhos = e.getValue().stream()
+                                                .map(t -> new LinhaRent(t.getDescricao(), false,
+                                                                rent.get(t.getId()), List.of()))
+                                                .sorted((a, b) -> Double.compare(b.v()[RemuneracaoService.SALDO_EST],
+                                                                a.v()[RemuneracaoService.SALDO_EST]))
+                                                .collect(Collectors.toList());
+                                double[] soma = new double[6];
+                                filhos.forEach(f -> {
+                                        for (int i = 0; i < 6; i++)
+                                                soma[i] += f.v()[i];
+                                });
+                                raizes.add(new LinhaRent(e.getKey(), true, soma, filhos));
+                        }
+                        raizes.sort((a, b) -> Double.compare(b.v()[RemuneracaoService.SALDO_EST],
+                                        a.v()[RemuneracaoService.SALDO_EST]));
 
-                        java.util.function.ToDoubleFunction<Turma> saldoEst = t -> rent.get(t.getId())[0]
-                                        - custoEst.get(t.getId());
-
-                        List<Turma> ordenadas = turmas.stream()
-                                        .filter(t -> {
-                                                double[] x = rent.get(t.getId());
-                                                return x != null && (x[0] != 0 || x[1] != 0);
-                                        })
-                                        .sorted((a, b) -> Double.compare(saldoEst.applyAsDouble(b),
-                                                        saldoEst.applyAsDouble(a)))
-                                        .collect(Collectors.toList());
-
-                        Grid<Turma> grid = new Grid<>();
-                        grid.setItems(ordenadas);
-                        grid.addColumn(Turma::getDescricao).setHeader("Turma");
-                        grid.addColumn(t -> fmtEuro(rent.get(t.getId())[0])).setHeader("Receita").setAutoWidth(true);
-                        grid.addColumn(t -> fmtEuro(rent.get(t.getId())[1])).setHeader("Custo Prof").setAutoWidth(true);
-                        grid.addColumn(t -> fmtEuro(custoEst.get(t.getId()))).setHeader("Custo Prof Est.")
-                                        .setAutoWidth(true);
-                        grid.addColumn(t -> fmtEuro(rent.get(t.getId())[2])).setHeader("Saldo").setAutoWidth(true);
-                        grid.addColumn(t -> fmtEuro(saldoEst.applyAsDouble(t))).setHeader("Saldo Est.").setAutoWidth(true);
+                        com.vaadin.flow.component.treegrid.TreeGrid<LinhaRent> grid =
+                                        new com.vaadin.flow.component.treegrid.TreeGrid<>();
                         grid.addThemeVariants(GridVariant.LUMO_COMPACT, GridVariant.LUMO_ROW_STRIPES);
                         grid.setSizeFull();
+                        grid.setItems(raizes, LinhaRent::filhos);
+                        grid.expandRecursively(raizes, 1);
+                        grid.setPartNameGenerator(lr -> lr.grupo() ? "rent-grp" : null);
 
-                        String[] headers = { "Turma", "Receita", "Custo Prof", "Custo Prof Estimado", "Saldo Final",
-                                        "Saldo Final Estimado" };
-                        List<String[]> rows = ordenadas.stream()
-                                        .map(t -> new String[] { t.getDescricao(),
-                                                        fmtEuro(rent.get(t.getId())[0]), fmtEuro(rent.get(t.getId())[1]),
-                                                        fmtEuro(custoEst.get(t.getId())),
-                                                        fmtEuro(rent.get(t.getId())[2]),
-                                                        fmtEuro(saldoEst.applyAsDouble(t)) })
-                                        .collect(Collectors.toList());
-                        double tRec = ordenadas.stream().mapToDouble(t -> rent.get(t.getId())[0]).sum();
-                        double tCusto = ordenadas.stream().mapToDouble(t -> rent.get(t.getId())[1]).sum();
-                        double tCustoEst = ordenadas.stream().mapToDouble(t -> custoEst.get(t.getId())).sum();
-                        rows.add(new String[] { "TOTAL", fmtEuro(tRec), fmtEuro(tCusto), fmtEuro(tCustoEst),
-                                        fmtEuro(tRec - tCusto), fmtEuro(tRec - tCustoEst) });
+                        grid.addHierarchyColumn(LinhaRent::nome).setHeader("Professor / Turma")
+                                        .setAutoWidth(true).setFlexGrow(1);
+                        Grid.Column<LinhaRent> cRecR = colRent(grid, RemuneracaoService.REC_REAL, "Real", false, false);
+                        Grid.Column<LinhaRent> cRecE = colRent(grid, RemuneracaoService.REC_EST, "Estimada", true, false);
+                        Grid.Column<LinhaRent> cCusR = colRent(grid, RemuneracaoService.CUSTO_REAL, "Real", false, false);
+                        Grid.Column<LinhaRent> cCusE = colRent(grid, RemuneracaoService.CUSTO_EST, "Estimado", true, false);
+                        Grid.Column<LinhaRent> cSalR = colRent(grid, RemuneracaoService.SALDO_REAL, "Real", false, true);
+                        Grid.Column<LinhaRent> cSalE = colRent(grid, RemuneracaoService.SALDO_EST, "Estimado", true, true);
+
+                        com.vaadin.flow.component.grid.HeaderRow topo = grid.prependHeaderRow();
+                        topo.join(cRecR, cRecE).setComponent(grupoHeader("Receita"));
+                        topo.join(cCusR, cCusE).setComponent(grupoHeader("Custo Prof."));
+                        topo.join(cSalR, cSalE).setComponent(grupoHeader("Saldo"));
+
+                        String[] headers = { "Professor / Turma", "Receita Real", "Receita Estimada", "Custo Prof Real",
+                                        "Custo Prof Estimado", "Saldo Real", "Saldo Estimado" };
+                        List<String[]> rows = new ArrayList<>();
+                        double[] tot = new double[6];
+                        for (LinhaRent g : raizes) {
+                                rows.add(linhaExport("[" + g.nome() + "]", g.v()));
+                                for (LinhaRent f : g.filhos())
+                                        rows.add(linhaExport("   " + f.nome(), f.v()));
+                                for (int i = 0; i < 6; i++)
+                                        tot[i] += g.v()[i];
+                        }
+                        rows.add(linhaExport("TOTAL", tot));
 
                         Span aviso = new Span(previsto
-                                        ? "⚠️ Mês futuro — previsão: receita das inscrições ativas menos custo estimado do professor."
-                                        : "Valores reais do mês selecionado.");
+                                        ? "Mês futuro: as colunas Real ainda estão praticamente a zero (mensalidades por emitir, horas por registar) — orienta-te pelas colunas Estimadas."
+                                        : "Real = faturado / horas registadas. Estimado = projeção das inscrições ativas e horário planeado.");
                         aviso.getStyle().set("font-size", "12px").set("color", previsto ? "#e65100" : "#888");
+
+                        Span legendaCores = new Span();
+                        legendaCores.getElement().setProperty("innerHTML",
+                                        "<span style='background:#FFF3E0;padding:1px 8px;border-radius:4px'>Real</span>"
+                                        + "&nbsp;&nbsp;"
+                                        + "<span style='background:#FFFDE7;padding:1px 8px;border-radius:4px'>Estimado</span>");
+                        legendaCores.getStyle().set("font-size", "12px");
+                        HorizontalLayout linhaAviso = new HorizontalLayout(aviso, legendaCores);
+                        linhaAviso.setWidthFull();
+                        linhaAviso.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
+                        linhaAviso.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
 
                         String tituloExport = "Rentabilidade - " + mesLabel(mes) + (previsto ? " (previsao)" : "");
                         Component grafico = criarGraficoRentabilidadeMensal(mes, turmas, studio, dados);
-                        VerticalLayout v = new VerticalLayout(grafico, aviso, grid,
+                        VerticalLayout v = new VerticalLayout(grafico, linhaAviso, grid,
                                         linhaDownloads(tituloExport, headers, rows));
                         v.setSizeFull();
                         v.setPadding(false);
@@ -734,6 +776,40 @@ public class RelatoriosView extends VerticalLayout {
                 d.add(wrap);
                 d.getFooter().add(new Button("Fechar", e -> d.close()));
                 d.open();
+        }
+
+        /** Linha do relatório de rentabilidade: grupo (professor) ou turma. v = [recR, recE, custoR, custoE, saldoR, saldoE]. */
+        private record LinhaRent(String nome, boolean grupo, double[] v, List<LinhaRent> filhos) {
+        }
+
+        private Grid.Column<LinhaRent> colRent(Grid<LinhaRent> grid, int idx, String sub,
+                        boolean estimado, boolean saldo) {
+                Grid.Column<LinhaRent> c = grid.addColumn(lr -> fmtEuro(lr.v()[idx]))
+                                .setHeader(subHeader(sub, estimado)).setAutoWidth(true)
+                                .setTextAlign(ColumnTextAlign.END);
+                c.setPartNameGenerator(lr -> {
+                        String base = estimado ? "rent-est" : "rent-real";
+                        return saldo ? base + (lr.v()[idx] >= 0 ? " rent-pos" : " rent-neg") : base;
+                });
+                return c;
+        }
+
+        private Span subHeader(String txt, boolean estimado) {
+                Span s = new Span(txt);
+                s.getStyle().set("font-size", "0.78em").set("font-weight", "600")
+                                .set("color", estimado ? "#F9A825" : "#E65100");
+                return s;
+        }
+
+        private Span grupoHeader(String txt) {
+                Span s = new Span(txt);
+                s.getStyle().set("font-weight", "700");
+                return s;
+        }
+
+        private String[] linhaExport(String nome, double[] x) {
+                return new String[] { nome, fmtEuro(x[0]), fmtEuro(x[1]), fmtEuro(x[2]), fmtEuro(x[3]),
+                                fmtEuro(x[4]), fmtEuro(x[5]) };
         }
 
         // Gráfico de barras com a rentabilidade geral (soma de todas as turmas) mês a

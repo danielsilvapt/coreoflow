@@ -108,12 +108,23 @@ public class RemuneracaoService {
 
     /** Receita (mensalidades) da turma no mês — real para meses fechados, projetada para futuros. */
     public double receitaTurma(Turma t, YearMonth mes, Dados d, Studio studio) {
-        if (!ehFuturo(mes)) {
-            return d.mensalidades.stream()
-                    .filter(m -> m.getTurma() != null && m.getTurma().getId().equals(t.getId()))
-                    .filter(m -> mesIgual(m, mes))
-                    .mapToDouble(Mensalidade::getValor).sum();
-        }
+        return ehFuturo(mes) ? receitaEstimadaTurma(t, d, studio) : receitaRealTurma(t, mes, d);
+    }
+
+    /** Receita <b>real</b> (mensalidades efetivamente emitidas) da turma no mês. Para meses futuros tende a 0. */
+    public double receitaRealTurma(Turma t, YearMonth mes, Dados d) {
+        return d.mensalidades.stream()
+                .filter(m -> m.getTurma() != null && m.getTurma().getId().equals(t.getId()))
+                .filter(m -> mesIgual(m, mes))
+                .mapToDouble(Mensalidade::getValor).sum();
+    }
+
+    /**
+     * Receita <b>estimada</b> da turma: projeção das mensalidades das inscrições
+     * ativas, independentemente de o mês já ter mensalidades emitidas. Serve de
+     * termo de comparação com {@link #receitaRealTurma}.
+     */
+    public double receitaEstimadaTurma(Turma t, Dados d, Studio studio) {
         return d.inscricoes.stream()
                 .filter(at -> at.getTurma() != null && at.getTurma().getId().equals(t.getId()))
                 .filter(at -> at.getAluno() != null && at.getAluno().isAtivo())
@@ -127,34 +138,31 @@ public class RemuneracaoService {
      * não depender de uma associação lazy fora de sessão Hibernate.
      */
     public double custoProfessorTurma(Turma t, Studio studio, YearMonth mes, Dados d) {
+        return ehFuturo(mes)
+                ? custoProfessorEstimadoTurma(t, studio, mes, d)
+                : custoProfessorRealTurma(t, studio, mes, d);
+    }
+
+    /**
+     * Custo <b>real</b> do professor para a turma no mês: percentagem das
+     * mensalidades efetivamente emitidas (ou horas registadas no modo HORA), mais
+     * os extras pagos à hora (ensaios, privadas, workshops). Para meses futuros
+     * tende a 0.
+     */
+    public double custoProfessorRealTurma(Turma t, Studio studio, YearMonth mes, Dados d) {
         Professor p = t.getProfessor();
         Studio s = studio;
-        TipoRemuneracao tipo = tipoEfetivo(p, s);
-        boolean futuro = ehFuturo(mes);
-
-        if (tipo == TipoRemuneracao.PERCENTAGEM) {
-            double regular = futuro
-                    ? d.inscricoes.stream()
-                        .filter(at -> at.getTurma() != null && at.getTurma().getId().equals(t.getId()))
-                        .filter(at -> at.getAluno() != null && at.getAluno().isAtivo())
-                        .mapToDouble(at -> mensalidadeProjetada(s, at)
-                                * percentagem(p, s, at.getAulasPorSemana()) / 100.0)
-                        .sum()
-                    : d.mensalidades.stream()
-                        .filter(m -> m.getTurma() != null && m.getTurma().getId().equals(t.getId()))
-                        .filter(m -> mesIgual(m, mes))
-                        .mapToDouble(m -> m.getValor()
-                                * percentagem(p, s, freqAluno(m, d.inscricoes)) / 100.0)
-                        .sum();
+        if (tipoEfetivo(p, s) == TipoRemuneracao.PERCENTAGEM) {
+            double regular = d.mensalidades.stream()
+                    .filter(m -> m.getTurma() != null && m.getTurma().getId().equals(t.getId()))
+                    .filter(m -> mesIgual(m, mes))
+                    .mapToDouble(m -> m.getValor()
+                            * percentagem(p, s, freqAluno(m, d.inscricoes)) / 100.0)
+                    .sum();
             // ensaios / privadas / workshops não têm mensalidade → pagos à hora (só reais)
-            double extra = futuro ? 0.0 : horasExtraValorizadas(t, p, s, mes, d, true);
-            return regular + extra;
+            return regular + horasExtraValorizadas(t, p, s, mes, d, true);
         }
-
         // HORA
-        if (futuro) {
-            return horasAgendadas(t, mes, d.aulas) * valorHoraRegular(p, s);
-        }
         return horasExtraValorizadas(t, p, s, mes, d, false);
     }
 
@@ -205,6 +213,27 @@ public class RemuneracaoService {
             double rec = receitaTurma(t, mes, d, studio);
             double custo = custoProfessorTurma(t, studio, mes, d);
             res.put(t.getId(), new double[] { rec, custo, rec - custo });
+        }
+        return res;
+    }
+
+    /** Índices de {@link #rentabilidadeDetalhadaPorTurma}. */
+    public static final int REC_REAL = 0, REC_EST = 1, CUSTO_REAL = 2, CUSTO_EST = 3, SALDO_REAL = 4, SALDO_EST = 5;
+
+    /**
+     * id da turma → [receitaReal, receitaEst, custoReal, custoEst, saldoReal, saldoEst].
+     * Os três pares real/estimado são calculados sempre, para qualquer mês, de modo
+     * a comparar o previsto com o faturado.
+     */
+    public Map<Long, double[]> rentabilidadeDetalhadaPorTurma(List<Turma> turmas, Studio studio,
+                                                              YearMonth mes, Dados d) {
+        Map<Long, double[]> res = new LinkedHashMap<>();
+        for (Turma t : turmas) {
+            double rReal = receitaRealTurma(t, mes, d);
+            double rEst = receitaEstimadaTurma(t, d, studio);
+            double cReal = custoProfessorRealTurma(t, studio, mes, d);
+            double cEst = custoProfessorEstimadoTurma(t, studio, mes, d);
+            res.put(t.getId(), new double[] { rReal, rEst, cReal, cEst, rReal - cReal, rEst - cEst });
         }
         return res;
     }
