@@ -18,6 +18,12 @@ import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+
+import java.awt.BasicStroke;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vaadin.flow.component.ClickEvent;
 import com.vaadin.flow.component.ComponentEventListener;
@@ -649,9 +655,13 @@ public class RelatoriosView extends VerticalLayout {
         // --- 3. RELATÓRIO RENTABILIDADE MENSAL (com seletor de mês) ---
         private void abrirRelatorioRentabilidade() {
                 Studio studio = TenantContext.getCurrentStudio();
-                List<Turma> turmas = studio != null ? turmaRepository.findAllByStudio(studio)
+                List<Turma> todasTurmas = studio != null ? turmaRepository.findAllByStudio(studio)
                                 : turmaRepository.findAll();
-                RemuneracaoService.Dados dados = carregarDadosRemuneracao(studio, turmas);
+                RemuneracaoService.Dados dados = carregarDadosRemuneracao(studio, todasTurmas);
+                // Só turmas com aulas regulares planeadas no mapa de salas.
+                List<Turma> turmas = todasTurmas.stream()
+                                .filter(t -> temAulasRegularesPlaneadas(t, dados.aulas))
+                                .collect(Collectors.toList());
 
                 Dialog d = new Dialog();
                 d.setHeaderTitle("Rentabilidade Mensal");
@@ -679,6 +689,17 @@ public class RelatoriosView extends VerticalLayout {
                         boolean previsto = remuneracaoService.ehFuturo(mes);
                         Map<Long, double[]> rent = remuneracaoService.rentabilidadeDetalhadaPorTurma(turmas, studio,
                                         mes, dados);
+
+                        // Peso do mês letivo (meio setembro; zero em julho/agosto) nas estimativas.
+                        double peso = pesoMesLetivo(mes);
+                        if (peso != 1.0) {
+                                for (double[] x : rent.values()) {
+                                        x[RemuneracaoService.REC_EST] *= peso;
+                                        x[RemuneracaoService.CUSTO_EST] *= peso;
+                                        x[RemuneracaoService.SALDO_EST] = x[RemuneracaoService.REC_EST]
+                                                        - x[RemuneracaoService.CUSTO_EST];
+                                }
+                        }
 
                         // Agrupar as turmas por professor, com subtotal por professor
                         Map<String, List<Turma>> porProf = new LinkedHashMap<>();
@@ -759,9 +780,25 @@ public class RelatoriosView extends VerticalLayout {
                         linhaAviso.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
 
                         String tituloExport = "Rentabilidade - " + mesLabel(mes) + (previsto ? " (previsao)" : "");
-                        Component grafico = criarGraficoRentabilidadeMensal(mes, turmas, studio, dados);
-                        VerticalLayout v = new VerticalLayout(grafico, linhaAviso, grid,
-                                        linhaDownloads(tituloExport, headers, rows));
+                        List<BarraRent> barras = dadosGraficoRentabilidade(mes, turmas, studio, dados);
+                        Component grafico = criarGraficoRentabilidadeMensal(barras);
+
+                        Anchor aPdf = new Anchor(gerarPdfRentabilidade(tituloExport, raizes, tot,
+                                        renderGraficoRentabilidadePng(barras)), "");
+                        aPdf.getElement().setAttribute("download", true);
+                        Button bPdf = new Button("Download PDF", VaadinIcon.DOWNLOAD.create());
+                        bPdf.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                        bPdf.getStyle().set("background-color", "#FF8C00");
+                        aPdf.add(bPdf);
+                        Anchor aXls = new Anchor(gerarExcelGenerico(tituloExport, LARANJA_DANCE, headers, rows), "");
+                        aXls.getElement().setAttribute("download", true);
+                        Button bXls = new Button("Download Excel", VaadinIcon.DOWNLOAD.create());
+                        bXls.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                        bXls.getStyle().set("background-color", "#FF8C00");
+                        aXls.add(bXls);
+                        HorizontalLayout downloadsRent = new HorizontalLayout(aPdf, aXls);
+
+                        VerticalLayout v = new VerticalLayout(grafico, linhaAviso, grid, downloadsRent);
                         v.setSizeFull();
                         v.setPadding(false);
                         v.expand(grid);
@@ -850,29 +887,210 @@ public class RelatoriosView extends VerticalLayout {
                                 fmtEuro(x[4]), fmtEuro(x[5]) };
         }
 
-        // Gráfico de barras com a rentabilidade geral (soma de todas as turmas) mês a
-        // mês, numa janela de 12 meses à volta do mês selecionado. Meses fechados
-        // mostram o valor real; os futuros mostram a estimativa, em cor distinta; o
-        // mês selecionado fica realçado com contorno.
-        private Component criarGraficoRentabilidadeMensal(YearMonth mesSel, List<Turma> turmas, Studio studio,
-                        RemuneracaoService.Dados dados) {
-                List<String> labels = new ArrayList<>();
-                List<Double> valores = new ArrayList<>();
-                List<String> cores = new ArrayList<>();
-                List<String> bordas = new ArrayList<>();
-                List<Integer> larguraBorda = new ArrayList<>();
+        // Peso do mês no ano letivo (Set–Jun). Julho/Agosto: 0 (férias). Setembro: 0,5
+        // (as aulas só arrancam a meio do mês). Restantes meses: 1. Só afeta estimativas.
+        private double pesoMesLetivo(YearMonth mes) {
+                return switch (mes.getMonthValue()) {
+                        case 7, 8 -> 0.0;
+                        case 9 -> 0.5;
+                        default -> 1.0;
+                };
+        }
 
+        // Turma "no mapa de salas": tem pelo menos uma aula com sala, dia e horas
+        // definidos. Só estas entram no relatório de rentabilidade.
+        private boolean temAulasRegularesPlaneadas(Turma t, List<Aula> aulas) {
+                return aulas.stream().anyMatch(a -> a.getTurma() != null
+                                && a.getTurma().getId().equals(t.getId())
+                                && a.getSala() != null && a.getDia() != null
+                                && a.getHoraInicio() != null && a.getHoraFim() != null);
+        }
+
+        /** Uma barra do gráfico de rentabilidade mensal. */
+        private record BarraRent(String label, double valor, boolean real, boolean selecionado) {
+        }
+
+        private List<BarraRent> dadosGraficoRentabilidade(YearMonth mesSel, List<Turma> turmas, Studio studio,
+                        RemuneracaoService.Dados dados) {
+                List<BarraRent> out = new ArrayList<>();
                 YearMonth inicio = mesSel.minusMonths(6);
                 for (int i = 0; i < 12; i++) {
                         YearMonth m = inicio.plusMonths(i);
                         boolean futuro = remuneracaoService.ehFuturo(m);
                         double total = remuneracaoService.rentabilidadePorTurma(turmas, studio, m, dados)
                                         .values().stream().mapToDouble(x -> x[2]).sum();
-                        labels.add(m.getMonth().getDisplayName(TextStyle.SHORT, new Locale("pt")).replace(".", "")
-                                        + " " + String.valueOf(m.getYear()).substring(2));
-                        valores.add(Math.round(total * 100.0) / 100.0);
-                        cores.add(futuro ? "rgba(255,193,7,0.55)" : "rgba(255,140,0,0.85)");
-                        boolean sel = m.equals(mesSel);
+                        if (futuro)
+                                total *= pesoMesLetivo(m);
+                        out.add(new BarraRent(
+                                        m.getMonth().getDisplayName(TextStyle.SHORT, new Locale("pt")).replace(".", "")
+                                                        + " " + String.valueOf(m.getYear()).substring(2),
+                                        Math.round(total * 100.0) / 100.0, !futuro, m.equals(mesSel)));
+                }
+                return out;
+        }
+
+        private byte[] renderGraficoRentabilidadePng(List<BarraRent> barras) {
+                int w = 900, h = 300, padL = 55, padR = 15, padT = 18, padB = 38;
+                BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+                Graphics2D g = img.createGraphics();
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g.setColor(Color.WHITE);
+                g.fillRect(0, 0, w, h);
+                int plotW = w - padL - padR, plotH = h - padT - padB;
+                double max = Math.max(0, barras.stream().mapToDouble(BarraRent::valor).max().orElse(0));
+                double min = Math.min(0, barras.stream().mapToDouble(BarraRent::valor).min().orElse(0));
+                double range = (max - min) == 0 ? 1 : (max - min);
+                int zeroY = padT + (int) Math.round(plotH * (max / range));
+                g.setColor(new Color(0xCC, 0xCC, 0xCC));
+                g.drawLine(padL, zeroY, w - padR, zeroY);
+                int n = Math.max(1, barras.size());
+                double slot = plotW / (double) n;
+                double bw = Math.min(42, slot * 0.6);
+                g.setFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 10));
+                for (int i = 0; i < barras.size(); i++) {
+                        BarraRent b = barras.get(i);
+                        double cx = padL + slot * (i + 0.5);
+                        int barH = Math.max(1, (int) Math.round(plotH * (Math.abs(b.valor()) / range)));
+                        int y = b.valor() >= 0 ? zeroY - barH : zeroY;
+                        g.setColor(b.real() ? new Color(255, 140, 0) : new Color(255, 193, 7));
+                        g.fillRoundRect((int) (cx - bw / 2), y, (int) bw, barH, 6, 6);
+                        if (b.selecionado()) {
+                                g.setColor(new Color(0x2D, 0x34, 0x36));
+                                g.setStroke(new BasicStroke(2f));
+                                g.drawRoundRect((int) (cx - bw / 2), y, (int) bw, barH, 6, 6);
+                        }
+                        g.setColor(new Color(0x55, 0x55, 0x55));
+                        int lw = g.getFontMetrics().stringWidth(b.label());
+                        g.drawString(b.label(), (int) (cx - lw / 2), h - padB + 14);
+                        String val = String.format("%.0f", b.valor());
+                        int vw = g.getFontMetrics().stringWidth(val);
+                        g.drawString(val, (int) (cx - vw / 2), b.valor() >= 0 ? y - 3 : y + barH + 12);
+                }
+                g.dispose();
+                try {
+                        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                        ImageIO.write(img, "png", bos);
+                        return bos.toByteArray();
+                } catch (Exception e) {
+                        return null;
+                }
+        }
+
+        private PdfPCell celPdf(String txt, Color bg, boolean bold, int align, boolean textoBranco) {
+                com.lowagie.text.Font f = FontFactory.getFont(
+                                bold ? FontFactory.HELVETICA_BOLD : FontFactory.HELVETICA, 9,
+                                com.lowagie.text.Font.NORMAL, textoBranco ? Color.WHITE : Color.BLACK);
+                PdfPCell c = new PdfPCell(new Phrase(txt, f));
+                c.setPadding(4);
+                c.setHorizontalAlignment(align);
+                c.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                if (bg != null)
+                        c.setBackgroundColor(bg);
+                return c;
+        }
+
+        private PdfPCell celPdf(String txt, Color bg, boolean bold, int align) {
+                return celPdf(txt, bg, bold, align, false);
+        }
+
+        // PDF do relatório de rentabilidade: gráfico + tabela agrupada por professor
+        // (mesmo layout da modal), em A4 horizontal.
+        private StreamResource gerarPdfRentabilidade(String titulo, List<LinhaRent> raizes, double[] total,
+                        byte[] graficoPng) {
+                return new StreamResource(titulo.replace(" ", "_") + ".pdf", () -> {
+                        try {
+                                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                                Document doc = new Document(PageSize.A4.rotate());
+                                PdfWriter.getInstance(doc, baos);
+                                doc.open();
+                                adicionarLogo(doc);
+
+                                Paragraph t = new Paragraph(titulo,
+                                                FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16));
+                                t.setAlignment(Element.ALIGN_CENTER);
+                                t.setSpacingAfter(14);
+                                doc.add(t);
+
+                                if (graficoPng != null) {
+                                        Image img = Image.getInstance(graficoPng);
+                                        img.scaleToFit(770, 250);
+                                        img.setAlignment(Element.ALIGN_CENTER);
+                                        img.setSpacingAfter(16);
+                                        doc.add(img);
+                                }
+
+                                Color laranjaClaro = new Color(0xFF, 0xF3, 0xE0);
+                                Color amareloClaro = new Color(0xFF, 0xFD, 0xE7);
+                                Color cinza = new Color(0xEC, 0xEF, 0xF1);
+                                Color[] bgCols = { null, laranjaClaro, amareloClaro, laranjaClaro, amareloClaro,
+                                                laranjaClaro, amareloClaro };
+
+                                PdfPTable tab = new PdfPTable(7);
+                                tab.setWidthPercentage(100);
+                                tab.setWidths(new float[] { 3.4f, 1, 1, 1, 1, 1, 1 });
+                                tab.setHeaderRows(2);
+
+                                PdfPCell cProfTurma = celPdf("Professor / Turma", LARANJA_DANCE, true,
+                                                Element.ALIGN_LEFT, true);
+                                cProfTurma.setRowspan(2);
+                                tab.addCell(cProfTurma);
+                                for (String gh : new String[] { "Receita", "Custo Prof.", "Saldo" }) {
+                                        PdfPCell c = celPdf(gh, LARANJA_DANCE, true, Element.ALIGN_CENTER, true);
+                                        c.setColspan(2);
+                                        tab.addCell(c);
+                                }
+                                for (int i = 0; i < 3; i++) {
+                                        tab.addCell(celPdf("Real", LARANJA_DANCE, true, Element.ALIGN_CENTER, true));
+                                        tab.addCell(celPdf("Est.", LARANJA_DANCE, true, Element.ALIGN_CENTER, true));
+                                }
+
+                                for (LinhaRent g : raizes) {
+                                        tab.addCell(celPdf(g.nome(), cinza, true, Element.ALIGN_LEFT));
+                                        for (int i = 0; i < 6; i++)
+                                                tab.addCell(celPdf(fmtEuro(g.v()[i]), cinza, true, Element.ALIGN_CENTER));
+                                        for (LinhaRent f : g.filhos()) {
+                                                tab.addCell(celPdf("   " + f.nome(), null, false, Element.ALIGN_LEFT));
+                                                for (int i = 0; i < 6; i++)
+                                                        tab.addCell(celPdf(fmtEuro(f.v()[i]), bgCols[i + 1], false,
+                                                                        Element.ALIGN_CENTER));
+                                        }
+                                }
+                                tab.addCell(celPdf("TOTAL", LARANJA_DANCE, true, Element.ALIGN_LEFT, true));
+                                for (int i = 0; i < 6; i++)
+                                        tab.addCell(celPdf(fmtEuro(total[i]), LARANJA_DANCE, true, Element.ALIGN_CENTER,
+                                                        true));
+                                doc.add(tab);
+
+                                Paragraph rodape = new Paragraph("\nGerado em: " + LocalDate.now().format(fmt),
+                                                FontFactory.getFont(FontFactory.HELVETICA, 8,
+                                                                com.lowagie.text.Font.NORMAL, Color.GRAY));
+                                rodape.setAlignment(Element.ALIGN_RIGHT);
+                                doc.add(rodape);
+
+                                doc.close();
+                                return new ByteArrayInputStream(baos.toByteArray());
+                        } catch (Exception e) {
+                                return null;
+                        }
+                });
+        }
+
+        // Gráfico de barras com a rentabilidade geral (soma de todas as turmas) mês a
+        // mês, numa janela de 12 meses à volta do mês selecionado. Meses fechados
+        // mostram o valor real; os futuros mostram a estimativa, em cor distinta; o
+        // mês selecionado fica realçado com contorno.
+        private Component criarGraficoRentabilidadeMensal(List<BarraRent> barras) {
+                List<String> labels = new ArrayList<>();
+                List<Double> valores = new ArrayList<>();
+                List<String> cores = new ArrayList<>();
+                List<String> bordas = new ArrayList<>();
+                List<Integer> larguraBorda = new ArrayList<>();
+
+                for (BarraRent b : barras) {
+                        labels.add(b.label());
+                        valores.add(b.valor());
+                        cores.add(b.real() ? "rgba(255,140,0,0.85)" : "rgba(255,193,7,0.55)");
+                        boolean sel = b.selecionado();
                         bordas.add(sel ? "#2D3436" : "rgba(0,0,0,0)");
                         larguraBorda.add(sel ? 2 : 0);
                 }
