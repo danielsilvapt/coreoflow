@@ -49,7 +49,10 @@ public class LogsView extends VerticalLayout {
 
         H2 titulo = new H2("Logs & Erros");
         titulo.getStyle().set("margin-top", "0");
-        Button atualizar = new Button("Atualizar", VaadinIcon.REFRESH.create(), e -> recarregar());
+        Button atualizar = new Button("Atualizar", VaadinIcon.REFRESH.create(), e -> {
+            recarregarFiltroEstudios();
+            recarregar();
+        });
         atualizar.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         HorizontalLayout topo = new HorizontalLayout(titulo, atualizar);
         topo.setWidthFull();
