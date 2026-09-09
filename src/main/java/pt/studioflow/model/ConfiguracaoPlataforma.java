@@ -24,6 +24,10 @@ public class ConfiguracaoPlataforma {
 
     private boolean avisoGlobalAtivo = false;
 
+    /** Como mostrar o aviso global: BANNER (faixa no topo), POPUP (ao entrar) ou AMBOS. */
+    @Column(length = 20)
+    private String avisoGlobalModo = "BANNER";
+
     /** Permitir a criação de novos estúdios (registo/onboarding). */
     private boolean permitirNovosEstudios = true;
 
@@ -57,6 +61,22 @@ public class ConfiguracaoPlataforma {
 
     public void setAvisoGlobalAtivo(boolean avisoGlobalAtivo) {
         this.avisoGlobalAtivo = avisoGlobalAtivo;
+    }
+
+    public String getAvisoGlobalModo() {
+        return avisoGlobalModo != null ? avisoGlobalModo : "BANNER";
+    }
+
+    public void setAvisoGlobalModo(String avisoGlobalModo) {
+        this.avisoGlobalModo = avisoGlobalModo;
+    }
+
+    public boolean mostrarAvisoBanner() {
+        return avisoGlobalAtivo && !"POPUP".equals(getAvisoGlobalModo());
+    }
+
+    public boolean mostrarAvisoPopup() {
+        return avisoGlobalAtivo && !"BANNER".equals(getAvisoGlobalModo());
     }
 
     public boolean isPermitirNovosEstudios() {
