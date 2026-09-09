@@ -64,6 +64,16 @@ public class ConfiguracoesPlataformaView extends VerticalLayout {
         aviso.setWidthFull();
         aviso.setHelperText("Ex.: manutenção agendada, nova funcionalidade, etc.");
 
+        com.vaadin.flow.component.combobox.ComboBox<String> avisoModo =
+                new com.vaadin.flow.component.combobox.ComboBox<>("Como mostrar");
+        avisoModo.setItems("Faixa no topo", "Popup ao entrar", "Ambos");
+        avisoModo.setValue(switch (c.getAvisoGlobalModo()) {
+            case "POPUP" -> "Popup ao entrar";
+            case "AMBOS" -> "Ambos";
+            default -> "Faixa no topo";
+        });
+        avisoModo.setWidth("220px");
+
         Checkbox novosEstudios = new Checkbox("Permitir criação de novos estúdios");
         novosEstudios.setValue(c.isPermitirNovosEstudios());
 
@@ -71,13 +81,18 @@ public class ConfiguracoesPlataformaView extends VerticalLayout {
             c.setEmailSuporte(emailSuporte.getValue() != null ? emailSuporte.getValue().trim() : null);
             c.setAvisoGlobalAtivo(avisoAtivo.getValue());
             c.setAvisoGlobal(aviso.getValue());
+            c.setAvisoGlobalModo(switch (avisoModo.getValue() == null ? "" : avisoModo.getValue()) {
+                case "Popup ao entrar" -> "POPUP";
+                case "Ambos" -> "AMBOS";
+                default -> "BANNER";
+            });
             c.setPermitirNovosEstudios(novosEstudios.getValue());
             suporteService.guardarConfig(c);
             Notification.show("Configurações guardadas.").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         });
         guardar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        VerticalLayout card = new VerticalLayout(emailSuporte, avisoAtivo, aviso, novosEstudios, guardar);
+        VerticalLayout card = new VerticalLayout(emailSuporte, avisoAtivo, aviso, avisoModo, novosEstudios, guardar);
         card.setPadding(true);
         card.setSpacing(true);
         card.setMaxWidth("640px");

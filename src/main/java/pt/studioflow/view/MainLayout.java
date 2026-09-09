@@ -346,22 +346,70 @@ public class MainLayout extends AppLayout {
 
                 addToNavbar(headerContent);
 
-                // Aviso global configurável pelo superadmin
+                // Aviso global configurável pelo superadmin: faixa por baixo do menu
+                // (showRouterLayoutContent) e/ou popup uma vez por sessão.
                 try {
                         pt.studioflow.model.ConfiguracaoPlataforma cfg = suporteService.getConfig();
-                        if (cfg.isAvisoGlobalAtivo() && cfg.getAvisoGlobal() != null
-                                        && !cfg.getAvisoGlobal().isBlank()) {
-                                Span aviso = new Span("📢  " + cfg.getAvisoGlobal());
-                                aviso.getStyle().set("display", "block").set("width", "100%")
-                                                .set("background", "#FFF3CD").set("color", "#664d03")
-                                                .set("border-bottom", "1px solid #ffe69c")
-                                                .set("padding", "8px 20px").set("font-size", "13px")
-                                                .set("text-align", "center").set("font-weight", "600");
-                                addToNavbar(aviso);
+                        String texto = cfg.getAvisoGlobal() != null ? cfg.getAvisoGlobal().trim() : "";
+                        if (!texto.isBlank()) {
+                                if (cfg.mostrarAvisoBanner()) {
+                                        this.avisoGlobalTexto = texto;
+                                }
+                                if (cfg.mostrarAvisoPopup()) {
+                                        mostrarPopupAvisoUmaVez(texto);
+                                }
                         }
                 } catch (Exception ignore) {
                         // não bloquear o arranque da UI por causa do aviso
                 }
+        }
+
+        private void mostrarPopupAvisoUmaVez(String texto) {
+                com.vaadin.flow.server.VaadinSession sessao = com.vaadin.flow.server.VaadinSession.getCurrent();
+                if (sessao == null) {
+                        return;
+                }
+                Object jaVisto = sessao.getAttribute("avisoGlobalVisto");
+                if (Boolean.TRUE.equals(jaVisto)) {
+                        return;
+                }
+                sessao.setAttribute("avisoGlobalVisto", Boolean.TRUE);
+
+                Dialog d = new Dialog();
+                d.setHeaderTitle("📢  Aviso");
+                d.setWidth("440px");
+                com.vaadin.flow.component.html.Span msg = new com.vaadin.flow.component.html.Span(texto);
+                msg.getStyle().set("white-space", "pre-wrap").set("line-height", "1.5");
+                d.add(msg);
+                Button ok = new Button("Entendido", e -> d.close());
+                ok.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                d.getFooter().add(ok);
+                d.open();
+        }
+
+        private String avisoGlobalTexto;
+
+        @Override
+        public void showRouterLayoutContent(com.vaadin.flow.component.HasElement content) {
+                if (avisoGlobalTexto == null || avisoGlobalTexto.isBlank() || content == null) {
+                        super.showRouterLayoutContent(content);
+                        return;
+                }
+                Span aviso = new Span("📢  " + avisoGlobalTexto);
+                aviso.getStyle().set("display", "block").set("width", "100%").set("box-sizing", "border-box")
+                                .set("background", "#FFF3CD").set("color", "#664d03")
+                                .set("border-bottom", "1px solid #ffe69c").set("padding", "8px 20px")
+                                .set("font-size", "13px").set("text-align", "center").set("font-weight", "600")
+                                .set("flex", "0 0 auto");
+
+                com.vaadin.flow.component.html.Div wrap = new com.vaadin.flow.component.html.Div();
+                wrap.setSizeFull();
+                wrap.getStyle().set("display", "flex").set("flex-direction", "column").set("min-height", "0");
+                wrap.add(aviso);
+                content.getElement().getStyle().set("flex", "1 1 auto").set("min-height", "0")
+                                .set("height", "auto");
+                wrap.getElement().appendChild(content.getElement());
+                super.showRouterLayoutContent(wrap);
         }
 
         private void createDrawer() {
