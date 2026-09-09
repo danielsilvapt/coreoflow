@@ -670,7 +670,8 @@ public class RelatoriosView extends VerticalLayout {
                                 "vaadin-grid::part(rent-real){background-color:#FFF3E0 !important;}"
                                 + "vaadin-grid::part(rent-est){background-color:#FFFDE7 !important;}"
                                 + "vaadin-grid::part(rent-pos){color:#2E7D32 !important;font-weight:700;}"
-                                + "vaadin-grid::part(rent-neg){color:#C62828 !important;font-weight:700;}");
+                                + "vaadin-grid::part(rent-neg){color:#C62828 !important;font-weight:700;}"
+                                + "vaadin-grid::part(rent-grp){font-weight:700;border-top:1px solid #cfd8dc;}");
 
                 Runnable render = () -> {
                         container.removeAll();
@@ -679,43 +680,65 @@ public class RelatoriosView extends VerticalLayout {
                         Map<Long, double[]> rent = remuneracaoService.rentabilidadeDetalhadaPorTurma(turmas, studio,
                                         mes, dados);
 
-                        List<Turma> ordenadas = turmas.stream()
-                                        .filter(t -> {
-                                                double[] x = rent.get(t.getId());
-                                                return x != null && java.util.Arrays.stream(x).anyMatch(vv -> vv != 0);
-                                        })
-                                        .sorted((a, b) -> Double.compare(rent.get(b.getId())[RemuneracaoService.SALDO_EST],
-                                                        rent.get(a.getId())[RemuneracaoService.SALDO_EST]))
-                                        .collect(Collectors.toList());
+                        // Agrupar as turmas por professor, com subtotal por professor
+                        Map<String, List<Turma>> porProf = new LinkedHashMap<>();
+                        for (Turma t : turmas) {
+                                double[] x = rent.get(t.getId());
+                                if (x == null || java.util.Arrays.stream(x).allMatch(vv -> vv == 0))
+                                        continue;
+                                String prof = t.getProfessor() != null ? t.getProfessor().getNome() : "Sem professor";
+                                porProf.computeIfAbsent(prof, k -> new ArrayList<>()).add(t);
+                        }
+                        List<LinhaRent> raizes = new ArrayList<>();
+                        for (Map.Entry<String, List<Turma>> e : porProf.entrySet()) {
+                                List<LinhaRent> filhos = e.getValue().stream()
+                                                .map(t -> new LinhaRent(t.getDescricao(), false,
+                                                                rent.get(t.getId()), List.of()))
+                                                .sorted((a, b) -> Double.compare(b.v()[RemuneracaoService.SALDO_EST],
+                                                                a.v()[RemuneracaoService.SALDO_EST]))
+                                                .collect(Collectors.toList());
+                                double[] soma = new double[6];
+                                filhos.forEach(f -> {
+                                        for (int i = 0; i < 6; i++)
+                                                soma[i] += f.v()[i];
+                                });
+                                raizes.add(new LinhaRent(e.getKey(), true, soma, filhos));
+                        }
+                        raizes.sort((a, b) -> Double.compare(b.v()[RemuneracaoService.SALDO_EST],
+                                        a.v()[RemuneracaoService.SALDO_EST]));
 
-                        Grid<Turma> grid = new Grid<>();
-                        grid.setItems(ordenadas);
+                        com.vaadin.flow.component.treegrid.TreeGrid<LinhaRent> grid =
+                                        new com.vaadin.flow.component.treegrid.TreeGrid<>();
                         grid.addThemeVariants(GridVariant.LUMO_COMPACT, GridVariant.LUMO_ROW_STRIPES);
                         grid.setSizeFull();
+                        grid.setItems(raizes, LinhaRent::filhos);
+                        grid.expandRecursively(raizes, 1);
+                        grid.setPartNameGenerator(lr -> lr.grupo() ? "rent-grp" : null);
 
-                        grid.addColumn(Turma::getDescricao).setHeader("Turma").setAutoWidth(true).setFlexGrow(1);
-                        Grid.Column<Turma> cRecR = colValor(grid, rent, RemuneracaoService.REC_REAL, "Real", false);
-                        Grid.Column<Turma> cRecE = colValor(grid, rent, RemuneracaoService.REC_EST, "Estimada", true);
-                        Grid.Column<Turma> cCusR = colValor(grid, rent, RemuneracaoService.CUSTO_REAL, "Real", false);
-                        Grid.Column<Turma> cCusE = colValor(grid, rent, RemuneracaoService.CUSTO_EST, "Estimado", true);
-                        Grid.Column<Turma> cSalR = colSaldo(grid, rent, RemuneracaoService.SALDO_REAL, "Real", false);
-                        Grid.Column<Turma> cSalE = colSaldo(grid, rent, RemuneracaoService.SALDO_EST, "Estimado", true);
+                        grid.addHierarchyColumn(LinhaRent::nome).setHeader("Professor / Turma")
+                                        .setAutoWidth(true).setFlexGrow(1);
+                        Grid.Column<LinhaRent> cRecR = colRent(grid, RemuneracaoService.REC_REAL, "Real", false, false);
+                        Grid.Column<LinhaRent> cRecE = colRent(grid, RemuneracaoService.REC_EST, "Estimada", true, false);
+                        Grid.Column<LinhaRent> cCusR = colRent(grid, RemuneracaoService.CUSTO_REAL, "Real", false, false);
+                        Grid.Column<LinhaRent> cCusE = colRent(grid, RemuneracaoService.CUSTO_EST, "Estimado", true, false);
+                        Grid.Column<LinhaRent> cSalR = colRent(grid, RemuneracaoService.SALDO_REAL, "Real", false, true);
+                        Grid.Column<LinhaRent> cSalE = colRent(grid, RemuneracaoService.SALDO_EST, "Estimado", true, true);
 
                         com.vaadin.flow.component.grid.HeaderRow topo = grid.prependHeaderRow();
                         topo.join(cRecR, cRecE).setComponent(grupoHeader("Receita"));
                         topo.join(cCusR, cCusE).setComponent(grupoHeader("Custo Prof."));
                         topo.join(cSalR, cSalE).setComponent(grupoHeader("Saldo"));
 
-                        String[] headers = { "Turma", "Receita Real", "Receita Estimada", "Custo Prof Real",
+                        String[] headers = { "Professor / Turma", "Receita Real", "Receita Estimada", "Custo Prof Real",
                                         "Custo Prof Estimado", "Saldo Real", "Saldo Estimado" };
-                        List<String[]> rows = ordenadas.stream()
-                                        .map(t -> linhaExport(t.getDescricao(), rent.get(t.getId())))
-                                        .collect(Collectors.toList());
+                        List<String[]> rows = new ArrayList<>();
                         double[] tot = new double[6];
-                        for (Turma t : ordenadas) {
-                                double[] x = rent.get(t.getId());
+                        for (LinhaRent g : raizes) {
+                                rows.add(linhaExport("[" + g.nome() + "]", g.v()));
+                                for (LinhaRent f : g.filhos())
+                                        rows.add(linhaExport("   " + f.nome(), f.v()));
                                 for (int i = 0; i < 6; i++)
-                                        tot[i] += x[i];
+                                        tot[i] += g.v()[i];
                         }
                         rows.add(linhaExport("TOTAL", tot));
 
@@ -755,22 +778,19 @@ public class RelatoriosView extends VerticalLayout {
                 d.open();
         }
 
-        private Grid.Column<Turma> colValor(Grid<Turma> grid, Map<Long, double[]> rent, int idx,
-                        String sub, boolean estimado) {
-                Grid.Column<Turma> c = grid.addColumn(t -> fmtEuro(rent.get(t.getId())[idx]))
-                                .setHeader(subHeader(sub, estimado)).setAutoWidth(true)
-                                .setTextAlign(ColumnTextAlign.END);
-                c.setPartNameGenerator(t -> estimado ? "rent-est" : "rent-real");
-                return c;
+        /** Linha do relatório de rentabilidade: grupo (professor) ou turma. v = [recR, recE, custoR, custoE, saldoR, saldoE]. */
+        private record LinhaRent(String nome, boolean grupo, double[] v, List<LinhaRent> filhos) {
         }
 
-        private Grid.Column<Turma> colSaldo(Grid<Turma> grid, Map<Long, double[]> rent, int idx,
-                        String sub, boolean estimado) {
-                Grid.Column<Turma> c = grid.addColumn(t -> fmtEuro(rent.get(t.getId())[idx]))
+        private Grid.Column<LinhaRent> colRent(Grid<LinhaRent> grid, int idx, String sub,
+                        boolean estimado, boolean saldo) {
+                Grid.Column<LinhaRent> c = grid.addColumn(lr -> fmtEuro(lr.v()[idx]))
                                 .setHeader(subHeader(sub, estimado)).setAutoWidth(true)
                                 .setTextAlign(ColumnTextAlign.END);
-                c.setPartNameGenerator(t -> (estimado ? "rent-est" : "rent-real")
-                                + (rent.get(t.getId())[idx] >= 0 ? " rent-pos" : " rent-neg"));
+                c.setPartNameGenerator(lr -> {
+                        String base = estimado ? "rent-est" : "rent-real";
+                        return saldo ? base + (lr.v()[idx] >= 0 ? " rent-pos" : " rent-neg") : base;
+                });
                 return c;
         }
 
