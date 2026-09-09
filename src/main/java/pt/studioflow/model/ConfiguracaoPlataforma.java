@@ -31,6 +31,14 @@ public class ConfiguracaoPlataforma {
     /** Permitir a criação de novos estúdios (registo/onboarding). */
     private boolean permitirNovosEstudios = true;
 
+    /** Nome a mostrar como remetente nos emails da plataforma (ex.: respostas de suporte). */
+    @Column(length = 120)
+    private String nomeRemetenteEmails = "CoreoFlow";
+
+    /** Email opcional em cópia (BCC) de todos os pedidos e respostas de suporte. */
+    @Column(length = 200)
+    private String emailBccSuporte;
+
     public Long getId() {
         return id;
     }
@@ -85,5 +93,21 @@ public class ConfiguracaoPlataforma {
 
     public void setPermitirNovosEstudios(boolean permitirNovosEstudios) {
         this.permitirNovosEstudios = permitirNovosEstudios;
+    }
+
+    public String getNomeRemetenteEmails() {
+        return nomeRemetenteEmails != null && !nomeRemetenteEmails.isBlank() ? nomeRemetenteEmails : "CoreoFlow";
+    }
+
+    public void setNomeRemetenteEmails(String nomeRemetenteEmails) {
+        this.nomeRemetenteEmails = nomeRemetenteEmails;
+    }
+
+    public String getEmailBccSuporte() {
+        return emailBccSuporte;
+    }
+
+    public void setEmailBccSuporte(String emailBccSuporte) {
+        this.emailBccSuporte = emailBccSuporte;
     }
 }
