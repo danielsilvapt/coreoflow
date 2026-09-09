@@ -345,10 +345,20 @@
             bpm: metroOn ? (+bpm.value || null) : null,
             variabilidade: +stdev(g('sp')).toFixed(3)
           };
+          var aviso = 'A analisar com o treinador…';
           fb.style.display = 'block';
-          fb.textContent = 'A analisar com o treinador…';
-          try { serverEl.$server.analisarPratica(JSON.stringify(resumo)); }
-          catch (e) { fb.textContent = 'Erro a enviar para análise: ' + e; }
+          fb.textContent = aviso;
+          try {
+            serverEl.$server.analisarPratica(JSON.stringify(resumo));
+          } catch (e) {
+            fb.textContent = 'Erro a enviar para análise: ' + e;
+            return;
+          }
+          setTimeout(function () {
+            if (fb.textContent === aviso) {
+              fb.textContent = 'A análise está a demorar mais do que o normal — verifica a chave GROQ em Configurações e tenta outra vez.';
+            }
+          }, 80000);
         }, 15000);
       };
 

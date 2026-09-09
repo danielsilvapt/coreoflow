@@ -404,14 +404,43 @@ public class TreinadorDancaView extends VerticalLayout {
 
     @com.vaadin.flow.component.ClientCallable
     public void analisarPratica(String metricasJson) {
-        String texto;
+        final com.vaadin.flow.component.UI ui = com.vaadin.flow.component.UI.getCurrent();
+        final String cid = praticaContId;
+        String ctx;
         try {
-            String ctx = service.contextoPassoPratica(praticaPlanoId, praticaPassoIdx);
-            texto = service.analisarMovimento(ctx, metricasJson);
+            ctx = service.contextoPassoPratica(praticaPlanoId, praticaPassoIdx);
         } catch (Exception e) {
-            texto = "Não foi possível analisar agora: " + e.getMessage();
+            ctx = "";
         }
-        getElement().executeJs("window.cfPratica && window.cfPratica.mostrar($0, $1)", praticaContId, texto);
+        final String fctx = ctx;
+
+        // O pedido à IA corre fora do thread da UI (pode demorar alguns segundos);
+        // ativa-se polling para a resposta chegar sem precisar de @Push.
+        if (ui != null) {
+            ui.setPollInterval(1200);
+        }
+        Thread t = new Thread(() -> {
+            String texto;
+            try {
+                texto = service.analisarMovimento(fctx, metricasJson);
+            } catch (Exception e) {
+                texto = "Não foi possível analisar agora: "
+                        + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            }
+            final String f = texto;
+            try {
+                if (ui != null) {
+                    ui.access(() -> {
+                        getElement().executeJs("window.cfPratica && window.cfPratica.mostrar($0, $1)", cid, f);
+                        ui.setPollInterval(-1);
+                    });
+                }
+            } catch (Exception ignore) {
+                // UI já fechada — nada a fazer
+            }
+        });
+        t.setDaemon(true);
+        t.start();
     }
 
     private static String scriptCache;

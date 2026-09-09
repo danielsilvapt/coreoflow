@@ -26,10 +26,15 @@ public class YoutubeService {
 
     private final ConfiguracaoPlataformaRepository configRepo;
     private final ObjectMapper mapper = new ObjectMapper();
-    private final RestTemplate rest = new RestTemplate();
+    private final RestTemplate rest;
 
     public YoutubeService(ConfiguracaoPlataformaRepository configRepo) {
         this.configRepo = configRepo;
+        org.springframework.http.client.SimpleClientHttpRequestFactory f =
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        f.setConnectTimeout(8_000);
+        f.setReadTimeout(12_000);
+        this.rest = new RestTemplate(f);
     }
 
     public record Video(String id, String titulo, String canal) {
