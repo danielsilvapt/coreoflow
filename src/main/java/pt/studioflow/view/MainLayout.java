@@ -418,15 +418,19 @@ public class MainLayout extends AppLayout {
                         long pendentesTransf = 0;
 
                         Studio studioAtual = pt.studioflow.config.TenantContext.getCurrentStudio();
+                        // Multi-tenant: só as transferências do estúdio atual (findAll só p/ superadmin sem estúdio).
+                        java.util.List<pt.studioflow.model.Transferencia> transfsStudio = studioAtual != null
+                                        ? transferenciaRepository.findAllByStudio(studioAtual)
+                                        : transferenciaRepository.findAll();
                         if (studioAtual != null && emailUser.equalsIgnoreCase(studioAtual.getEmailAssinante1())) { // Assinante 1
-                                pendentesTransf = transferenciaRepository.findAll().stream()
+                                pendentesTransf = transfsStudio.stream()
                                                 .filter(t -> t.getAssinadoPor1() == null &&
                                                                 ("AGUARDA_ASSINATURAS".equals(t.getEstado())
                                                                                 || "AGUARDA_UMA_ASSINATURA"
                                                                                                 .equals(t.getEstado())))
                                                 .count();
                         } else if (studioAtual != null && emailUser.equalsIgnoreCase(studioAtual.getEmailAssinante2())) { // Assinante 2
-                                pendentesTransf = transferenciaRepository.findAll().stream()
+                                pendentesTransf = transfsStudio.stream()
                                                 .filter(t -> t.getAssinadoPor2() == null &&
                                                                 ("AGUARDA_ASSINATURAS".equals(t.getEstado())
                                                                                 || "AGUARDA_UMA_ASSINATURA"
@@ -435,7 +439,7 @@ public class MainLayout extends AppLayout {
                         } else if (studioAtual == null || emailUser.equalsIgnoreCase(studioAtual.getEmailCriadorTransferencias()) || usernameLogado.contains("admin")) { // Admin
                                                                                                                    // /
                                                                                                                    // Admin
-                                pendentesTransf = transferenciaRepository.findAll().stream()
+                                pendentesTransf = transfsStudio.stream()
                                                 .filter(t -> "AGUARDA_PAGAMENTO".equals(t.getEstado()))
                                                 .count();
                         }
