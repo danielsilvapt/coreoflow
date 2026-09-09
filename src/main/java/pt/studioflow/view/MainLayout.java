@@ -105,9 +105,33 @@ public class MainLayout extends AppLayout {
 
         private void injectGlobalStyles() {
                 String styles = "html { --lumo-primary-color: " + getPrimaryColor() + "; }" +
-                                ".v-loading-indicator { background-color: rgba(255, 93, 19, 0.4); pointer-events: all; }"
-                                +
-                                ".v-loading-indicator::after { border-top-color: " + getPrimaryColor() + " !important; }" +
+                                // --- Loader central com bailarina a dançar ---
+                                ".v-loading-indicator { display: none !important; }" +
+                                ".v-loading-indicator.first, .v-loading-indicator.second, .v-loading-indicator.third {"
+                                + " display: flex !important; flex-direction: column; align-items: center;"
+                                + " justify-content: center; gap: 14px; position: fixed !important; inset: 0 !important;"
+                                + " top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;"
+                                + " margin: 0 !important; padding: 0 !important; background: rgba(255,255,255,0.62) !important;"
+                                + " backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 2147483647 !important;"
+                                + " pointer-events: all; border: none !important; box-shadow: none !important;"
+                                + " animation: none !important; transition: opacity .15s ease; }" +
+                                ".v-loading-indicator.first::before, .v-loading-indicator.second::before, .v-loading-indicator.third::before {"
+                                + " content: '💃'; font-size: 62px; line-height: 1; display: block;"
+                                + " animation: cf-dance 1.15s ease-in-out infinite;"
+                                + " filter: drop-shadow(0 8px 14px rgba(0,0,0,0.18)); }" +
+                                ".v-loading-indicator.first::after, .v-loading-indicator.second::after, .v-loading-indicator.third::after {"
+                                + " content: 'a carregar'; font: 700 12px/1 system-ui,-apple-system,sans-serif;"
+                                + " letter-spacing: 3px; text-transform: uppercase; color: #667; border: none !important; }" +
+                                "@keyframes cf-dance {"
+                                + " 0%{transform:rotate(-16deg) translateY(0) scale(1)}"
+                                + " 20%{transform:rotate(10deg) translateY(-6px) scale(1.08)}"
+                                + " 40%{transform:rotate(-8deg) translateY(0) scale(1)}"
+                                + " 60%{transform:rotate(14deg) translateY(-5px) scale(1.06)}"
+                                + " 80%{transform:rotate(-12deg) translateY(0) scale(1)}"
+                                + " 100%{transform:rotate(-16deg) translateY(0) scale(1)} }" +
+                                "html[theme~='dark'] .v-loading-indicator.first, html[theme~='dark'] .v-loading-indicator.second, html[theme~='dark'] .v-loading-indicator.third {"
+                                + " background: rgba(15,15,26,0.66) !important; }" +
+                                "html[theme~='dark'] .v-loading-indicator.first::after, html[theme~='dark'] .v-loading-indicator.second::after, html[theme~='dark'] .v-loading-indicator.third::after { color: #aab; }" +
                                 "vaadin-app-layout { background: " + BG_GRADIENT + " !important; }" +
                                 "vaadin-tab[selected] { color: " + getPrimaryColor() + " !important; font-weight: 700; }" +
                                 ".drawer-content { background: rgba(255, 255, 255, 0.8) !important; backdrop-filter: blur(10px); }"
