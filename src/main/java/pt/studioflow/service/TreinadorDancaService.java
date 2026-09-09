@@ -289,6 +289,23 @@ public class TreinadorDancaService {
         return groq.perguntar(SISTEMA_PRATICA, prompt);
     }
 
+    // ---- Narração para o avatar 3D ----
+
+    private static final String SISTEMA_AVATAR = """
+            És o treinador de dança a narrar um passo enquanto um avatar o
+            demonstra ao lado. Escreve em português de Portugal, em texto corrido
+            para ser LIDO EM VOZ ALTA (sem markdown, sem listas, sem emojis, sem
+            títulos). 4 a 6 frases curtas: primeiro a postura/preparação, depois a
+            sequência do movimento contada pelos tempos (1, 2, 3, 4), depois um
+            erro comum a evitar e uma dica. Tom calmo e encorajador.
+            """;
+
+    /** Texto falado (TTS) que acompanha o avatar 3D a demonstrar o passo. */
+    public String narrarPasso(String contextoPasso) {
+        return groq.perguntar(SISTEMA_AVATAR, "PASSO: " + contextoPasso
+                + "\n\nNarra este passo para o aluno enquanto o avatar dança.");
+    }
+
     @Transactional
     public String responder(Long planoId, String pergunta) {
         PlanoDanca p = obter(planoId);
