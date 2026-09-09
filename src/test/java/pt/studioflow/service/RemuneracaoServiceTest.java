@@ -169,8 +169,9 @@ class RemuneracaoServiceTest {
                 registo("Ana Marques", "Aula regular", mesPassado, 2.0),
                 registo("Ana Marques", "Ensaio", mesPassado, 1.5)));
 
-        // 2h * 20 + 1.5h * 10 = 55
-        assertThat(service.custoProfessorTurma(t, s, mesPassado, d)).isCloseTo(55.0, within(0.001));
+        // O professor recebe por horas completas: 1h30 de ensaio conta como 2h.
+        // 2h * 20 + arredonda(1.5h)=2h * 10 = 60
+        assertThat(service.custoProfessorTurma(t, s, mesPassado, d)).isCloseTo(60.0, within(0.001));
     }
 
     // ---------- custo real: modo PERCENTAGEM ----------

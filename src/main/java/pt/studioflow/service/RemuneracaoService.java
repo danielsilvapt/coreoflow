@@ -354,8 +354,9 @@ public class RemuneracaoService {
         return !ehEnsaio(t) && !ehPrivadaOuWorkshop(t);
     }
 
+    // O professor recebe sempre por horas completas (aula de 45 min = 1 h).
     private static double horas(RegistoHoras r) {
-        return Duration.between(r.getInicio(), r.getFim()).toMinutes() / 60.0;
+        return pt.studioflow.util.HorasUtil.faturaveis(r.getInicio(), r.getFim());
     }
 
     private static boolean mesIgual(Mensalidade m, YearMonth mes) {
@@ -393,7 +394,7 @@ public class RemuneracaoService {
             for (int dia = 1; dia <= mes.lengthOfMonth(); dia++) {
                 if (mes.atDay(dia).getDayOfWeek() == au.getDia()) ocorrencias++;
             }
-            horas += ocorrencias * (Duration.between(au.getHoraInicio(), au.getHoraFim()).toMinutes() / 60.0);
+            horas += ocorrencias * pt.studioflow.util.HorasUtil.faturaveis(au.getHoraInicio(), au.getHoraFim());
         }
         return horas;
     }

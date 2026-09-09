@@ -199,16 +199,14 @@ public class DashboardView extends Div {
                                                 .filter(r -> normalizar(r.getProfessor()).contains(busca)
                                                                 && r.getMesNumero() == mesAtual.getMonthValue()
                                                                 && !"ENSAIO".equalsIgnoreCase(r.getTipoAtividade()))
-                                                .mapToDouble(r -> Duration.between(r.getInicio(), r.getFim())
-                                                                .toMinutes() / 60.0)
+                                                .mapToDouble(r -> pt.studioflow.util.HorasUtil.faturaveis(r.getInicio(), r.getFim()))
                                                 .sum();
 
                                 double hEns = registosMes.stream()
                                                 .filter(r -> normalizar(r.getProfessor()).contains(busca)
                                                                 && r.getMesNumero() == mesAtual.getMonthValue()
                                                                 && "ENSAIO".equalsIgnoreCase(r.getTipoAtividade()))
-                                                .mapToDouble(r -> Duration.between(r.getInicio(), r.getFim())
-                                                                .toMinutes() / 60.0)
+                                                .mapToDouble(r -> pt.studioflow.util.HorasUtil.faturaveis(r.getInicio(), r.getFim()))
                                                 .sum();
 
                                 List<MarcacaoSala> marcacoesMes = studio != null
@@ -219,8 +217,7 @@ public class DashboardView extends Div {
                                                                 && m.getData().getMonthValue() == mesAtual
                                                                                 .getMonthValue()
                                                                 && "PRIVADA".equalsIgnoreCase(m.getTipo()))
-                                                .mapToDouble(m -> Duration.between(m.getHoraInicio(), m.getHoraFim())
-                                                                .toMinutes() / 60.0)
+                                                .mapToDouble(m -> pt.studioflow.util.HorasUtil.faturaveis(m.getHoraInicio(), m.getHoraFim()))
                                                 .sum();
 
                                 vA.add(criarLinhaTextoDestaque("Regulares", String.format("%.1f h", hReg), "#2e7d32"));
