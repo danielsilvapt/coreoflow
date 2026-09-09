@@ -54,7 +54,10 @@ public class SuporteView extends VerticalLayout {
 
         H2 titulo = new H2("Suporte");
         titulo.getStyle().set("margin-top", "0");
-        Button atualizar = new Button("Atualizar", VaadinIcon.REFRESH.create(), e -> recarregar());
+        Button atualizar = new Button("Atualizar", VaadinIcon.REFRESH.create(), e -> {
+            recarregarFiltroEstudios();
+            recarregar();
+        });
         atualizar.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         HorizontalLayout topo = new HorizontalLayout(titulo, atualizar);
         topo.setWidthFull();
@@ -86,7 +89,17 @@ public class SuporteView extends VerticalLayout {
         add(grid);
         expand(grid);
 
+        recarregarFiltroEstudios();
         recarregar();
+    }
+
+    private void recarregarFiltroEstudios() {
+        String atual = estudio.getValue();
+        List<String> ops = new ArrayList<>();
+        ops.add("Todos");
+        ops.addAll(repo.estudiosComPedidos());
+        estudio.setItems(ops);
+        estudio.setValue(atual != null && ops.contains(atual) ? atual : "Todos");
     }
 
     private void configurarGrid() {
@@ -129,15 +142,6 @@ public class SuporteView extends VerticalLayout {
 
     private void recarregar() {
         List<PedidoSuporte> todos = repo.findAllByOrderByDataCriacaoDesc();
-
-        // filtro de estúdios
-        List<String> ops = new ArrayList<>();
-        ops.add("Todos");
-        ops.addAll(repo.estudiosComPedidos());
-        estudio.setItems(ops);
-        if (estudio.getValue() == null) {
-            estudio.setValue("Todos");
-        }
 
         String est = estado.getValue();
         String stu = (estudio.getValue() == null || "Todos".equals(estudio.getValue())) ? null : estudio.getValue();
