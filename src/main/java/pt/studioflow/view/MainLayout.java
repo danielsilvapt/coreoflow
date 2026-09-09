@@ -61,6 +61,7 @@ public class MainLayout extends AppLayout {
         private final TransferenciaRepository transferenciaRepository;
         private final BuildProperties buildProperties;
         private final EmailService emailService;
+        private final pt.studioflow.service.SuporteService suporteService;
         private final LeadRepository leadRepository;
         private final pt.studioflow.repository.ContaPortalRepository contaPortalRepository;
 
@@ -83,7 +84,8 @@ public class MainLayout extends AppLayout {
                         TransferenciaRepository transferenciaRepository, AuthService authService,
                         BuildProperties buildProperties, EmailService emailService,
                         LeadRepository leadRepository,
-                        pt.studioflow.repository.ContaPortalRepository contaPortalRepository) {
+                        pt.studioflow.repository.ContaPortalRepository contaPortalRepository,
+                        pt.studioflow.service.SuporteService suporteService) {
                 this.userRepository = userRepository;
                 this.authService = authService;
                 authService.initTenantContext(); // Inicializa o TenantContext para esta sessão
@@ -95,6 +97,7 @@ public class MainLayout extends AppLayout {
                 this.emailService = emailService;
                 this.leadRepository = leadRepository;
                 this.contaPortalRepository = contaPortalRepository;
+                this.suporteService = suporteService;
 
                 injectGlobalStyles();
                 createHeader();
@@ -342,6 +345,23 @@ public class MainLayout extends AppLayout {
                                 .set("border-bottom", "1px solid #e0e0e0");
 
                 addToNavbar(headerContent);
+
+                // Aviso global configurável pelo superadmin
+                try {
+                        pt.studioflow.model.ConfiguracaoPlataforma cfg = suporteService.getConfig();
+                        if (cfg.isAvisoGlobalAtivo() && cfg.getAvisoGlobal() != null
+                                        && !cfg.getAvisoGlobal().isBlank()) {
+                                Span aviso = new Span("📢  " + cfg.getAvisoGlobal());
+                                aviso.getStyle().set("display", "block").set("width", "100%")
+                                                .set("background", "#FFF3CD").set("color", "#664d03")
+                                                .set("border-bottom", "1px solid #ffe69c")
+                                                .set("padding", "8px 20px").set("font-size", "13px")
+                                                .set("text-align", "center").set("font-weight", "600");
+                                addToNavbar(aviso);
+                        }
+                } catch (Exception ignore) {
+                        // não bloquear o arranque da UI por causa do aviso
+                }
         }
 
         private void createDrawer() {
@@ -396,6 +416,7 @@ public class MainLayout extends AppLayout {
                         tabs.add(criarTab("Saúde", VaadinIcon.HEALTH_CARD, "#E74C3C", PainelSaudeView.class, null));
                         tabs.add(criarTab("Estúdios", VaadinIcon.GLOBE, "#7B61FF", StudioAdminView.class, null));
                         tabs.add(criarTab("Utilizadores", VaadinIcon.SHIELD, "#27AE60", UserView.class, null));
+                        tabs.add(criarTab("Configurações", VaadinIcon.COG, "#607D8B", ConfiguracoesPlataformaView.class, null));
                         tabs.add(criarHeaderMenu("Comercial"));
                         long leadsAtivos = leadRepository.findAll().stream()
                                         .filter(l -> l.getEstado() != Lead.EstadoLead.GANHO && l.getEstado() != Lead.EstadoLead.PERDIDO)
@@ -740,19 +761,19 @@ public class MainLayout extends AppLayout {
                                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
                                 return;
                         }
-                        try {
-                                String studioNome = TenantContext.getCurrentStudio() != null
-                                        ? TenantContext.getCurrentStudio().getNome() : "—";
-                                String nomeUtilizador = user != null ? user.getFirstName() + " (" + user.getUsername() + ")" : "—";
-                                emailService.enviarEmailSuporte(studioNome, nomeUtilizador,
-                                        tipo.getValue(), assunto.getValue(), descricao.getValue());
-                                Notification.show("Pedido de suporte enviado com sucesso!", 3000, Notification.Position.BOTTOM_CENTER)
-                                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                                dialog.close();
-                        } catch (Exception ex) {
-                                Notification.show("Erro ao enviar o email. Tenta novamente.", 4000, Notification.Position.MIDDLE)
-                                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                        }
+                        String studioNome = TenantContext.getCurrentStudio() != null
+                                ? TenantContext.getCurrentStudio().getNome() : "—";
+                        String nomeUtilizador = user != null
+                                ? user.getFirstName() + " (" + user.getUsername() + ")" : "—";
+                        // Nunca falha para o utilizador: grava sempre em BD e tenta o email.
+                        pt.studioflow.model.PedidoSuporte p = suporteService.registarPedido(studioNome,
+                                nomeUtilizador, tipo.getValue(), assunto.getValue(), descricao.getValue());
+                        Notification.show(p.isEmailEnviado()
+                                ? "Pedido de suporte enviado com sucesso!"
+                                : "Pedido registado. Vamos analisá-lo em breve.",
+                                3500, Notification.Position.BOTTOM_CENTER)
+                                .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                        dialog.close();
                 });
                 enviar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
