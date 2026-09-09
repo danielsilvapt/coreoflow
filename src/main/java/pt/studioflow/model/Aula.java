@@ -1,6 +1,7 @@
 package pt.studioflow.model;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import jakarta.persistence.*;
 
@@ -32,6 +33,11 @@ public class Aula {
 
     private LocalTime horaInicio;
     private LocalTime horaFim;
+
+    // Período real em que esta aula regular decorre (mapa de salas). A null =
+    // decorre todo o ano letivo. Usado nas estimativas de rentabilidade.
+    private LocalDate dataInicio;
+    private LocalDate dataFim;
 
     private String tipo; // NORMAL ou ENSAIO
 
@@ -83,5 +89,21 @@ public class Aula {
 
     public void setTipo(String tipo) {
         this.tipo = tipo;
+    }
+
+    public LocalDate getDataInicio() {
+        return dataInicio;
+    }
+
+    public void setDataInicio(LocalDate dataInicio) {
+        this.dataInicio = dataInicio;
+    }
+
+    public LocalDate getDataFim() {
+        return dataFim;
+    }
+
+    public void setDataFim(LocalDate dataFim) {
+        this.dataFim = dataFim;
     }
 }
