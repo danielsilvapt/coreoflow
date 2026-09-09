@@ -1,6 +1,7 @@
 package pt.studioflow.view;
 
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.format.TextStyle;
 import java.util.Comparator;
 import java.util.List;
@@ -17,6 +18,7 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
@@ -83,12 +85,25 @@ public class CRMView extends VerticalLayout {
 
 
     private void mostrarAniversarios() {
-        containerConteudo.add(new H3("Aniversariantes de " + 
+        pt.studioflow.model.Studio _s = pt.studioflow.config.TenantContext.getCurrentStudio();
+        List<Aluno> todos = (_s != null ? alunoRepository.findAllByStudio(_s) : alunoRepository.findAll());
+
+        LocalDate hoje = LocalDate.now();
+        List<Aluno> aniversariantesHoje = todos.stream()
+                .filter(a -> a.getDataNascimento() != null
+                        && a.getDataNascimento().getMonthValue() == hoje.getMonthValue()
+                        && a.getDataNascimento().getDayOfMonth() == hoje.getDayOfMonth())
+                .sorted(Comparator.comparing(Aluno::getNomeCompleto, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+        if (!aniversariantesHoje.isEmpty()) {
+            containerConteudo.add(criarCardAniversariantesHoje(aniversariantesHoje));
+        }
+
+        containerConteudo.add(new H3("Aniversariantes de " +
             LocalDate.now().getMonth().getDisplayName(TextStyle.FULL, new Locale("pt"))));
 
         Grid<Aluno> grid = new Grid<>(Aluno.class, false);
-        pt.studioflow.model.Studio _s = pt.studioflow.config.TenantContext.getCurrentStudio();
-        List<Aluno> lista = (_s != null ? alunoRepository.findAllByStudio(_s) : alunoRepository.findAll()).stream()
+        List<Aluno> lista = todos.stream()
                 .filter(a -> a.getDataNascimento() != null && a.getDataNascimento().getMonth() == LocalDate.now().getMonth())
                 .sorted(Comparator.comparingInt(a -> a.getDataNascimento().getDayOfMonth()))
                 .collect(Collectors.toList());
@@ -114,6 +129,49 @@ public class CRMView extends VerticalLayout {
 
         grid.setSizeFull();
         containerConteudo.add(grid);
+    }
+
+    // Card em destaque, no topo da aba, com quem faz anos hoje.
+    private Div criarCardAniversariantesHoje(List<Aluno> lista) {
+        Div card = new Div();
+        card.getStyle()
+                .set("background", "linear-gradient(135deg, #E91E63, #FF6F91)")
+                .set("color", "white")
+                .set("border-radius", "16px")
+                .set("padding", "18px 22px")
+                .set("margin-bottom", "18px")
+                .set("box-shadow", "0 8px 24px rgba(233,30,99,0.25)");
+
+        Span titulo = new Span("🎂 Aniversários de hoje");
+        titulo.getStyle().set("font-size", "1.15rem").set("font-weight", "800").set("display", "block");
+        Span sub = new Span(lista.size() == 1 ? "1 pessoa faz anos hoje" : lista.size() + " pessoas fazem anos hoje");
+        sub.getStyle().set("opacity", "0.9").set("font-size", "0.85rem");
+        card.add(titulo, sub);
+
+        for (Aluno a : lista) {
+            Integer idade = a.getDataNascimento() != null
+                    ? Period.between(a.getDataNascimento(), LocalDate.now()).getYears()
+                    : null;
+            Span nome = new Span(a.getNomeCompleto() + (idade != null ? "  ·  faz " + idade + " anos" : ""));
+            nome.getStyle().set("font-weight", "700").set("flex-grow", "1");
+
+            Button btn = new Button("Parabéns", new Icon(VaadinIcon.CHAT));
+            btn.addThemeVariants(ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("background", "white").set("color", "#E91E63").set("flex-shrink", "0");
+            btn.addClickListener(e -> {
+                String mensagem = "Olá " + a.getNomeCompleto().split(" ")[0]
+                        + "! A CoreoFlow deseja-te um dia de aniversário fantástico, com muita dança e alegria!";
+                abrirWhatsApp(a.getTelemovel(), mensagem);
+            });
+
+            HorizontalLayout linha = new HorizontalLayout(nome, btn);
+            linha.setWidthFull();
+            linha.setAlignItems(FlexComponent.Alignment.CENTER);
+            linha.getStyle().set("margin-top", "12px").set("background", "rgba(255,255,255,0.15)")
+                    .set("border-radius", "10px").set("padding", "8px 12px");
+            card.add(linha);
+        }
+        return card;
     }
 
     private void mostrarAlunosEmRisco() {

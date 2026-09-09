@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import pt.studioflow.config.MensalidadeConfig;
 import pt.studioflow.model.Aula;
 import pt.studioflow.model.AlunoTurma;
+import pt.studioflow.model.EstadoMensalidade;
 import pt.studioflow.model.Mensalidade;
 import pt.studioflow.model.Professor;
 import pt.studioflow.model.RegistoHoras;
@@ -116,7 +117,18 @@ public class RemuneracaoService {
         return d.mensalidades.stream()
                 .filter(m -> m.getTurma() != null && m.getTurma().getId().equals(t.getId()))
                 .filter(m -> mesIgual(m, mes))
+                .filter(RemuneracaoService::emitida)
                 .mapToDouble(Mensalidade::getValor).sum();
+    }
+
+    /**
+     * Uma mensalidade "conta" como receita real quando já foi emitida
+     * (FATURADO / PAGO / EM_DÍVIDA). As POR_EMITIR são geradas com antecedência
+     * até junho e não são ainda receita faturada. (estado a null ⇒ conta, para
+     * compatibilidade com dados/testes antigos.)
+     */
+    private static boolean emitida(Mensalidade m) {
+        return m.getEstado() != EstadoMensalidade.POR_EMITIR;
     }
 
     /**
@@ -156,6 +168,7 @@ public class RemuneracaoService {
             double regular = d.mensalidades.stream()
                     .filter(m -> m.getTurma() != null && m.getTurma().getId().equals(t.getId()))
                     .filter(m -> mesIgual(m, mes))
+                    .filter(RemuneracaoService::emitida)
                     .mapToDouble(m -> m.getValor()
                             * percentagem(p, s, freqAluno(m, d.inscricoes)) / 100.0)
                     .sum();
