@@ -27,6 +27,8 @@ import software.xdev.vaadin.chartjs.ChartContainer;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Anchor;
@@ -661,64 +663,81 @@ public class RelatoriosView extends VerticalLayout {
                 container.setWidthFull();
                 container.getStyle().set("flex-grow", "1").set("overflow", "auto");
 
+                UI.getCurrent().getElement().executeJs(
+                                "if(!document.getElementById('rent-styles')){"
+                                + "const s=document.createElement('style');s.id='rent-styles';s.textContent=$0;"
+                                + "document.head.appendChild(s);}",
+                                "vaadin-grid::part(rent-real){background-color:#FFF3E0 !important;}"
+                                + "vaadin-grid::part(rent-est){background-color:#FFFDE7 !important;}"
+                                + "vaadin-grid::part(rent-pos){color:#2E7D32 !important;font-weight:700;}"
+                                + "vaadin-grid::part(rent-neg){color:#C62828 !important;font-weight:700;}");
+
                 Runnable render = () -> {
                         container.removeAll();
                         YearMonth mes = seletor.getValue();
                         boolean previsto = remuneracaoService.ehFuturo(mes);
-                        Map<Long, double[]> rent = remuneracaoService.rentabilidadePorTurma(turmas, studio, mes, dados);
-                        Map<Long, Double> custoEst = new HashMap<>();
-                        for (Turma t : turmas) {
-                                custoEst.put(t.getId(),
-                                                remuneracaoService.custoProfessorEstimadoTurma(t, studio, mes, dados));
-                        }
-
-                        java.util.function.ToDoubleFunction<Turma> saldoEst = t -> rent.get(t.getId())[0]
-                                        - custoEst.get(t.getId());
+                        Map<Long, double[]> rent = remuneracaoService.rentabilidadeDetalhadaPorTurma(turmas, studio,
+                                        mes, dados);
 
                         List<Turma> ordenadas = turmas.stream()
                                         .filter(t -> {
                                                 double[] x = rent.get(t.getId());
-                                                return x != null && (x[0] != 0 || x[1] != 0);
+                                                return x != null && java.util.Arrays.stream(x).anyMatch(vv -> vv != 0);
                                         })
-                                        .sorted((a, b) -> Double.compare(saldoEst.applyAsDouble(b),
-                                                        saldoEst.applyAsDouble(a)))
+                                        .sorted((a, b) -> Double.compare(rent.get(b.getId())[RemuneracaoService.SALDO_EST],
+                                                        rent.get(a.getId())[RemuneracaoService.SALDO_EST]))
                                         .collect(Collectors.toList());
 
                         Grid<Turma> grid = new Grid<>();
                         grid.setItems(ordenadas);
-                        grid.addColumn(Turma::getDescricao).setHeader("Turma");
-                        grid.addColumn(t -> fmtEuro(rent.get(t.getId())[0])).setHeader("Receita").setAutoWidth(true);
-                        grid.addColumn(t -> fmtEuro(rent.get(t.getId())[1])).setHeader("Custo Prof").setAutoWidth(true);
-                        grid.addColumn(t -> fmtEuro(custoEst.get(t.getId()))).setHeader("Custo Prof Est.")
-                                        .setAutoWidth(true);
-                        grid.addColumn(t -> fmtEuro(rent.get(t.getId())[2])).setHeader("Saldo").setAutoWidth(true);
-                        grid.addColumn(t -> fmtEuro(saldoEst.applyAsDouble(t))).setHeader("Saldo Est.").setAutoWidth(true);
                         grid.addThemeVariants(GridVariant.LUMO_COMPACT, GridVariant.LUMO_ROW_STRIPES);
                         grid.setSizeFull();
 
-                        String[] headers = { "Turma", "Receita", "Custo Prof", "Custo Prof Estimado", "Saldo Final",
-                                        "Saldo Final Estimado" };
+                        grid.addColumn(Turma::getDescricao).setHeader("Turma").setAutoWidth(true).setFlexGrow(1);
+                        Grid.Column<Turma> cRecR = colValor(grid, rent, RemuneracaoService.REC_REAL, "Real", false);
+                        Grid.Column<Turma> cRecE = colValor(grid, rent, RemuneracaoService.REC_EST, "Estimada", true);
+                        Grid.Column<Turma> cCusR = colValor(grid, rent, RemuneracaoService.CUSTO_REAL, "Real", false);
+                        Grid.Column<Turma> cCusE = colValor(grid, rent, RemuneracaoService.CUSTO_EST, "Estimado", true);
+                        Grid.Column<Turma> cSalR = colSaldo(grid, rent, RemuneracaoService.SALDO_REAL, "Real", false);
+                        Grid.Column<Turma> cSalE = colSaldo(grid, rent, RemuneracaoService.SALDO_EST, "Estimado", true);
+
+                        com.vaadin.flow.component.grid.HeaderRow topo = grid.prependHeaderRow();
+                        topo.join(cRecR, cRecE).setComponent(grupoHeader("Receita"));
+                        topo.join(cCusR, cCusE).setComponent(grupoHeader("Custo Prof."));
+                        topo.join(cSalR, cSalE).setComponent(grupoHeader("Saldo"));
+
+                        String[] headers = { "Turma", "Receita Real", "Receita Estimada", "Custo Prof Real",
+                                        "Custo Prof Estimado", "Saldo Real", "Saldo Estimado" };
                         List<String[]> rows = ordenadas.stream()
-                                        .map(t -> new String[] { t.getDescricao(),
-                                                        fmtEuro(rent.get(t.getId())[0]), fmtEuro(rent.get(t.getId())[1]),
-                                                        fmtEuro(custoEst.get(t.getId())),
-                                                        fmtEuro(rent.get(t.getId())[2]),
-                                                        fmtEuro(saldoEst.applyAsDouble(t)) })
+                                        .map(t -> linhaExport(t.getDescricao(), rent.get(t.getId())))
                                         .collect(Collectors.toList());
-                        double tRec = ordenadas.stream().mapToDouble(t -> rent.get(t.getId())[0]).sum();
-                        double tCusto = ordenadas.stream().mapToDouble(t -> rent.get(t.getId())[1]).sum();
-                        double tCustoEst = ordenadas.stream().mapToDouble(t -> custoEst.get(t.getId())).sum();
-                        rows.add(new String[] { "TOTAL", fmtEuro(tRec), fmtEuro(tCusto), fmtEuro(tCustoEst),
-                                        fmtEuro(tRec - tCusto), fmtEuro(tRec - tCustoEst) });
+                        double[] tot = new double[6];
+                        for (Turma t : ordenadas) {
+                                double[] x = rent.get(t.getId());
+                                for (int i = 0; i < 6; i++)
+                                        tot[i] += x[i];
+                        }
+                        rows.add(linhaExport("TOTAL", tot));
 
                         Span aviso = new Span(previsto
-                                        ? "⚠️ Mês futuro — previsão: receita das inscrições ativas menos custo estimado do professor."
-                                        : "Valores reais do mês selecionado.");
+                                        ? "Mês futuro: as colunas Real ainda estão praticamente a zero (mensalidades por emitir, horas por registar) — orienta-te pelas colunas Estimadas."
+                                        : "Real = faturado / horas registadas. Estimado = projeção das inscrições ativas e horário planeado.");
                         aviso.getStyle().set("font-size", "12px").set("color", previsto ? "#e65100" : "#888");
+
+                        Span legendaCores = new Span();
+                        legendaCores.getElement().setProperty("innerHTML",
+                                        "<span style='background:#FFF3E0;padding:1px 8px;border-radius:4px'>Real</span>"
+                                        + "&nbsp;&nbsp;"
+                                        + "<span style='background:#FFFDE7;padding:1px 8px;border-radius:4px'>Estimado</span>");
+                        legendaCores.getStyle().set("font-size", "12px");
+                        HorizontalLayout linhaAviso = new HorizontalLayout(aviso, legendaCores);
+                        linhaAviso.setWidthFull();
+                        linhaAviso.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
+                        linhaAviso.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
 
                         String tituloExport = "Rentabilidade - " + mesLabel(mes) + (previsto ? " (previsao)" : "");
                         Component grafico = criarGraficoRentabilidadeMensal(mes, turmas, studio, dados);
-                        VerticalLayout v = new VerticalLayout(grafico, aviso, grid,
+                        VerticalLayout v = new VerticalLayout(grafico, linhaAviso, grid,
                                         linhaDownloads(tituloExport, headers, rows));
                         v.setSizeFull();
                         v.setPadding(false);
@@ -734,6 +753,43 @@ public class RelatoriosView extends VerticalLayout {
                 d.add(wrap);
                 d.getFooter().add(new Button("Fechar", e -> d.close()));
                 d.open();
+        }
+
+        private Grid.Column<Turma> colValor(Grid<Turma> grid, Map<Long, double[]> rent, int idx,
+                        String sub, boolean estimado) {
+                Grid.Column<Turma> c = grid.addColumn(t -> fmtEuro(rent.get(t.getId())[idx]))
+                                .setHeader(subHeader(sub, estimado)).setAutoWidth(true)
+                                .setTextAlign(ColumnTextAlign.END);
+                c.setPartNameGenerator(t -> estimado ? "rent-est" : "rent-real");
+                return c;
+        }
+
+        private Grid.Column<Turma> colSaldo(Grid<Turma> grid, Map<Long, double[]> rent, int idx,
+                        String sub, boolean estimado) {
+                Grid.Column<Turma> c = grid.addColumn(t -> fmtEuro(rent.get(t.getId())[idx]))
+                                .setHeader(subHeader(sub, estimado)).setAutoWidth(true)
+                                .setTextAlign(ColumnTextAlign.END);
+                c.setPartNameGenerator(t -> (estimado ? "rent-est" : "rent-real")
+                                + (rent.get(t.getId())[idx] >= 0 ? " rent-pos" : " rent-neg"));
+                return c;
+        }
+
+        private Span subHeader(String txt, boolean estimado) {
+                Span s = new Span(txt);
+                s.getStyle().set("font-size", "0.78em").set("font-weight", "600")
+                                .set("color", estimado ? "#F9A825" : "#E65100");
+                return s;
+        }
+
+        private Span grupoHeader(String txt) {
+                Span s = new Span(txt);
+                s.getStyle().set("font-weight", "700");
+                return s;
+        }
+
+        private String[] linhaExport(String nome, double[] x) {
+                return new String[] { nome, fmtEuro(x[0]), fmtEuro(x[1]), fmtEuro(x[2]), fmtEuro(x[3]),
+                                fmtEuro(x[4]), fmtEuro(x[5]) };
         }
 
         // Gráfico de barras com a rentabilidade geral (soma de todas as turmas) mês a
