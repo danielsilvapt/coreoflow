@@ -420,9 +420,11 @@ public class SalaScheduleView extends VerticalLayout {
     }
 
     private boolean isMinhaTurma(Turma t) {
-        return !isAdmin && professorLogado != null && professorLogado.getId() != null
-                && t != null && t.getProfessor() != null
-                && professorLogado.getId().equals(t.getProfessor().getId());
+        if (isAdmin || professorLogado == null || professorLogado.getId() == null || t == null) {
+            return false;
+        }
+        return t.getTodosProfessores().stream()
+                .anyMatch(p -> p != null && professorLogado.getId().equals(p.getId()));
     }
 
     private static String normalizarTxt(String t) {
@@ -662,17 +664,28 @@ public class SalaScheduleView extends VerticalLayout {
                     coluna.add(slotClique);
                 }
 
-                aulas.stream()
-                        .filter(a -> a.getDia().equals(dia) && a.getSala().getId().equals(sala.getId()))
-                        .forEach(a -> {
-                            OcorrenciaAula oc = ocorrencias.stream()
-                                    .filter(o -> o.getTipo() != OcorrenciaAula.Tipo.REPOSICAO)
-                                    .filter(o -> o.getTurma() != null && a.getTurma() != null
-                                            && o.getTurma().getId().equals(a.getTurma().getId())
-                                            && o.getData().equals(dataDia))
-                                    .findFirst().orElse(null);
-                            coluna.add(criarElementoAula(a, oc, dataDia, sumarios));
-                        });
+                java.util.List<Aula> aulasDaColuna = aulas.stream()
+                        .filter(a -> a.getDia().equals(dia) && a.getSala() != null
+                                && a.getSala().getId().equals(sala.getId())
+                                && a.getHoraInicio() != null && a.getHoraFim() != null)
+                        .sorted(java.util.Comparator.comparing(Aula::getHoraInicio))
+                        .collect(Collectors.toList());
+                for (Aula a : aulasDaColuna) {
+                    // aulas que se sobrepõem no tempo → repartir a largura do bloco
+                    java.util.List<Aula> sobrepostas = aulasDaColuna.stream()
+                            .filter(b -> a.getHoraInicio().isBefore(b.getHoraFim())
+                                    && b.getHoraInicio().isBefore(a.getHoraFim()))
+                            .collect(Collectors.toList());
+                    int colCount = Math.max(1, sobrepostas.size());
+                    int colIndex = Math.max(0, sobrepostas.indexOf(a));
+                    OcorrenciaAula oc = ocorrencias.stream()
+                            .filter(o -> o.getTipo() != OcorrenciaAula.Tipo.REPOSICAO)
+                            .filter(o -> o.getTurma() != null && a.getTurma() != null
+                                    && o.getTurma().getId().equals(a.getTurma().getId())
+                                    && o.getData().equals(dataDia))
+                            .findFirst().orElse(null);
+                    coluna.add(criarElementoAula(a, oc, dataDia, sumarios, colIndex, colCount));
+                }
 
                 marcacoes.stream()
                         .filter(m -> m.getSala().getId().equals(sala.getId()) && m.getData().equals(dataDia))
@@ -686,6 +699,11 @@ public class SalaScheduleView extends VerticalLayout {
     }
 
     private Div criarElementoAula(Aula a, OcorrenciaAula ocorrencia, LocalDate dataDia, List<SumarioAula> sumarios) {
+        return criarElementoAula(a, ocorrencia, dataDia, sumarios, 0, 1);
+    }
+
+    private Div criarElementoAula(Aula a, OcorrenciaAula ocorrencia, LocalDate dataDia, List<SumarioAula> sumarios,
+            int colIndex, int colCount) {
         double top = calcularTop(a.getHoraInicio());
         double height = calcularAltura(a.getHoraInicio(), a.getHoraFim());
         String corBase = (a.getTurma() != null && a.getTurma().getCor() != null) ? a.getTurma().getCor() : "#3b82f6";
@@ -719,14 +737,18 @@ public class SalaScheduleView extends VerticalLayout {
             label.getStyle().set("text-decoration", "line-through");
         }
 
+        // Reparte a largura quando há aulas sobrepostas na mesma sala/dia.
+        double larguraPct = 100.0 / colCount;
+        double esquerdaPct = colIndex * larguraPct;
+
         Div div = new Div(label);
         div.addClassName("schedule-card"); // Ativa o efeito hover 3D
         div.getStyle()
                 .set("position", "absolute")
                 .set("top", (top + 2) + "px")
                 .set("height", (height - 4) + "px")
-                .set("left", "3px")
-                .set("width", "calc(100% - 6px)")
+                .set("left", "calc(" + esquerdaPct + "% + 3px)")
+                .set("width", "calc(" + larguraPct + "% - 6px)")
                 .set("background-color", cancelada ? "#94a3b8" : corBase)
                 .set("color", "#ffffff")
                 .set("z-index", "10")
