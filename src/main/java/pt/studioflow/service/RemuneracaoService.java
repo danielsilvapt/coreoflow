@@ -107,9 +107,9 @@ public class RemuneracaoService {
         return mes.isAfter(YearMonth.now());
     }
 
-    /** Receita (mensalidades) da turma no mês — real para meses fechados, projetada para futuros. */
+    /** Receita (mensalidades) da turma no mês — real para meses fechados, estimada para futuros. */
     public double receitaTurma(Turma t, YearMonth mes, Dados d, Studio studio) {
-        return ehFuturo(mes) ? receitaEstimadaTurma(t, d, studio) : receitaRealTurma(t, mes, d);
+        return ehFuturo(mes) ? receitaEstimadaTurma(t, mes, d) : receitaRealTurma(t, mes, d);
     }
 
     /** Receita <b>real</b> (mensalidades efetivamente emitidas) da turma no mês. Para meses futuros tende a 0. */
@@ -132,15 +132,17 @@ public class RemuneracaoService {
     }
 
     /**
-     * Receita <b>estimada</b> da turma: projeção das mensalidades das inscrições
-     * ativas, independentemente de o mês já ter mensalidades emitidas. Serve de
-     * termo de comparação com {@link #receitaRealTurma}.
+     * Receita <b>estimada</b> da turma num mês: soma EXATA das mensalidades já
+     * definidas para essa turma nesse mês (qualquer estado, incl. POR_EMITIR).
+     * É o que se espera faturar — o mesmo valor que a lista de Mensalidades mostra
+     * com o filtro dessa turma + mês. Sem projeções nem recálculo por regras (que
+     * ignoravam descontos manuais e inflavam a estimativa).
      */
-    public double receitaEstimadaTurma(Turma t, Dados d, Studio studio) {
-        return d.inscricoes.stream()
-                .filter(at -> at.getTurma() != null && at.getTurma().getId().equals(t.getId()))
-                .filter(at -> at.getAluno() != null && at.getAluno().isAtivo())
-                .mapToDouble(at -> mensalidadeProjetada(studio, at))
+    public double receitaEstimadaTurma(Turma t, YearMonth mes, Dados d) {
+        return d.mensalidades.stream()
+                .filter(m -> m.getTurma() != null && m.getTurma().getId().equals(t.getId()))
+                .filter(m -> mesIgual(m, mes))
+                .mapToDouble(m -> Math.max(0.0, m.getValor()))
                 .sum();
     }
 
@@ -190,11 +192,13 @@ public class RemuneracaoService {
         Professor p = t.getProfessor();
         Studio s = studio;
         if (tipoEfetivo(p, s) == TipoRemuneracao.PERCENTAGEM) {
-            return d.inscricoes.stream()
-                    .filter(at -> at.getTurma() != null && at.getTurma().getId().equals(t.getId()))
-                    .filter(at -> at.getAluno() != null && at.getAluno().isAtivo())
-                    .mapToDouble(at -> mensalidadeProjetada(s, at)
-                            * percentagem(p, s, at.getAulasPorSemana()) / 100.0)
+            // Percentagem sobre as mensalidades já definidas da turma nesse mês
+            // (mesma base da receita estimada), qualquer estado.
+            return d.mensalidades.stream()
+                    .filter(m -> m.getTurma() != null && m.getTurma().getId().equals(t.getId()))
+                    .filter(m -> mesIgual(m, mes))
+                    .mapToDouble(m -> Math.max(0.0, m.getValor())
+                            * percentagem(p, s, freqAluno(m, d.inscricoes)) / 100.0)
                     .sum();
         }
         return horasAgendadas(t, mes, d.aulas) * valorHoraRegular(p, s);
@@ -243,7 +247,7 @@ public class RemuneracaoService {
         Map<Long, double[]> res = new LinkedHashMap<>();
         for (Turma t : turmas) {
             double rReal = receitaRealTurma(t, mes, d);
-            double rEst = receitaEstimadaTurma(t, d, studio);
+            double rEst = receitaEstimadaTurma(t, mes, d);
             double cReal = custoProfessorRealTurma(t, studio, mes, d);
             double cEst = custoProfessorEstimadoTurma(t, studio, mes, d);
             res.put(t.getId(), new double[] { rReal, rEst, cReal, cEst, rReal - cReal, rEst - cEst });
@@ -267,22 +271,16 @@ public class RemuneracaoService {
             double base = 0, ensaios = 0, privadas = 0;
 
             if (modo == TipoRemuneracao.PERCENTAGEM) {
+                // Percentagem sobre as mensalidades já definidas da turma nesse mês
+                // (as mensalidades são geradas com antecedência, por isso serve
+                // também para meses futuros).
                 for (Turma t : turmasProf) {
-                    if (futuro) {
-                        base += d.inscricoes.stream()
-                                .filter(at -> at.getTurma() != null && at.getTurma().getId().equals(t.getId()))
-                                .filter(at -> at.getAluno() != null && at.getAluno().isAtivo())
-                                .mapToDouble(at -> mensalidadeProjetada(s, at)
-                                        * percentagem(p, s, at.getAulasPorSemana()) / 100.0)
-                                .sum();
-                    } else {
-                        base += d.mensalidades.stream()
-                                .filter(m -> m.getTurma() != null && m.getTurma().getId().equals(t.getId()))
-                                .filter(m -> mesIgual(m, mes))
-                                .mapToDouble(m -> m.getValor()
-                                        * percentagem(p, s, freqAluno(m, d.inscricoes)) / 100.0)
-                                .sum();
-                    }
+                    base += d.mensalidades.stream()
+                            .filter(m -> m.getTurma() != null && m.getTurma().getId().equals(t.getId()))
+                            .filter(m -> mesIgual(m, mes))
+                            .mapToDouble(m -> Math.max(0.0, m.getValor())
+                                    * percentagem(p, s, freqAluno(m, d.inscricoes)) / 100.0)
+                            .sum();
                 }
             }
 

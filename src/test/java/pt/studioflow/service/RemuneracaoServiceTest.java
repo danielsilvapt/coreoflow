@@ -222,19 +222,22 @@ class RemuneracaoServiceTest {
     }
 
     @Test
-    void custoProfessorTurma_mesFuturo_modoPercentagem_projetaMensalidadesDasInscricoes() {
+    void custoProfessorTurma_mesFuturo_modoPercentagem_usaMensalidadesDoMes() {
         Studio s = studio("PERCENTAGEM");
-        s.setMensalidadeAdulto2x(30.0);
-        s.setMensalidadeNaoSocioAdicional(10.0);
         s.setPercProf2x(50.0);
         Professor p = professor(s);
         Turma t = turma(100L, p, s);
 
-        Aluno socio = aluno(1L, false, true);      // 30 * 50% = 15
-        Aluno naoSocio = aluno(2L, false, false);  // (30 + 10) * 50% = 20
+        Aluno a1 = aluno(1L, false, true);
+        Aluno a2 = aluno(2L, false, false);
 
+        // Estimativa futura = percentagem sobre as mensalidades já definidas do mês
+        // (30 + 40) * 50% = 35 — já não se recalcula pelas regras/inscrições.
         RemuneracaoService.Dados d = new RemuneracaoService.Dados()
-                .inscricoes(List.of(inscricao(socio, t, 2), inscricao(naoSocio, t, 2)));
+                .inscricoes(List.of(inscricao(a1, t, 2), inscricao(a2, t, 2)))
+                .mensalidades(List.of(
+                        mensalidade(a1, t, mesFuturo, 30.0),
+                        mensalidade(a2, t, mesFuturo, 40.0)));
 
         assertThat(service.custoProfessorTurma(t, s, mesFuturo, d)).isCloseTo(35.0, within(0.001));
     }
