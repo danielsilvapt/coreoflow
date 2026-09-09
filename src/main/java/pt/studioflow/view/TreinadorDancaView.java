@@ -348,12 +348,104 @@ public class TreinadorDancaView extends VerticalLayout {
             v.add(a);
         }
 
+        Button avatar = new Button("Ver com avatar 3D", VaadinIcon.USER.create(),
+                e -> abrirAvatar(plano, idx, passo));
+        avatar.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
         Button praticar = new Button("Praticar com a câmara", VaadinIcon.CAMERA.create(),
                 e -> abrirPratica(plano, idx, passo));
         praticar.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-        praticar.getStyle().set("margin-top", "8px");
-        v.add(praticar);
+        HorizontalLayout acoes = new HorizontalLayout(avatar, praticar);
+        acoes.getStyle().set("margin-top", "8px").set("flex-wrap", "wrap");
+        v.add(acoes);
         return v;
+    }
+
+    // ---------- Avatar 3D ----------
+
+    private String avatarContId;
+
+    private void abrirAvatar(PlanoDanca plano, int idx, Passo passo) {
+        avatarContId = "cfava-" + Long.toHexString(System.nanoTime());
+
+        com.vaadin.flow.component.dialog.Dialog dlg = new com.vaadin.flow.component.dialog.Dialog();
+        dlg.setHeaderTitle("Avatar: " + passo.nome());
+        dlg.setWidth("660px");
+        dlg.setDraggable(true);
+        dlg.setResizable(true);
+
+        com.vaadin.flow.component.html.Div cont = new com.vaadin.flow.component.html.Div();
+        cont.setId(avatarContId);
+        cont.setWidthFull();
+        cont.setMinHeight("440px");
+        dlg.add(cont);
+
+        Button fechar = new Button("Fechar", e -> {
+            getElement().executeJs("window.cfAvatar && window.cfAvatar.parar()");
+            dlg.close();
+        });
+        dlg.getFooter().add(fechar);
+        dlg.addDialogCloseActionListener(e -> {
+            getElement().executeJs("window.cfAvatar && window.cfAvatar.parar()");
+            dlg.close();
+        });
+        dlg.open();
+
+        String estiloPlano = plano.getEstilo() != null ? plano.getEstilo() : "";
+        getElement().executeJs(scriptAvatar());
+        getElement().executeJs(
+                "setTimeout(function(){ window.cfAvatar && window.cfAvatar.iniciar($0, {estilo: $1}); }, 60);",
+                avatarContId, estiloPlano);
+
+        // Narração gerada em segundo plano (não bloqueia a UI).
+        final com.vaadin.flow.component.UI ui = com.vaadin.flow.component.UI.getCurrent();
+        final String cid = avatarContId;
+        String ctx;
+        try {
+            ctx = service.contextoPassoPratica(plano.getId(), idx);
+        } catch (Exception e) {
+            ctx = passo.nome() + ". " + passo.descricao();
+        }
+        final String fctx = ctx;
+        if (ui != null) {
+            ui.setPollInterval(1200);
+        }
+        Thread t = new Thread(() -> {
+            String texto;
+            try {
+                texto = service.narrarPasso(fctx);
+            } catch (Exception e) {
+                texto = passo.descricao() != null && !passo.descricao().isBlank()
+                        ? passo.descricao()
+                        : "Segue o robô e mantém o tempo.";
+            }
+            final String f = texto;
+            try {
+                if (ui != null) {
+                    ui.access(() -> {
+                        getElement().executeJs("window.cfAvatar && window.cfAvatar.narrar($0, $1)", cid, f);
+                        ui.setPollInterval(-1);
+                    });
+                }
+            } catch (Exception ignore) {
+                // diálogo já fechado
+            }
+        });
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private static String scriptAvatarCache;
+
+    private static synchronized String scriptAvatar() {
+        if (scriptAvatarCache == null) {
+            try (var in = TreinadorDancaView.class.getResourceAsStream("/js/treinador-avatar.js")) {
+                scriptAvatarCache = in == null ? ""
+                        : new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                scriptAvatarCache = "";
+            }
+        }
+        return scriptAvatarCache;
     }
 
     // ---------- Modo prática (câmara + pose) ----------
