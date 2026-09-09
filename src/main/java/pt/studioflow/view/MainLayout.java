@@ -116,19 +116,18 @@ public class MainLayout extends AppLayout {
                                 + " pointer-events: all; border: none !important; box-shadow: none !important;"
                                 + " animation: none !important; transition: opacity .15s ease; }" +
                                 ".v-loading-indicator.first::before, .v-loading-indicator.second::before, .v-loading-indicator.third::before {"
-                                + " content: '💃'; font-size: 62px; line-height: 1; display: block;"
-                                + " animation: cf-dance 1.15s ease-in-out infinite;"
-                                + " filter: drop-shadow(0 8px 14px rgba(0,0,0,0.18)); }" +
+                                + " content: ''; display: block; width: 66px; height: 66px;"
+                                + " background: url('/icons/icon.png') center / contain no-repeat;"
+                                + " animation: cf-dance 1.2s cubic-bezier(.5,0,.5,1) infinite;"
+                                + " filter: drop-shadow(0 10px 16px rgba(0,0,0,0.22)); }" +
                                 ".v-loading-indicator.first::after, .v-loading-indicator.second::after, .v-loading-indicator.third::after {"
                                 + " content: 'a carregar'; font: 700 12px/1 system-ui,-apple-system,sans-serif;"
                                 + " letter-spacing: 3px; text-transform: uppercase; color: #667; border: none !important; }" +
                                 "@keyframes cf-dance {"
-                                + " 0%{transform:rotate(-16deg) translateY(0) scale(1)}"
-                                + " 20%{transform:rotate(10deg) translateY(-6px) scale(1.08)}"
-                                + " 40%{transform:rotate(-8deg) translateY(0) scale(1)}"
-                                + " 60%{transform:rotate(14deg) translateY(-5px) scale(1.06)}"
-                                + " 80%{transform:rotate(-12deg) translateY(0) scale(1)}"
-                                + " 100%{transform:rotate(-16deg) translateY(0) scale(1)} }" +
+                                + " 0%{transform: translateY(0) rotate(0deg) scale(1)}"
+                                + " 45%{transform: translateY(-9px) rotate(200deg) scale(1.12)}"
+                                + " 70%{transform: translateY(0) rotate(300deg) scale(1)}"
+                                + " 100%{transform: translateY(0) rotate(360deg) scale(1)} }" +
                                 "html[theme~='dark'] .v-loading-indicator.first, html[theme~='dark'] .v-loading-indicator.second, html[theme~='dark'] .v-loading-indicator.third {"
                                 + " background: rgba(15,15,26,0.66) !important; }" +
                                 "html[theme~='dark'] .v-loading-indicator.first::after, html[theme~='dark'] .v-loading-indicator.second::after, html[theme~='dark'] .v-loading-indicator.third::after { color: #aab; }" +
