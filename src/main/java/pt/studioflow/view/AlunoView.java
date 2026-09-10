@@ -48,9 +48,11 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Aluno;
+import pt.studioflow.model.AlunoTurma;
 import pt.studioflow.model.EstadoMensalidade;
 import pt.studioflow.model.Mensalidade;
 import pt.studioflow.model.Studio;
+import pt.studioflow.model.Turma;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
 import pt.studioflow.repository.MensalidadeRepository;
@@ -228,13 +230,28 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
             colEmail.setVisible(!ecraPequeno);
         });
 
+        grid.addComponentColumn(this::criarCelulaTurmas)
+                .setHeader("TURMAS").setAutoWidth(true).setFlexGrow(1);
+
         grid.addComponentColumn(aluno -> {
             boolean temDivida = temDividaMaisDeUmMes(aluno);
-            Span badge = new Span(temDivida ? "DÍVIDA" : "REGULAR");
-            badge.getElement().getThemeList().add("badge " + (temDivida ? "error" : "success") + " pill");
-            badge.addClickListener(e -> abrirModalMensalidades(aluno,
+            Span celula;
+            if (temDivida) {
+                celula = new Span("DÍVIDA");
+                celula.getElement().getThemeList().add("badge error pill");
+            } else {
+                // "Regular" já não precisa de texto: um visto verde basta e alinha com
+                // o ícone da coluna ESTADO, mantendo o "DÍVIDA" como o único aviso textual.
+                Icon visto = VaadinIcon.CHECK_CIRCLE.create();
+                visto.setSize("18px");
+                visto.setColor("#1E8E3E");
+                celula = new Span(visto);
+                celula.getElement().setAttribute("title", "Regular");
+            }
+            celula.getStyle().set("cursor", "pointer");
+            celula.addClickListener(e -> abrirModalMensalidades(aluno,
                     temDivida ? EstadoMensalidade.FATURADO : EstadoMensalidade.PAGO));
-            return badge;
+            return celula;
         }).setHeader("FINANCEIRO").setAutoWidth(true).setTextAlign(ColumnTextAlign.CENTER);
 
         grid.addComponentColumn(aluno -> {
@@ -264,7 +281,55 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
             filtroAtivo = e.getValue();
             aplicarFiltros();
         });
-        filterRow.getCell(grid.getColumns().get(5)).setComponent(comboAtivo);
+        filterRow.getCell(grid.getColumns().get(6)).setComponent(comboAtivo);
+    }
+
+    // Turmas do aluno como badges coloridos (cor da própria turma), em vez da
+    // lista de nomes em texto simples — mesmo tratamento usado em
+    // ValidacaoInscricoesView.
+    private Component criarCelulaTurmas(Aluno aluno) {
+        List<AlunoTurma> turmas = aluno.getTurmas();
+        if (turmas == null || turmas.isEmpty()) {
+            return new Span("—");
+        }
+        HorizontalLayout badges = new HorizontalLayout();
+        badges.setPadding(false);
+        badges.setSpacing(false);
+        badges.getStyle().set("flex-wrap", "wrap").set("gap", "6px");
+        turmas.stream()
+                .filter(at -> at.getTurma() != null)
+                .sorted(Comparator.comparing(at -> codigoOuDescricao(at.getTurma())))
+                .forEach(at -> badges.add(criarBadgeTurma(at.getTurma(), at.isPendente())));
+        return badges;
+    }
+
+    private String codigoOuDescricao(Turma turma) {
+        return (turma.getCodigo() != null && !turma.getCodigo().isBlank())
+                ? turma.getCodigo() : turma.getDescricao();
+    }
+
+    private Span criarBadgeTurma(Turma turma, boolean pendente) {
+        String cor = (turma.getCor() != null && !turma.getCor().isBlank()) ? turma.getCor() : "#9e9e9e";
+        Span badge = new Span(codigoOuDescricao(turma) + (pendente ? " (pendente)" : ""));
+        badge.getStyle().set("background", cor).set("color", corTexto(cor))
+                .set("padding", "2px 9px").set("border-radius", "12px")
+                .set("font-size", "0.72rem").set("font-weight", "600").set("white-space", "nowrap");
+        if (pendente) {
+            badge.getStyle().set("opacity", "0.75").set("border", "1px dashed rgba(0,0,0,0.4)");
+        }
+        return badge;
+    }
+
+    private String corTexto(String corFundo) {
+        try {
+            int r = Integer.parseInt(corFundo.substring(1, 3), 16);
+            int g = Integer.parseInt(corFundo.substring(3, 5), 16);
+            int b = Integer.parseInt(corFundo.substring(5, 7), 16);
+            double luminancia = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminancia > 0.6 ? "#212121" : "#ffffff";
+        } catch (Exception e) {
+            return "#ffffff";
+        }
     }
 
     private TextField criarFiltroTexto(String campo) {
@@ -315,8 +380,8 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
         cacheDividas.clear();
         Studio studio = TenantContext.getCurrentStudio();
         List<Aluno> alunos = studio != null
-                ? alunoRepository.findAllByStudio(studio)
-                : alunoRepository.findAll();
+                ? alunoRepository.findAllByStudioWithTurmas(studio)
+                : alunoRepository.findAllWithTurmas();
         dataProvider = new ListDataProvider<>(alunos);
         grid.setDataProvider(dataProvider);
         aplicarFiltros();
