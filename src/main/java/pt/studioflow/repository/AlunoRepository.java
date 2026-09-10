@@ -25,6 +25,12 @@ public interface AlunoRepository extends JpaRepository<Aluno, Long> {
     @Query("SELECT a FROM Aluno a LEFT JOIN FETCH a.turmas WHERE a.studio = :studio ORDER BY a.nomeCompleto ASC")
     List<Aluno> findAllByStudioOrderByNomeCompletoAsc(@Param("studio") Studio studio);
 
+    @Query("SELECT DISTINCT a FROM Aluno a LEFT JOIN FETCH a.turmas at LEFT JOIN FETCH at.turma WHERE a.studio = :studio")
+    List<Aluno> findAllByStudioWithTurmas(@Param("studio") Studio studio);
+
+    @Query("SELECT DISTINCT a FROM Aluno a LEFT JOIN FETCH a.turmas at LEFT JOIN FETCH at.turma")
+    List<Aluno> findAllWithTurmas();
+
     @Query("SELECT DISTINCT a FROM Aluno a LEFT JOIN FETCH a.turmas at LEFT JOIN FETCH at.turma " +
            "WHERE a.status IN :statuses AND a.studio = :studio")
     List<Aluno> findByStatusWithTurmasByStudio(@Param("statuses") Collection<AlunoStatus> statuses, @Param("studio") Studio studio);
