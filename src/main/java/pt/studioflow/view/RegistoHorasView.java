@@ -111,6 +111,7 @@ public class RegistoHorasView extends VerticalLayout {
         setClassName("view-container-scrollable");
 
         injectStyles();
+        ViewUtils.injetarEstiloBotoesAcao();
         registos = new java.util.ArrayList<>(); // será carregado em carregarRegistos() abaixo
 
         add(criarHeader(), criarStatsCards(), criarToolbarFiltros());
@@ -247,15 +248,12 @@ public class RegistoHorasView extends VerticalLayout {
         grid.setAllRowsVisible(true);
 
         grid.addComponentColumn(r -> {
-            Button edit = new Button(VaadinIcon.EDIT.create(), e -> prepararEdicao(r));
-            edit.addClassName("glass-btn");
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> {
+            Button edit = ViewUtils.botaoEditar(e -> prepararEdicao(r));
+            Button del = ViewUtils.botaoEliminar(e -> {
                 registoHorasRepository.delete(r);
                 registos.remove(r);
                 aplicarFiltros();
             });
-            del.addClassNames("glass-btn");
-            del.getStyle().set("color", "#e11d48");
             boolean pode = isAdmin() || normalizar(r.getProfessor()).contains(normalizar(getFirstNameFromDatabase()));
             edit.setEnabled(pode);
             del.setEnabled(pode);

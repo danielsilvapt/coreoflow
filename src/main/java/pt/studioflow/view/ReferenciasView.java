@@ -46,6 +46,7 @@ public class ReferenciasView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Referências");
         titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
 
@@ -83,8 +84,7 @@ public class ReferenciasView extends VerticalLayout {
                 recompensar.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
                 actions.add(recompensar);
             }
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> { referenciaRepo.delete(r); atualizar(); });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            Button del = ViewUtils.botaoEliminar(e -> { referenciaRepo.delete(r); atualizar(); });
             actions.add(del);
             return actions;
         }).setHeader("Ações").setAutoWidth(true);

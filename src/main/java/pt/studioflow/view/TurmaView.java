@@ -5,7 +5,6 @@ import java.util.List;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.grid.Grid;
@@ -67,6 +66,7 @@ public class TurmaView extends VerticalLayout {
         setSpacing(false);
         getStyle().set("background", "#f5f7fa");
 
+        ViewUtils.injetarEstiloBotoesAcao();
         configurarGrid();
 
         Div tituloWrapper = new Div();
@@ -120,9 +120,7 @@ public class TurmaView extends VerticalLayout {
         grid.getStyle().set("flex-grow", "1").set("margin", "12px 16px");
 
         grid.addComponentColumn(turma -> {
-            Button edit = new Button("Editar", new Icon(VaadinIcon.EDIT));
-            edit.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-            edit.addClickListener(e -> {
+            Button edit = ViewUtils.botaoEditar(e -> {
                 try {
                     Turma completa = turmaRepository.findByIdCompleto(turma.getId());
                     turmaForm.abrirFormulario(completa);
@@ -132,9 +130,7 @@ public class TurmaView extends VerticalLayout {
                 }
             });
 
-            Button delete = new Button(new Icon(VaadinIcon.TRASH));
-            delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-            delete.addClickListener(e -> confirmarEliminacao(turma));
+            Button delete = ViewUtils.botaoEliminar(e -> confirmarEliminacao(turma));
 
             return new HorizontalLayout(edit, delete);
         }).setHeader("Ações").setAutoWidth(true);

@@ -5,7 +5,6 @@ import java.util.stream.Collectors;
 
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.dnd.GridDropMode;
@@ -71,6 +70,7 @@ public class TurmaAlunosView extends VerticalLayout {
         setPadding(false);
 
         injectCustomStyles();
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Afetar Alunos às Turmas");
         titulo.getStyle().set("margin-top", "0");
         add(titulo);
@@ -178,8 +178,7 @@ public class TurmaAlunosView extends VerticalLayout {
             fatura.setValue(at == null || !at.isSemMensalidade());
             fatura.addValueChangeListener(e -> alternarFaturacao(aluno, e.getValue()));
 
-            Button remove = new Button(VaadinIcon.TRASH.create(), e -> removerAluno(aluno));
-            remove.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+            Button remove = ViewUtils.botaoEliminar(e -> removerAluno(aluno));
 
             card.add(avatar, nome, fatura, remove);
             card.setAlignItems(Alignment.CENTER);

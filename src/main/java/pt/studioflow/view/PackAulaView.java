@@ -50,6 +50,7 @@ public class PackAulaView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Packs de Aula Avulsa");
         titulo.getStyle().set("margin-top", "0");
         add(titulo);
@@ -83,8 +84,8 @@ public class PackAulaView extends VerticalLayout {
         }).setHeader("Ativo");
 
         grid.addComponentColumn(pack -> {
-            Button editar = new Button(new Icon(VaadinIcon.EDIT), e -> abrirFormulario(pack));
-            Button remover = new Button(new Icon(VaadinIcon.TRASH), e -> confirmarRemocao(pack));
+            Button editar = ViewUtils.botaoEditar(e -> abrirFormulario(pack));
+            Button remover = ViewUtils.botaoEliminar(e -> confirmarRemocao(pack));
             HorizontalLayout acoes = new HorizontalLayout(editar, remover);
             acoes.setSpacing(true);
             return acoes;

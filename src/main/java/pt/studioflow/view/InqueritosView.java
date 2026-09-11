@@ -77,6 +77,7 @@ public class InqueritosView extends VerticalLayout {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
+        ViewUtils.injetarEstiloBotoesAcao();
         add(ViewUtils.toolbar(ViewUtils.botaoNovo("Novo Inquérito", e -> abrirDialogFormulario(null))),
             criarGrid());
         atualizar();
@@ -120,10 +121,9 @@ public class InqueritosView extends VerticalLayout {
                 resultados.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
                 actions.add(resultados);
             }
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> {
+            Button del = ViewUtils.botaoEliminar(e -> {
                 inqueritoRepo.delete(i); atualizar();
             });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             actions.add(del);
             return actions;
         }).setHeader("Ações").setAutoWidth(true);

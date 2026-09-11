@@ -9,7 +9,6 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.Html;
 import com.vaadin.flow.component.html.*;
-import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -45,6 +44,7 @@ public class ContratosView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Contratos Digitais");
         titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
 
@@ -59,14 +59,10 @@ public class ContratosView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
         grid.addComponentColumn(c -> {
-            Button ver = new Button(VaadinIcon.EYE.create(), e -> verContrato(c));
-            ver.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            ver.getElement().setProperty("title", "Ver contrato");
-
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> {
+            Button ver = ViewUtils.botaoVer("Ver contrato", e -> verContrato(c));
+            Button del = ViewUtils.botaoEliminar(e -> {
                 contratoRepo.delete(c); atualizar();
             });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             return new HorizontalLayout(ver, del);
         }).setHeader("Ações").setAutoWidth(true);
 

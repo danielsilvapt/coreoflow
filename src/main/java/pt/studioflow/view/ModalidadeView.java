@@ -6,7 +6,6 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -63,6 +62,7 @@ public class ModalidadeView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         ListDataProvider<Modalidade> dataProvider = new ListDataProvider<>(listaModalidades);
         grid.setItems(listaModalidades);
         grid.setDataProvider(dataProvider);
@@ -119,14 +119,9 @@ public class ModalidadeView extends VerticalLayout {
         })).setHeader("Ativo");
 
         Grid.Column<Modalidade> colAcoes = grid.addComponentColumn(modalidade -> {
-            Button editar = new Button(new Icon(VaadinIcon.EDIT));
-            editar.getElement().setProperty("title", "Editar");
-            editar.addClickListener(e -> modalidadeForm.abrirFormulario(modalidade));
+            Button editar = ViewUtils.botaoEditar(e -> modalidadeForm.abrirFormulario(modalidade));
 
-            Button remover = new Button(new Icon(VaadinIcon.TRASH));
-            remover.getElement().setProperty("title", "Remover");
-            remover.addThemeVariants();
-            remover.addClickListener(e -> {
+            Button remover = ViewUtils.botaoEliminar(e -> {
                 // Criar o diálogo de confirmação
                 Dialog confirmDialog = new Dialog();
                 confirmDialog.setHeaderTitle("Tem certeza?");

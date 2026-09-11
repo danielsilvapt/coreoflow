@@ -89,6 +89,7 @@ public class SocioView extends VerticalLayout {
         setSpacing(false);
 
         injectStyles();
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Gestão de Sócios");
         titulo.getStyle().set("margin-top", "0");
 
@@ -173,11 +174,8 @@ public class SocioView extends VerticalLayout {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_ROW_STRIPES);
 
-        grid.addComponentColumn(socio -> {
-            Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> socioForm.abrirFormulario(socio));
-            editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-            return editBtn;
-        }).setHeader("").setWidth("70px").setFlexGrow(0).setFrozen(true);
+        grid.addComponentColumn(socio -> ViewUtils.botaoEditar(e -> socioForm.abrirFormulario(socio)))
+                .setHeader("").setWidth("70px").setFlexGrow(0).setFrozen(true);
 
         grid.addColumn(Aluno::getNumeroSocio).setHeader("Nº").setSortable(true).setWidth("80px").setFlexGrow(0);
 

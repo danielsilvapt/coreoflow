@@ -10,7 +10,6 @@ import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.*;
-import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -49,6 +48,7 @@ public class ProfessorView extends VerticalLayout {
         setSpacing(false);
         getStyle().set("background", "#f5f7fa");
 
+        ViewUtils.injetarEstiloBotoesAcao();
         Div tituloWrapper = new Div();
         tituloWrapper.getStyle().set("padding", "20px 20px 0 20px");
         H2 titulo = new H2("Gestão de Professores");
@@ -142,14 +142,8 @@ public class ProfessorView extends VerticalLayout {
     }
 
     private HorizontalLayout criarBotoesLinha(Professor professor) {
-        Button editar = new Button("Editar", new Icon(VaadinIcon.EDIT));
-        editar.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-        editar.addClickListener(e -> abrirDialog(professor));
-
-        Button remover = new Button("Remover", new Icon(VaadinIcon.TRASH));
-        remover.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-        remover.addClickListener(e -> confirmarRemocao(professor));
-
+        Button editar = ViewUtils.botaoEditar(e -> abrirDialog(professor));
+        Button remover = ViewUtils.botaoEliminar(e -> confirmarRemocao(professor));
         return new HorizontalLayout(editar, remover);
     }
 

@@ -72,17 +72,12 @@ public class FinanceiroView extends VerticalLayout {
                 +
                 ".fin-title { color: #7f8c8d; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }"
                 +
-                ".fin-value { font-size: 1.6rem; font-weight: 800; display: block; margin-top: 5px; }" +
-                ".action-btn { border-radius: 10px; padding: 8px; transition: all 0.2s; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }"
-                +
-                ".action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }" +
-                ".btn-edit { background: #E8F0FE; color: #1967D2; }" +
-                ".btn-del { background: #FCE8E6; color: #D93025; }" +
-                ".btn-doc { background: #F1F3F4; color: #5F6368; }";
+                ".fin-value { font-size: 1.6rem; font-weight: 800; display: block; margin-top: 5px; }";
 
         UI.getCurrent().getElement().executeJs(
                 "const style = document.createElement('style'); style.textContent = $0; document.head.appendChild(style);",
                 styles);
+        ViewUtils.injetarEstiloBotoesAcao();
     }
 
     private Component criarStatsCards() {
@@ -152,13 +147,8 @@ public class FinanceiroView extends VerticalLayout {
 
         // AÇÕES
         g.addComponentColumn(t -> {
-            Button edit = new Button(VaadinIcon.EDIT.create(),
-                    e -> new TransacaoDialog(repository, this::atualizar, t).open());
-            edit.addClassNames("action-btn", "btn-edit");
-
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> deletar(t));
-            del.addClassNames("action-btn", "btn-del");
-
+            Button edit = ViewUtils.botaoEditar(e -> new TransacaoDialog(repository, this::atualizar, t).open());
+            Button del = ViewUtils.botaoEliminar(e -> deletar(t));
             return new HorizontalLayout(edit, del);
         }).setHeader("AÇÕES").setWidth("120px").setFlexGrow(0);
 
@@ -184,7 +174,7 @@ public class FinanceiroView extends VerticalLayout {
                 Anchor a = new Anchor(t.getLinkDocumento(), "");
                 a.setTarget("_blank");
                 Button btn = new Button(VaadinIcon.FILE_SEARCH.create());
-                btn.addClassNames("action-btn", "btn-doc");
+                btn.addClassNames("action-btn", "btn-neutral");
                 a.add(btn);
                 return a;
             }

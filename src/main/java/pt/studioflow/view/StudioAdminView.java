@@ -58,6 +58,7 @@ public class StudioAdminView extends VerticalLayout {
         setSizeFull();
         setPadding(true);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Gestão de Estúdios");
         titulo.getStyle().set("margin-top", "0");
 
@@ -77,17 +78,14 @@ public class StudioAdminView extends VerticalLayout {
 
     private void configurarGrid() {
         grid.addComponentColumn(studio -> {
-            Button edit = new Button(VaadinIcon.EDIT.create());
-            edit.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            edit.addClickListener(e -> abrirFormulario(studio));
+            Button edit = ViewUtils.botaoEditar(e -> abrirFormulario(studio));
 
-            Button toggle = new Button(studio.isAtivo() ? VaadinIcon.PAUSE.create() : VaadinIcon.PLAY.create());
-            toggle.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            toggle.addClickListener(e -> {
-                studio.setAtivo(!studio.isAtivo());
-                studioService.save(studio);
-                carregarDados();
-            });
+            Button toggle = ViewUtils.botaoAcao(studio.isAtivo() ? VaadinIcon.PAUSE : VaadinIcon.PLAY, "btn-neutral",
+                    studio.isAtivo() ? "Desativar" : "Ativar", e -> {
+                        studio.setAtivo(!studio.isAtivo());
+                        studioService.save(studio);
+                        carregarDados();
+                    });
 
             return new HorizontalLayout(edit, toggle);
         }).setHeader("Ações").setWidth("120px").setFlexGrow(0);
