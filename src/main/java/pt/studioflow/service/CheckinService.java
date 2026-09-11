@@ -64,9 +64,14 @@ public class CheckinService {
         }
     }
 
-    /** Turmas do estúdio do aluno cuja aula de hoje está dentro da janela de checkin e para as quais o aluno é elegível. */
-    public List<TurmaCheckin> listarTurmasParaCheckin(Aluno aluno, LocalDateTime agora) {
-        Studio studio = aluno.getStudio();
+    /**
+     * Turmas do estúdio do aluno cuja aula de hoje está dentro da janela de checkin e para
+     * as quais o aluno é elegível. Recebe o {@code studio} explícito em vez de o ir buscar a
+     * {@code aluno.getStudio()} — essa relação é LAZY e o aluno chega aqui vindo de uma
+     * consulta já fora da sessão Hibernate original (ex: portal do aluno), o que rebentava
+     * com LazyInitializationException.
+     */
+    public List<TurmaCheckin> listarTurmasParaCheckin(Aluno aluno, Studio studio, LocalDateTime agora) {
         int antes = studio.getCheckinJanelaAntesMin();
         int depois = studio.getCheckinJanelaDepoisMin();
         DayOfWeek hoje = agora.getDayOfWeek();
@@ -126,11 +131,11 @@ public class CheckinService {
 
     /** Regista o checkin, revalidando a janela/elegibilidade no servidor. Idempotente por (aluno, turma, data). */
     @Transactional
-    public Presenca registarCheckin(Aluno aluno, Turma turma, MetodoRegistoPresenca metodo) {
+    public Presenca registarCheckin(Aluno aluno, Turma turma, Studio studio, MetodoRegistoPresenca metodo) {
         LocalDateTime agora = LocalDateTime.now();
         LocalDate data = agora.toLocalDate();
 
-        TurmaCheckin alvo = listarTurmasParaCheckin(aluno, agora).stream()
+        TurmaCheckin alvo = listarTurmasParaCheckin(aluno, studio, agora).stream()
                 .filter(tc -> tc.turma.getId().equals(turma.getId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
