@@ -198,7 +198,7 @@ public class CheckinKioskView extends VerticalLayout {
                 if (presente && existente != null) {
                     checkinService.cancelarCheckin(existente);
                 } else {
-                    checkinService.registarCheckin(aluno, turma, MetodoRegistoPresenca.KIOSK_PRESENCA);
+                    checkinService.registarCheckin(aluno, turma, studioAtual(), MetodoRegistoPresenca.KIOSK_PRESENCA);
                 }
                 mostrarRoster(turma);
             } catch (IllegalStateException ex) {

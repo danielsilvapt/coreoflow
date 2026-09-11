@@ -129,7 +129,7 @@ class CheckinServiceTest {
         AlunoTurma at2 = new AlunoTurma(); at2.setAluno(aluno); at2.setTurma(foraNoPassado); alunoTurmaRepository.save(at2);
         AlunoTurma at3 = new AlunoTurma(); at3.setAluno(aluno); at3.setTurma(foraNoFuturo); alunoTurmaRepository.save(at3);
 
-        List<CheckinService.TurmaCheckin> disponiveis = checkinService.listarTurmasParaCheckin(aluno, agora);
+        List<CheckinService.TurmaCheckin> disponiveis = checkinService.listarTurmasParaCheckin(aluno, studio, agora);
 
         assertThat(disponiveis).extracting(tc -> tc.turma.getId()).containsExactly(dentro.getId());
     }
@@ -141,7 +141,7 @@ class CheckinServiceTest {
         Aluno aluno = novoAluno(studio, "semcredito@test.com");
         Turma turma = novaTurma(studio, modalidade, LocalDateTime.now());
 
-        List<CheckinService.TurmaCheckin> disponiveis = checkinService.listarTurmasParaCheckin(aluno, LocalDateTime.now());
+        List<CheckinService.TurmaCheckin> disponiveis = checkinService.listarTurmasParaCheckin(aluno, studio, LocalDateTime.now());
 
         assertThat(disponiveis).isEmpty();
     }
@@ -154,7 +154,7 @@ class CheckinServiceTest {
         Turma turma = novaTurma(studio, modalidade, LocalDateTime.now());
         novoCredito(studio, aluno, modalidade, false, 3);
 
-        List<CheckinService.TurmaCheckin> disponiveis = checkinService.listarTurmasParaCheckin(aluno, LocalDateTime.now());
+        List<CheckinService.TurmaCheckin> disponiveis = checkinService.listarTurmasParaCheckin(aluno, studio, LocalDateTime.now());
 
         assertThat(disponiveis).hasSize(1);
         assertThat(disponiveis.get(0).matriculado).isFalse();
@@ -171,7 +171,7 @@ class CheckinServiceTest {
         // crédito restrito comprado para outra modalidade
         novoCredito(studio, aluno, outraModalidade, true, 3);
 
-        List<CheckinService.TurmaCheckin> disponiveis = checkinService.listarTurmasParaCheckin(aluno, LocalDateTime.now());
+        List<CheckinService.TurmaCheckin> disponiveis = checkinService.listarTurmasParaCheckin(aluno, studio, LocalDateTime.now());
 
         assertThat(disponiveis).isEmpty();
     }
@@ -184,7 +184,7 @@ class CheckinServiceTest {
         Turma turma = novaTurma(studio, modalidade, LocalDateTime.now());
         AlunoTurma at = new AlunoTurma(); at.setAluno(aluno); at.setTurma(turma); alunoTurmaRepository.save(at);
 
-        Presenca presenca = checkinService.registarCheckin(aluno, turma, MetodoRegistoPresenca.AUTO_ALUNO);
+        Presenca presenca = checkinService.registarCheckin(aluno, turma, studio, MetodoRegistoPresenca.AUTO_ALUNO);
 
         assertThat(presenca.isPresente()).isTrue();
         assertThat(presenca.getOrigem()).isEqualTo(OrigemPresenca.MATRICULA);
@@ -199,7 +199,7 @@ class CheckinServiceTest {
         Turma turma = novaTurma(studio, modalidade, LocalDateTime.now());
         CompraCredito credito = novoCredito(studio, aluno, modalidade, false, 3);
 
-        Presenca presenca = checkinService.registarCheckin(aluno, turma, MetodoRegistoPresenca.AUTO_ALUNO);
+        Presenca presenca = checkinService.registarCheckin(aluno, turma, studio, MetodoRegistoPresenca.AUTO_ALUNO);
 
         assertThat(presenca.getOrigem()).isEqualTo(OrigemPresenca.CREDITO_AVULSO);
         assertThat(presenca.getCompraCredito().getId()).isEqualTo(credito.getId());
@@ -216,9 +216,9 @@ class CheckinServiceTest {
         Turma turma = novaTurma(studio, modalidade, LocalDateTime.now());
         AlunoTurma at = new AlunoTurma(); at.setAluno(aluno); at.setTurma(turma); alunoTurmaRepository.save(at);
 
-        checkinService.registarCheckin(aluno, turma, MetodoRegistoPresenca.AUTO_ALUNO);
+        checkinService.registarCheckin(aluno, turma, studio, MetodoRegistoPresenca.AUTO_ALUNO);
 
-        assertThatThrownBy(() -> checkinService.registarCheckin(aluno, turma, MetodoRegistoPresenca.AUTO_ALUNO))
+        assertThatThrownBy(() -> checkinService.registarCheckin(aluno, turma, studio, MetodoRegistoPresenca.AUTO_ALUNO))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -230,7 +230,7 @@ class CheckinServiceTest {
         Turma turma = novaTurma(studio, modalidade, LocalDateTime.now().minusHours(5));
         AlunoTurma at = new AlunoTurma(); at.setAluno(aluno); at.setTurma(turma); alunoTurmaRepository.save(at);
 
-        assertThatThrownBy(() -> checkinService.registarCheckin(aluno, turma, MetodoRegistoPresenca.AUTO_ALUNO))
+        assertThatThrownBy(() -> checkinService.registarCheckin(aluno, turma, studio, MetodoRegistoPresenca.AUTO_ALUNO))
                 .isInstanceOf(IllegalStateException.class);
     }
 }

@@ -540,7 +540,7 @@ public class PortalAlunoView extends VerticalLayout {
         tituloCheckin.getStyle().set("margin-bottom", "8px");
         layout.add(tituloCheckin);
 
-        List<CheckinService.TurmaCheckin> disponiveis = checkinService.listarTurmasParaCheckin(aluno, LocalDateTime.now());
+        List<CheckinService.TurmaCheckin> disponiveis = checkinService.listarTurmasParaCheckin(aluno, studio, LocalDateTime.now());
         if (disponiveis.isEmpty()) {
             layout.add(new Span("Nenhuma aula tua dentro da janela de checkin neste momento."));
         } else {
@@ -558,7 +558,7 @@ public class PortalAlunoView extends VerticalLayout {
                 } else {
                     Button botaoCheckin = new Button("Fazer Checkin", ev -> {
                         try {
-                            checkinService.registarCheckin(aluno, tc.turma, MetodoRegistoPresenca.AUTO_ALUNO);
+                            checkinService.registarCheckin(aluno, tc.turma, studio, MetodoRegistoPresenca.AUTO_ALUNO);
                             Notification.show("Checkin feito! Boa aula 🎉").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                             UI.getCurrent().getPage().reload();
                         } catch (IllegalStateException ex) {
