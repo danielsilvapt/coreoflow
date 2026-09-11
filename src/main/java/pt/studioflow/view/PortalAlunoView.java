@@ -23,6 +23,8 @@ import pt.studioflow.config.MensalidadeConfig;
 import pt.studioflow.model.*;
 import pt.studioflow.repository.*;
 import pt.studioflow.service.AuthService;
+import pt.studioflow.service.CheckinService;
+import pt.studioflow.service.CompraCreditoService;
 import pt.studioflow.service.R2StorageService;
 import pt.studioflow.view.component.ListaEventos;
 
@@ -60,7 +62,9 @@ public class PortalAlunoView extends VerticalLayout {
                             R2StorageService storageService,
                             MensalidadeConfig mensalidadeConfig,
                             ConviteRepository conviteRepo,
-                            InscricaoEventoRepository inscricaoRepo) {
+                            InscricaoEventoRepository inscricaoRepo,
+                            CompraCreditoService compraCreditoService,
+                            CheckinService checkinService) {
 
         this.mensalidadeConfig = mensalidadeConfig;
 
@@ -115,6 +119,9 @@ public class PortalAlunoView extends VerticalLayout {
         }
         tabs.add("⭐ Avaliações", criarTabAvaliacoes(aluno, avaliacaoRepo));
         tabs.add("📄 Contratos", criarTabContratos(aluno, contratoRepo));
+        if (studio == null || studio.hasModulo(StudioModulo.AULAS_AVULSO)) {
+            tabs.add("🎟️ Aulas Avulso", criarTabAulasAvulso(aluno, studio, compraCreditoService, checkinService));
+        }
 
         add(tabs);
         expand(tabs);
@@ -493,6 +500,79 @@ public class PortalAlunoView extends VerticalLayout {
         }
 
         return card;
+    }
+
+    private VerticalLayout criarTabAulasAvulso(Aluno aluno, Studio studio,
+            CompraCreditoService compraCreditoService, CheckinService checkinService) {
+        VerticalLayout layout = new VerticalLayout();
+        layout.setPadding(true);
+        layout.setSpacing(false);
+
+        H4 tituloCreditos = new H4("Os teus créditos");
+        tituloCreditos.getStyle().set("margin-bottom", "8px");
+        layout.add(tituloCreditos);
+
+        List<CompraCredito> compras = compraCreditoService.listarDoAluno(aluno);
+        if (compras.isEmpty()) {
+            layout.add(new Span("Ainda não compraste nenhuma aula avulsa/pack."));
+        } else {
+            for (CompraCredito c : compras) {
+                Div card = new Div();
+                card.getStyle().set("padding", "12px").set("border-radius", "10px")
+                        .set("background", "#f8f9fa").set("margin-bottom", "8px");
+                String validade = c.getValidadeAte() != null ? " · válido até " + c.getValidadeAte() : "";
+                String estado = c.getMetodoPagamento() == MetodoPagamentoCredito.MANUAL
+                        && c.getEstadoPagamento() == EstadoPagamentoCredito.PENDENTE
+                        ? "Pagar no estúdio" : c.getEstadoPagamento().toString();
+                card.add(new Span(c.getNomePack() + " — " + c.getCreditosRestantes() + "/" + c.getNumAulasComprado()
+                        + " aula(s) restante(s)" + validade + " · " + estado));
+                layout.add(card);
+            }
+        }
+
+        Button comprarMais = new Button("Comprar mais aulas", VaadinIcon.PLUS.create(), e ->
+                UI.getCurrent().navigate("aula-avulsa?studio=" + (studio != null ? studio.getSlug() : "")));
+        comprarMais.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        comprarMais.getStyle().set("margin", "8px 0 20px 0");
+        layout.add(comprarMais);
+
+        H4 tituloCheckin = new H4("Checkin");
+        tituloCheckin.getStyle().set("margin-bottom", "8px");
+        layout.add(tituloCheckin);
+
+        List<CheckinService.TurmaCheckin> disponiveis = checkinService.listarTurmasParaCheckin(aluno, LocalDateTime.now());
+        if (disponiveis.isEmpty()) {
+            layout.add(new Span("Nenhuma aula tua dentro da janela de checkin neste momento."));
+        } else {
+            for (CheckinService.TurmaCheckin tc : disponiveis) {
+                HorizontalLayout linha = new HorizontalLayout();
+                linha.setAlignItems(FlexComponent.Alignment.CENTER);
+                linha.setWidthFull();
+                linha.getStyle().set("padding", "8px 0");
+                Span nome = new Span(tc.turma.getDescricao());
+                linha.add(nome);
+                if (tc.jaFezCheckin) {
+                    Span feito = new Span("✓ Presença registada");
+                    feito.getStyle().set("color", "#27ae60").set("font-weight", "700");
+                    linha.add(feito);
+                } else {
+                    Button botaoCheckin = new Button("Fazer Checkin", ev -> {
+                        try {
+                            checkinService.registarCheckin(aluno, tc.turma, MetodoRegistoPresenca.AUTO_ALUNO);
+                            Notification.show("Checkin feito! Boa aula 🎉").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                            UI.getCurrent().getPage().reload();
+                        } catch (IllegalStateException ex) {
+                            Notification.show(ex.getMessage()).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        }
+                    });
+                    botaoCheckin.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+                    linha.add(botaoCheckin);
+                }
+                layout.add(linha);
+            }
+        }
+
+        return layout;
     }
 
     private VerticalLayout criarTabContratos(Aluno aluno, ContratoDigitalRepository contratoRepo) {

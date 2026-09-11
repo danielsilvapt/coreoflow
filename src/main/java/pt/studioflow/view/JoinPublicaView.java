@@ -91,6 +91,14 @@ public class JoinPublicaView extends VerticalLayout implements BeforeEnterObserv
                         Collections.singletonMap("studio", Collections.singletonList(slug)))));
 
         VerticalLayout opcoes = new VerticalLayout(opcaoNova, opcaoRenovar);
+
+        if (studioAtual.hasModulo(pt.studioflow.model.StudioModulo.AULAS_AVULSO)) {
+            VerticalLayout opcaoAvulsa = criarOpcao(VaadinIcon.TICKET, "Comprar Aula Avulsa",
+                    "Quero experimentar ou comprar um pack de aulas sem matrícula", "#F39C12",
+                    () -> UI.getCurrent().navigate("aula-avulsa", new QueryParameters(
+                            Collections.singletonMap("studio", Collections.singletonList(slug)))));
+            opcoes.add(opcaoAvulsa);
+        }
         opcoes.setPadding(false);
         opcoes.setSpacing(false);
         opcoes.setWidth("min(420px, 90vw)");

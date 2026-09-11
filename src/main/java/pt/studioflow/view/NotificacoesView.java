@@ -42,6 +42,7 @@ import pt.studioflow.repository.TransferenciaRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
 import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.service.AuthService;
+import pt.studioflow.service.CompraCreditoService;
 
 @PageTitle("Notificações | CoreoFlow")
 @Route(value = "notificacoes", layout = MainLayout.class)
@@ -58,6 +59,7 @@ public class NotificacoesView extends VerticalLayout {
     private final TurmaRepository turmaRepository;
     private final AlunoTurmaRepository alunoTurmaRepository;
     private final AuthService authService;
+    private final CompraCreditoService compraCreditoService;
 
     private final Div conteudo = new Div();
 
@@ -70,7 +72,8 @@ public class NotificacoesView extends VerticalLayout {
             RegistoHorasRepository registoHorasRepository,
             TurmaRepository turmaRepository,
             AlunoTurmaRepository alunoTurmaRepository,
-            AuthService authService) {
+            AuthService authService,
+            CompraCreditoService compraCreditoService) {
         this.alunoRepository = alunoRepository;
         this.mensalidadeRepository = mensalidadeRepository;
         this.marcacaoSalaRepository = marcacaoSalaRepository;
@@ -81,6 +84,7 @@ public class NotificacoesView extends VerticalLayout {
         this.turmaRepository = turmaRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
         this.authService = authService;
+        this.compraCreditoService = compraCreditoService;
 
         setSizeFull();
         setPadding(true);
@@ -320,6 +324,16 @@ public class NotificacoesView extends VerticalLayout {
         conteudo.add(criarCard("Alunos em Risco de Abandono (sem presença há 15+ dias)", emRisco.size(), "#bf360c", VaadinIcon.WARNING,
             emRisco.stream().map(a -> a.getNomeCompleto() + " — " + a.getTelemovel())
                 .collect(Collectors.toList()), "alunos"));
+
+        if (studio != null && studio.hasModulo(pt.studioflow.model.StudioModulo.AULAS_AVULSO)) {
+            var comprasRecentes = compraCreditoService.listarRecentesDoStudio(studio, 7);
+            conteudo.add(criarCard("Compras de Aula Avulsa/Pack (últimos 7 dias)", comprasRecentes.size(), "#F39C12", VaadinIcon.TICKET,
+                comprasRecentes.stream().map(c -> c.getAluno().getNomeCompleto() + " — " + c.getNomePack()
+                        + (c.getMetodoPagamento() == pt.studioflow.model.MetodoPagamentoCredito.MANUAL
+                                && c.getEstadoPagamento() == pt.studioflow.model.EstadoPagamentoCredito.PENDENTE
+                                ? " (pagar no estúdio)" : " (" + c.getEstadoPagamento() + ")"))
+                    .collect(Collectors.toList()), "packs-aula"));
+        }
     }
 
     // =========================================================
@@ -406,6 +420,21 @@ public class NotificacoesView extends VerticalLayout {
 
         conteudo.add(criarCard("Alunos sem Presença há 10+ dias", alunosEmRisco.size(), "#bf360c", VaadinIcon.WARNING,
             alunosEmRisco, "presencas"));
+
+        Studio studioAtual = TenantContext.getCurrentStudio();
+        if (studioAtual != null && studioAtual.hasModulo(pt.studioflow.model.StudioModulo.AULAS_AVULSO)) {
+            List<String> checkinsAvulso = profOpt.map(p -> {
+                var turmas = turmaRepository.findByProfessorAndStudio(p, studioAtual);
+                return turmas.stream()
+                    .flatMap(t -> presencaRepository.findByTurmaAndDataBetween(t, hoje.minusDays(7), hoje).stream())
+                    .filter(pr -> pr.getOrigem() == pt.studioflow.model.OrigemPresenca.CREDITO_AVULSO)
+                    .map(pr -> pr.getAluno().getNomeCompleto() + " — " + pr.getTurma().getDescricao()
+                        + " (" + pt.studioflow.util.DataUtil.formatar(pr.getData()) + ")")
+                    .collect(Collectors.toList());
+            }).orElse(List.of());
+            conteudo.add(criarCard("Checkins de Aula Avulsa (últimos 7 dias)", checkinsAvulso.size(), "#F39C12", VaadinIcon.TICKET,
+                checkinsAvulso, "presencas"));
+        }
     }
 
     // =========================================================

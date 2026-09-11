@@ -41,6 +41,11 @@ public class SecurityConfig extends VaadinWebSecurity {
         http.authorizeHttpRequests(auth ->
                 auth.requestMatchers(new AntPathRequestMatcher("/api/convocatoria/**")).permitAll());
 
+        http.csrf(csrf -> csrf.ignoringRequestMatchers(new AntPathRequestMatcher("/api/mollie/**")));
+
+        http.authorizeHttpRequests(auth ->
+                auth.requestMatchers(new AntPathRequestMatcher("/api/mollie/**")).permitAll());
+
         super.configure(http);
 
         setLoginView(http, "login");
@@ -52,6 +57,16 @@ public class SecurityConfig extends VaadinWebSecurity {
                     protected String determineTargetUrl(
                             jakarta.servlet.http.HttpServletRequest request,
                             jakarta.servlet.http.HttpServletResponse response) {
+                        // Perfil PRESENÇA (pessoa/iPad dedicado a marcar presenças) vai sempre
+                        // direto para o kiosk de checkin, sem menu/drawer.
+                        org.springframework.security.core.Authentication auth =
+                                org.springframework.security.core.context.SecurityContextHolder
+                                        .getContext().getAuthentication();
+                        if (auth != null && auth.getAuthorities().stream()
+                                .anyMatch(a -> "ROLE_PRESENCA".equals(a.getAuthority()))) {
+                            return "/checkin";
+                        }
+
                         String target = super.determineTargetUrl(request, response);
                         // Se o URL alvo parecer um caminho de ficheiro ou recurso interno, vai para /
                         if (target != null && (target.contains("src/main") || target.contains("resources/static"))) {

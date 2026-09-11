@@ -608,6 +608,8 @@ public class MainLayout extends AppLayout {
                         tabs.add(criarSubTab("Salas", VaadinIcon.HOME, SalaView.class));
                         tabs.add(criarSubTab("Modalidades", VaadinIcon.BOOK, ModalidadeView.class));
                         tabs.add(criarSubTab("Turmas", VaadinIcon.GROUP, TurmaView.class));
+                        if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.AULAS_AVULSO))
+                                tabs.add(criarSubTab("Packs de Aula Avulsa", VaadinIcon.TICKET, PackAulaView.class));
                         tabs.add(criarSubTab("Alunos-Turmas", VaadinIcon.CLIPBOARD_TEXT, TurmaAlunosView.class));
 
                 }

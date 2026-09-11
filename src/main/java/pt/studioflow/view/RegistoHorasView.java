@@ -43,6 +43,7 @@ import com.vaadin.flow.server.VaadinSession;
 
 import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.config.TenantContext;
+import pt.studioflow.model.Aula;
 import pt.studioflow.model.Professor;
 import pt.studioflow.model.RegistoHoras;
 import pt.studioflow.model.Studio;
@@ -399,21 +400,33 @@ public class RegistoHorasView extends VerticalLayout {
         String tName = turmaComboDialog.getValue();
         LocalDate d = dataPicker.getValue();
         if (tName != null && d != null) {
+            Professor profSelecionado = profComboDialog.getValue();
             getTurmasDoStudio().stream().filter(t -> t.getDescricao().equals(tName)).findFirst()
                     .ifPresent(turma -> {
-                        turma.getAulas().stream().filter(a -> a.getDia().equals(d.getDayOfWeek())).findFirst()
-                                .ifPresent(aula -> {
-                                    inicioPicker.setValue(aula.getHoraInicio());
-                                    fimPicker.setValue(aula.getHoraFim() != null ? aula.getHoraFim()
-                                            : aula.getHoraInicio().plusHours(1));
-                                });
+                        List<Aula> doDia = turma.getAulas().stream()
+                                .filter(a -> a.getDia().equals(d.getDayOfWeek())).toList();
+                        // Turma partilhada: prefere a aula deste dia dada pelo professor selecionado.
+                        Aula aula = doDia.stream()
+                                .filter(a -> profSelecionado != null && a.getProfessorEfetivo() != null
+                                        && a.getProfessorEfetivo().getId().equals(profSelecionado.getId()))
+                                .findFirst()
+                                .or(() -> doDia.stream().findFirst())
+                                .orElse(null);
+                        if (aula != null) {
+                            inicioPicker.setValue(aula.getHoraInicio());
+                            fimPicker.setValue(aula.getHoraFim() != null ? aula.getHoraFim()
+                                    : aula.getHoraInicio().plusHours(1));
+                        }
                     });
         }
     }
 
     private void carregarTurmasDialog(Professor prof) {
         List<String> t = getTurmasDoStudio().stream()
-                .filter(x -> x.getProfessor() != null && x.getProfessor().getId().equals(prof.getId()))
+                .filter(x -> (x.getProfessor() != null && x.getProfessor().getId().equals(prof.getId()))
+                        || (x.getAulas() != null && x.getAulas().stream()
+                                .map(Aula::getProfessorEfetivo)
+                                .anyMatch(p -> p != null && p.getId().equals(prof.getId()))))
                 .map(Turma::getDescricao).sorted().collect(Collectors.toList());
         turmaComboDialog.setItems(t);
         turmaComboDialog.setEnabled(true);
