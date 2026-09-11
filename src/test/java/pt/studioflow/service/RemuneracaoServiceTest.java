@@ -253,6 +253,57 @@ class RemuneracaoServiceTest {
         assertThat(service.custoProfessorTurma(t, s, mesPassado, d)).isEqualTo(0.0);
     }
 
+    // ---------- turma partilhada: professor por dia (Aula.professor) ----------
+
+    @Test
+    void pagamentosPorProfessor_turmaPartilhada_estimaHorasSoDosDiasDeCadaProfessor() {
+        Studio s = studio("HORA");
+        Professor principal = professor(s); // Ana, 20 €/h, segundas
+        Professor outro = new Professor("Bia Costa", "bia@x.pt", "922");
+        setId(outro, 11L);
+        outro.setStudio(s);
+        outro.setValorHoraAula(30.0);
+
+        Turma t = turma(100L, principal, s); // professor principal = Ana
+
+        Aula aulaSegunda = new Aula();
+        aulaSegunda.setTurma(t);
+        aulaSegunda.setDia(DayOfWeek.MONDAY);
+        aulaSegunda.setHoraInicio(LocalTime.of(18, 0));
+        aulaSegunda.setHoraFim(LocalTime.of(19, 0)); // sem professor próprio -> cai no principal (Ana)
+
+        Aula aulaQuarta = new Aula();
+        aulaQuarta.setTurma(t);
+        aulaQuarta.setDia(DayOfWeek.WEDNESDAY);
+        aulaQuarta.setHoraInicio(LocalTime.of(18, 0));
+        aulaQuarta.setHoraFim(LocalTime.of(19, 0));
+        aulaQuarta.setProfessor(outro); // Bia dá as quartas desta turma partilhada
+
+        t.setAulas(new java.util.ArrayList<>(List.of(aulaSegunda, aulaQuarta)));
+
+        long segundas = 0, quartas = 0;
+        for (int dia = 1; dia <= mesFuturo.lengthOfMonth(); dia++) {
+            DayOfWeek dow = mesFuturo.atDay(dia).getDayOfWeek();
+            if (dow == DayOfWeek.MONDAY) segundas++;
+            if (dow == DayOfWeek.WEDNESDAY) quartas++;
+        }
+
+        RemuneracaoService.Dados d = new RemuneracaoService.Dados().aulas(List.of(aulaSegunda, aulaQuarta));
+
+        List<RemuneracaoService.LinhaPagamento> linhas = service.pagamentosPorProfessor(
+                List.of(principal, outro), List.of(t), s, mesFuturo, d);
+
+        RemuneracaoService.LinhaPagamento linhaAna = linhas.stream()
+                .filter(l -> l.professor().getId().equals(principal.getId())).findFirst().orElseThrow();
+        RemuneracaoService.LinhaPagamento linhaBia = linhas.stream()
+                .filter(l -> l.professor().getId().equals(outro.getId())).findFirst().orElseThrow();
+
+        // Ana só é creditada pelas segundas (as suas), não pelas quartas da Bia.
+        assertThat(linhaAna.total()).isCloseTo(segundas * 20.0, within(0.001));
+        // Bia aparece no pagamento (mesmo não sendo professora principal da turma) e só pelas quartas.
+        assertThat(linhaBia.total()).isCloseTo(quartas * 30.0, within(0.001));
+    }
+
     @Test
     void descricaoEfetiva_textoConformeModo() {
         Studio hora = studio("HORA");

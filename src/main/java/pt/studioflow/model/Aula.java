@@ -23,6 +23,29 @@ public class Aula {
     @JoinColumn(name="sala_id")
     private Sala sala;
 
+    /**
+     * Professor que dá esta aula neste dia da semana, quando diferente do
+     * professor principal da turma (ex: turma partilhada, um dia cada). Nulo =
+     * usa o professor principal da turma — ver {@link #getProfessorEfetivo()}.
+     */
+    @ManyToOne
+    @JoinColumn(name = "professor_id")
+    private Professor professor;
+
+    public Professor getProfessor() {
+        return professor;
+    }
+
+    public void setProfessor(Professor professor) {
+        this.professor = professor;
+    }
+
+    /** Professor que efetivamente dá esta aula: o seu próprio, ou o principal da turma. */
+    public Professor getProfessorEfetivo() {
+        if (professor != null) return professor;
+        return turma != null ? turma.getProfessor() : null;
+    }
+
     public Sala getSala() {
         return sala;
     }

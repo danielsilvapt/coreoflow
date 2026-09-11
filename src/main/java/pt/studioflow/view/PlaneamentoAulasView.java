@@ -160,7 +160,7 @@ public class PlaneamentoAulasView extends VerticalLayout {
                 .setHeader("Hora").setAutoWidth(true).setFlexGrow(0);
         grid.addColumn(l -> l.turma().getDescricao()).setHeader("Turma").setFlexGrow(1);
         if (isAdmin) {
-            grid.addColumn(l -> l.turma().getProfessor() != null ? l.turma().getProfessor().getNome() : "—")
+            grid.addColumn(l -> l.professor() != null ? l.professor().getNome() : "—")
                     .setHeader("Professor").setAutoWidth(true);
         }
         grid.addComponentColumn(l -> badgeEstado(estadoDe(l.sumario()))).setHeader("Estado").setAutoWidth(true)
@@ -180,11 +180,11 @@ public class PlaneamentoAulasView extends VerticalLayout {
     // ---------------- dados ----------------
 
     private record Ocorrencia(LocalDate data, LocalTime horaInicio, LocalTime horaFim, Turma turma, Sala sala,
-            String tipo) {
+            String tipo, Professor professor) {
     }
 
     private record Linha(LocalDate data, LocalTime horaInicio, LocalTime horaFim, Turma turma, Sala sala, String tipo,
-            SumarioAula sumario) {
+            SumarioAula sumario, Professor professor) {
     }
 
     private void atualizar() {
@@ -202,14 +202,16 @@ public class PlaneamentoAulasView extends VerticalLayout {
             aulas.stream()
                     .filter(a -> a.getDia() == dia.getDayOfWeek() && a.getTurma() != null && a.getHoraInicio() != null)
                     .forEach(a -> ocorrencias.add(new Ocorrencia(dia, a.getHoraInicio(), a.getHoraFim(),
-                            a.getTurma(), a.getSala(), a.getTipo() != null ? a.getTipo() : "REGULAR")));
+                            a.getTurma(), a.getSala(), a.getTipo() != null ? a.getTipo() : "REGULAR",
+                            a.getProfessorEfetivo())));
         }
         (studio != null ? marcacaoRepository.findByStudioAndDataBetween(studio, ini, fim)
                 : marcacaoRepository.findByDataBetween(ini, fim)).stream()
                 .filter(m -> "APROVADO".equalsIgnoreCase(m.getStatus()) && m.getTurma() != null
                         && m.getHoraInicio() != null)
                 .forEach(m -> ocorrencias.add(new Ocorrencia(m.getData(), m.getHoraInicio(), m.getHoraFim(),
-                        m.getTurma(), m.getSala(), m.getTipo() != null ? m.getTipo() : "PONTUAL")));
+                        m.getTurma(), m.getSala(), m.getTipo() != null ? m.getTipo() : "PONTUAL",
+                        m.getTurma().getProfessor())));
 
         List<SumarioAula> sumarios = studio != null ? sumarioRepository.findByStudioAndDataBetween(studio, ini, fim)
                 : sumarioRepository.findByDataBetween(ini, fim);
@@ -225,7 +227,7 @@ public class PlaneamentoAulasView extends VerticalLayout {
                                 && minhasTurmaIds.contains(o.turma().getId());
                     }
                     if (profId != null) {
-                        Professor p = o.turma().getProfessor();
+                        Professor p = o.professor();
                         return p != null && profId.equals(p.getId());
                     }
                     return true;
@@ -236,7 +238,8 @@ public class PlaneamentoAulasView extends VerticalLayout {
                                 .filter(s -> s.getTurma() != null && s.getTurma().getId().equals(o.turma().getId())
                                         && o.data().equals(s.getData())
                                         && (s.getHoraInicio() == null || s.getHoraInicio().equals(o.horaInicio())))
-                                .findFirst().orElse(null)))
+                                .findFirst().orElse(null),
+                        o.professor()))
                 .filter(l -> estadoFiltro == null || estadoDe(l.sumario()).equals(estadoFiltro))
                 .sorted(Comparator.comparing(Linha::data).thenComparing(Linha::horaInicio))
                 .collect(Collectors.toList());
@@ -343,8 +346,8 @@ public class PlaneamentoAulasView extends VerticalLayout {
         s.setHoraFim(l.horaFim());
         s.setTipo(l.tipo());
         s.setStudio(TenantContext.getCurrentStudio());
-        if (s.getProfessor() == null && l.turma().getProfessor() != null) {
-            s.setProfessor(l.turma().getProfessor().getNome());
+        if (s.getProfessor() == null && l.professor() != null) {
+            s.setProfessor(l.professor().getNome());
         }
         s.setPlaneamento(plano);
         s.setSumario(sumarioTxt);

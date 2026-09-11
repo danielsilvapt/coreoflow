@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+import pt.studioflow.model.Aula;
 import pt.studioflow.model.Professor;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
@@ -51,7 +52,12 @@ public class ProfessorTurmasService {
         return prof && !isAdmin();
     }
 
-    /** Turmas do estúdio em que o utilizador atual leciona (professor principal ou co-professor). */
+    /**
+     * Turmas do estúdio em que o utilizador atual leciona: professor principal,
+     * co-professor, ou professor de pelo menos uma {@link Aula} da turma (dia
+     * específico de uma turma partilhada) — dá acesso à turma inteira, como já
+     * acontece com os co-professores.
+     */
     public List<Turma> turmasDoUtilizador(Studio studio) {
         List<Turma> todas = studio != null ? turmaRepo.findAllByStudio(studio) : turmaRepo.findAllComplete();
 
@@ -61,8 +67,10 @@ public class ProfessorTurmasService {
         String primeiroNome = normalizar(u != null ? u.getFirstName() : "");
 
         return todas.stream()
-                .filter(t -> t.getTodosProfessores().stream()
-                        .anyMatch(p -> corresponde(p, emailUser, primeiroNome)))
+                .filter(t -> t.getTodosProfessores().stream().anyMatch(p -> corresponde(p, emailUser, primeiroNome))
+                        || (t.getAulas() != null && t.getAulas().stream()
+                                .map(Aula::getProfessorEfetivo)
+                                .anyMatch(p -> corresponde(p, emailUser, primeiroNome))))
                 .collect(Collectors.toList());
     }
 
