@@ -30,7 +30,8 @@ public enum StudioModulo {
     REFERENCIAS("Referências"),
     INQUERITOS("Inquéritos de Satisfação"),
     VIDEOS_AULA("Vídeos das Aulas"),
-    TREINADOR_IA("Treinador de Dança IA");
+    TREINADOR_IA("Treinador de Dança IA"),
+    AULAS_AVULSO("Aulas Avulso / Packs");
 
     private final String label;
 

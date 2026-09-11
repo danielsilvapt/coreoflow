@@ -174,7 +174,8 @@ public class UserView extends VerticalLayout {
         ComboBox<String> role = new ComboBox<>("Perfil");
         // ALUNO deixou de ser um utilizador: o acesso de alunos/encarregados é
         // por email via ContaPortal (ver "Acessos ao Portal").
-        role.setItems("ADMIN", "PROF", "DELEG");
+        // PRESENCA: login dedicado (pessoa ou iPad fixo na sala) que só marca presenças no kiosk /checkin.
+        role.setItems("ADMIN", "PROF", "DELEG", "PRESENCA");
         role.setRequired(true);
         role.setWidthFull();
         role.setValue(utilizador.getRole());
