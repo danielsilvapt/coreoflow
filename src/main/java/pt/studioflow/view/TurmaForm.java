@@ -23,6 +23,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Modalidade;
 import pt.studioflow.model.Professor;
+import pt.studioflow.model.PublicoTurma;
 import pt.studioflow.model.Sala;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
@@ -48,6 +49,7 @@ public class TurmaForm extends Dialog {
     private MultiSelectComboBox<Professor> coProfessores = new MultiSelectComboBox<>("Co-professores (opcional)");
     private ComboBox<Modalidade> modalidade = new ComboBox<>("Modalidade");
     private ComboBox<Sala> sala = new ComboBox<>("Sala");
+    private ComboBox<PublicoTurma> publico = new ComboBox<>("Público");
 
     // WHATSAPP
     private TextField whatsappGroupLink = new TextField("Link do Grupo WhatsApp");
@@ -91,6 +93,12 @@ public class TurmaForm extends Dialog {
         sala.setItems(studio != null ? salaRepository.findAllByStudio(studio) : salaRepository.findAll());
         sala.setItemLabelGenerator(Sala::getNome);
 
+        publico.setItems(PublicoTurma.values());
+        publico.setItemLabelGenerator(PublicoTurma::getLabel);
+        publico.setValue(PublicoTurma.AMBAS);
+        publico.setHelperText("Determina que turmas aparecem na inscrição pública consoante a data de nascimento");
+        publico.setAllowCustomValue(false);
+
         // Estilizar o campo WhatsApp
         whatsappGroupLink.setPlaceholder("https://chat.whatsapp.com/...");
         whatsappGroupLink.setPrefixComponent(new Icon(VaadinIcon.CHAT));
@@ -122,7 +130,7 @@ public class TurmaForm extends Dialog {
 
         // Montar o Layout
         FormLayout formLayout = new FormLayout();
-        formLayout.add(codigo, descricao, professor, modalidade, sala, coProfessores, cor, ativo,
+        formLayout.add(codigo, descricao, professor, modalidade, sala, publico, coProfessores, cor, ativo,
                 mensalidadeSocio, mensalidadeNaoSocio, whatsappGroupLink, googleDriveFolderId);
 
         formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("500px", 2));
