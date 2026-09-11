@@ -59,6 +59,7 @@ public class LeadsView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Leads & Prospecção");
         titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
 
@@ -87,18 +88,13 @@ public class LeadsView extends VerticalLayout {
             HorizontalLayout acoes = new HorizontalLayout();
             acoes.setSpacing(false);
 
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialogLead(l));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            Button editar = ViewUtils.botaoEditar(e -> abrirDialogLead(l));
 
             if (l.getTelefone() != null && !l.getTelefone().isBlank()) {
-                Button whatsapp = new Button(VaadinIcon.CHAT.create(), e -> abrirWhatsApp(l));
-                whatsapp.getStyle().set("color", "#25D366");
-                whatsapp.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-                acoes.add(whatsapp);
+                acoes.add(ViewUtils.botaoAcao(VaadinIcon.CHAT, "btn-view", "WhatsApp", e -> abrirWhatsApp(l)));
             }
 
-            Button apagar = new Button(VaadinIcon.TRASH.create(), e -> confirmarApagar(l));
-            apagar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+            Button apagar = ViewUtils.botaoEliminar(e -> confirmarApagar(l));
 
             acoes.add(editar, apagar);
             return acoes;

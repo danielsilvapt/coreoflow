@@ -90,6 +90,7 @@ public class MensalidadeView extends VerticalLayout {
         setSpacing(false);
 
         injectStyles();
+        ViewUtils.injetarEstiloBotoesAcao();
         configurarFiltros();
         configurarGrid();
 
@@ -109,17 +110,6 @@ public class MensalidadeView extends VerticalLayout {
                 ".status-faturado { background: #E8F0FE; color: #1967D2; } " +
                 ".status-divida { background: #FCE8E6; color: #D93025; } " +
                 ".status-pendente { background: #F1F3F4; color: #5F6368; } " +
-
-                ".action-btn { " +
-                "  border-radius: 10px; padding: 8px; min-width: 40px; height: 40px; " +
-                "  transition: all 0.2s ease; border: 1px solid rgba(0,0,0,0.05); " +
-                "  box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center; "
-                +
-                "} " +
-                ".action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); } " +
-                ".btn-vendus { background: #E6F4EA; color: #1E8E3E; } " +
-                ".btn-obs { background: #FFF4E5; color: #FF5D13; } " +
-                ".btn-del { background: #FCE8E6; color: #D93025; } " +
 
                 ".stat-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; min-width: 220px; } "
                 +
@@ -443,12 +433,10 @@ public class MensalidadeView extends VerticalLayout {
         HorizontalLayout layout = new HorizontalLayout();
         layout.setSpacing(true);
 
-        Button btnVendus = new Button(VaadinIcon.CASH.create(), e -> confirmarFaturacao(m));
-        btnVendus.addClassNames("action-btn", "btn-vendus");
+        Button btnVendus = ViewUtils.botaoAcao(VaadinIcon.CASH, "btn-vendus", "Faturar", e -> confirmarFaturacao(m));
 
-        Icon obsIcon = (m.getObservacoes() != null && !m.getObservacoes().isBlank()) ? VaadinIcon.NOTEBOOK.create()
-                : VaadinIcon.EDIT.create();
-        Button btnObs = new Button(obsIcon, e -> {
+        boolean temObs = m.getObservacoes() != null && !m.getObservacoes().isBlank();
+        Button btnObs = ViewUtils.botaoAcao(temObs ? VaadinIcon.NOTEBOOK : VaadinIcon.EDIT, "btn-obs", "Observações", e -> {
             ObservacoesForm obsForm = new ObservacoesForm();
             obsForm.addSaveListener(updated -> {
                 mensalidadeRepository.save(updated);
@@ -456,10 +444,8 @@ public class MensalidadeView extends VerticalLayout {
             });
             obsForm.abrir(m);
         });
-        btnObs.addClassNames("action-btn", "btn-obs");
 
-        Button btnDel = new Button(VaadinIcon.TRASH.create(), e -> confirmarEliminacao(m));
-        btnDel.addClassNames("action-btn", "btn-del");
+        Button btnDel = ViewUtils.botaoEliminar(e -> confirmarEliminacao(m));
 
         layout.add(btnVendus, btnObs, btnDel);
         return layout;

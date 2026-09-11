@@ -9,8 +9,6 @@ import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -52,6 +50,7 @@ public class UserView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Gestão de Utilizadores");
         titulo.getStyle().set("margin-top", "0");
         add(titulo, botaoAdicionar(), criarGrid());
@@ -79,14 +78,9 @@ public class UserView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
         grid.addComponentColumn(user -> {
-            Button editar = new Button(new Icon(VaadinIcon.EDIT));
-            editar.getElement().setProperty("title", "Editar");
-            editar.addClickListener(e -> abrirDialog(user));
+            Button editar = ViewUtils.botaoEditar(e -> abrirDialog(user));
 
-            Button remover = new Button(new Icon(VaadinIcon.TRASH));
-            remover.getElement().setProperty("title", "Remover");
-            remover.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-            remover.addClickListener(e -> {
+            Button remover = ViewUtils.botaoEliminar(e -> {
                 ConfirmDialog confirmDialog = new ConfirmDialog();
                 confirmDialog.setHeader("Remover utilizador");
                 confirmDialog.setText("Tem a certeza que quer remover \"" + user.getUsername() + "\"? Esta ação não pode ser desfeita.");

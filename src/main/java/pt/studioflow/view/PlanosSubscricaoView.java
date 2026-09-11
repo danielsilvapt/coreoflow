@@ -50,6 +50,7 @@ public class PlanosSubscricaoView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Planos de Subscrição");
         titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
 
@@ -64,8 +65,7 @@ public class PlanosSubscricaoView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
         grid.addComponentColumn(p -> {
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialogPlano(p));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            Button editar = ViewUtils.botaoEditar(e -> abrirDialogPlano(p));
             Button atribuir = new Button("Atribuir Studio", e -> abrirAtribuirStudio(p));
             atribuir.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             return new HorizontalLayout(editar, atribuir);

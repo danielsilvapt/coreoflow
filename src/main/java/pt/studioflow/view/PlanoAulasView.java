@@ -56,6 +56,7 @@ public class PlanoAulasView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Plano de Aulas");
         titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
 
@@ -87,10 +88,8 @@ public class PlanoAulasView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
         grid.addComponentColumn(o -> {
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(o));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> { ocorrenciaRepo.delete(o); atualizar(); });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            Button editar = ViewUtils.botaoEditar(e -> abrirDialog(o));
+            Button del = ViewUtils.botaoEliminar(e -> { ocorrenciaRepo.delete(o); atualizar(); });
             return new HorizontalLayout(editar, del);
         }).setHeader("Ações").setAutoWidth(true);
 

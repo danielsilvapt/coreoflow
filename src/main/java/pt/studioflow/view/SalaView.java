@@ -38,6 +38,7 @@ public class SalaView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Gestão de Salas");
         titulo.getStyle().set("margin-top", "0");
         add(titulo, ViewUtils.toolbar(ViewUtils.botaoNovo("Nova Sala", e -> abrirDialog(new Sala()))), configurarGrid());
@@ -76,14 +77,8 @@ public class SalaView extends VerticalLayout {
 
     // ---------- BOTÕES POR LINHA ----------
     private HorizontalLayout criarBotoesLinha(Sala sala) {
-        Button editar = new Button(new Icon(VaadinIcon.EDIT));
-        editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        editar.addClickListener(e -> abrirDialog(sala));
-
-        Button remover = new Button(new Icon(VaadinIcon.TRASH));
-        remover.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-        remover.addClickListener(e -> removerSala(sala));
-
+        Button editar = ViewUtils.botaoEditar(e -> abrirDialog(sala));
+        Button remover = ViewUtils.botaoEliminar(e -> removerSala(sala));
         return new HorizontalLayout(editar, remover);
     }
 

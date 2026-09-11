@@ -62,6 +62,7 @@ public class CampanhasView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Campanhas");
         titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
 
@@ -78,8 +79,7 @@ public class CampanhasView extends VerticalLayout {
         grid.addComponentColumn(c -> {
             HorizontalLayout actions = new HorizontalLayout();
             if (c.getEstado() == Campanha.Estado.RASCUNHO) {
-                Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(c));
-                editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                Button editar = ViewUtils.botaoEditar(e -> abrirDialog(c));
                 Button enviar = new Button("Enviar", VaadinIcon.PAPERPLANE.create(),
                         e -> confirmarEnvio(c));
                 enviar.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
@@ -91,10 +91,9 @@ public class CampanhasView extends VerticalLayout {
                 dataEnvio.getStyle().set("font-size", "11px").set("color", "#888");
                 actions.add(dataEnvio);
             }
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> {
+            Button del = ViewUtils.botaoEliminar(e -> {
                 campanhaRepo.delete(c); atualizar();
             });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             actions.add(del);
             return actions;
         }).setHeader("Ações").setAutoWidth(true);

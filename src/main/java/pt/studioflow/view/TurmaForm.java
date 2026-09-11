@@ -76,6 +76,9 @@ public class TurmaForm extends Dialog {
         this.turmaService = turmaService;
 
         setHeaderTitle("Configuração da Turma");
+        setWidth("640px");
+        setMaxWidth("92vw");
+        setMaxHeight("88vh");
 
         // Configurar as ComboBoxes
         Studio studio = TenantContext.getCurrentStudio();

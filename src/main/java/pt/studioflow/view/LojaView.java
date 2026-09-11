@@ -9,7 +9,6 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -49,6 +48,7 @@ public class LojaView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Loja");
         titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
 
@@ -71,10 +71,8 @@ public class LojaView extends VerticalLayout {
         grid.setSizeFull();
 
         grid.addComponentColumn(p -> {
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialogProduto(p, grid));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> { produtoRepo.delete(p); atualizarProdutos(grid); });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            Button editar = ViewUtils.botaoEditar(e -> abrirDialogProduto(p, grid));
+            Button del = ViewUtils.botaoEliminar(e -> { produtoRepo.delete(p); atualizarProdutos(grid); });
             return new HorizontalLayout(editar, del);
         }).setHeader("Ações").setAutoWidth(true);
 

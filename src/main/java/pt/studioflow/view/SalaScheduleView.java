@@ -142,6 +142,7 @@ public class SalaScheduleView extends VerticalLayout {
         setSpacing(true);
         setSizeFull();
         getStyle().set("background-color", "#f8f9fa");
+        ViewUtils.injetarEstiloBotoesAcao();
 
         // Injeção de Estilos CSS Avançados para Efeitos de Grelha e Transições
         // Dinâmicas
@@ -1221,14 +1222,10 @@ public class SalaScheduleView extends VerticalLayout {
                 .setHeader("De").setAutoWidth(true);
         grid.addColumn(i -> i.getDataFim() != null ? DataUtil.formatar(i.getDataFim()) : "-")
                 .setHeader("Até").setAutoWidth(true);
-        grid.addComponentColumn(i -> {
-            Button rem = new Button(VaadinIcon.TRASH.create(), e -> {
-                interrupcaoRepository.delete(i);
-                grid.setItems(interrupcaoRepository.findByStudioOrderByDataInicioAsc(studio));
-            });
-            rem.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            return rem;
-        }).setHeader("").setAutoWidth(true);
+        grid.addComponentColumn(i -> ViewUtils.botaoEliminar(e -> {
+            interrupcaoRepository.delete(i);
+            grid.setItems(interrupcaoRepository.findByStudioOrderByDataInicioAsc(studio));
+        })).setHeader("").setAutoWidth(true);
         grid.setItems(interrupcaoRepository.findByStudioOrderByDataInicioAsc(studio));
         grid.setAllRowsVisible(true);
 
@@ -1441,7 +1438,7 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("white-space", "nowrap").set("overflow", "hidden").set("text-overflow", "ellipsis")
                 .set("margin-top", "4px");
 
-        Button apagar = new Button(VaadinIcon.TRASH.create(), e -> {
+        Button apagar = ViewUtils.botaoEliminar(e -> {
             ConfirmDialog cd = new ConfirmDialog();
             cd.setHeader("Apagar vídeo?");
             cd.setText("\"" + video.getNomeFicheiro() + "\" será removido.");
@@ -1458,7 +1455,6 @@ public class SalaScheduleView extends VerticalLayout {
             });
             cd.open();
         });
-        apagar.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
         card.add(play, nome, apagar);
         return card;

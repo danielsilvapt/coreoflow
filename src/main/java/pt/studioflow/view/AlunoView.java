@@ -128,16 +128,12 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
                 +
                 ".stat-title { color: #7f8c8d; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }"
                 +
-                ".stat-value { font-size: 1.6rem; font-weight: 800; display: block; margin-top: 5px; }" +
-                ".action-btn { border-radius: 10px; padding: 8px; transition: all 0.2s; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }"
-                +
-                ".action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }" +
-                ".btn-edit { background: #E8F0FE; color: #1967D2; }" +
-                ".btn-del { background: #FCE8E6; color: #D93025; }";
+                ".stat-value { font-size: 1.6rem; font-weight: 800; display: block; margin-top: 5px; }";
 
         UI.getCurrent().getElement().executeJs(
                 "const style = document.createElement('style'); style.textContent = $0; document.head.appendChild(style);",
                 styles);
+        ViewUtils.injetarEstiloBotoesAcao();
     }
 
     private Component criarStatsCards() {
@@ -172,13 +168,11 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_ROW_STRIPES);
 
         grid.addComponentColumn(aluno -> {
-            Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> {
+            Button editBtn = ViewUtils.botaoEditar(e -> {
                 alunoForm.abrirFormulario(aluno);
                 vincularAtualizacaoAoFechar();
             });
-            editBtn.addClassNames("action-btn", "btn-edit");
-            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> confirmarEliminacao(aluno));
-            deleteBtn.addClassNames("action-btn", "btn-del");
+            Button deleteBtn = ViewUtils.botaoEliminar(e -> confirmarEliminacao(aluno));
             return new HorizontalLayout(editBtn, deleteBtn);
         }).setHeader("AÇÕES").setWidth("130px").setFlexGrow(0).setFrozen(true);
 

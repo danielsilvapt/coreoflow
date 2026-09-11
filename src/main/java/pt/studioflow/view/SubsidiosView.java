@@ -49,6 +49,7 @@ public class SubsidiosView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Subsídios");
         titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
 
@@ -63,10 +64,8 @@ public class SubsidiosView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
         grid.addComponentColumn(s -> {
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(s));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> { subsidioRepo.delete(s); atualizar(); });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            Button editar = ViewUtils.botaoEditar(e -> abrirDialog(s));
+            Button del = ViewUtils.botaoEliminar(e -> { subsidioRepo.delete(s); atualizar(); });
             return new HorizontalLayout(editar, del);
         }).setHeader("Ações").setAutoWidth(true);
 

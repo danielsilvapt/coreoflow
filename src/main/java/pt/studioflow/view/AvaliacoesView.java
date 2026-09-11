@@ -9,7 +9,6 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -83,6 +82,7 @@ public class AvaliacoesView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
+        ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Avaliações");
         titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
 
@@ -109,9 +109,8 @@ public class AvaliacoesView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
         grid.addComponentColumn(a -> {
-            Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirDialog(a));
-            editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            Button del = new Button(VaadinIcon.TRASH.create(), e -> {
+            Button editar = ViewUtils.botaoEditar(e -> abrirDialog(a));
+            Button del = ViewUtils.botaoEliminar(e -> {
                 if (!podeGerir(a.getTurma())) {
                     Notification.show("Só podes apagar avaliações das tuas turmas.", 4000,
                             Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -120,7 +119,6 @@ public class AvaliacoesView extends VerticalLayout {
                 avaliacaoRepo.delete(a);
                 atualizar();
             });
-            del.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             return new HorizontalLayout(editar, del);
         }).setHeader("Ações").setAutoWidth(true);
 
