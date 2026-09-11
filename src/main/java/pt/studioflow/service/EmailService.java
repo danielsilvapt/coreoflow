@@ -599,6 +599,47 @@ public class EmailService {
                 enviarNotificacaoInterna(studio, "Novo Aluno Experimental: " + aluno.getNomeCompleto(), corpo);
         }
 
+        /** Notifica o admin do estúdio de uma nova compra de aula avulsa/pack. */
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
+        public void enviarEmailNotificacaoCompraAvulso(pt.studioflow.model.CompraCredito compra) {
+                Aluno aluno = compra.getAluno();
+                Studio studio = studioDe(aluno);
+                if (envioBloqueado(studio)) return;
+
+                String modalidadeTxt = compra.getModalidade() != null ? compra.getModalidade().getDescricao() : "qualquer modalidade";
+                String pagamentoTxt = compra.getMetodoPagamento() == pt.studioflow.model.MetodoPagamentoCredito.MOLLIE
+                                ? "Mollie (" + compra.getEstadoPagamento() + ")"
+                                : "Pagar no estúdio (por cobrar)";
+
+                String corpo = String.format(
+                                "<div style='font-family: Arial, sans-serif; color: #333;'>" +
+                                                "<p>Olá,</p>" +
+                                                "<p>Um aluno comprou aula(s) avulsa(s) através do link de inscrições.</p>" +
+                                                "<ul style='background-color: #f2f2f2; padding: 15px; border-left: 4px solid #666; list-style-type: none;'>" +
+                                                "  <li><b>Nome:</b> %s</li>" +
+                                                "  <li><b>Pack:</b> %s (%d aula(s))</li>" +
+                                                "  <li><b>Modalidade:</b> %s</li>" +
+                                                "  <li><b>Pagamento:</b> %s</li>" +
+                                                "</ul>" +
+                                                "<p>O acesso já está ativo — não é necessária validação.</p>" +
+                                                "<p style='font-size: 0.8em; color: #999;'>Mensagem gerada automaticamente pela plataforma CoreoFlow.</p>" +
+                                                "</div>",
+                                aluno.getNomeCompleto(), compra.getNomePack(), compra.getNumAulasComprado(),
+                                modalidadeTxt, pagamentoTxt);
+
+                enviarNotificacaoInterna(studio, "Nova compra de Aula Avulsa: " + aluno.getNomeCompleto(), corpo);
+        }
+
+        /** Notifica o professor de que um aluno fez checkin (avulso) numa aula concreta. */
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
+        public void enviarEmailNotificacaoCheckinAvulso(String emailProfessor, Aluno aluno, Turma turma) {
+                if (emailProfessor == null || emailProfessor.isBlank()) return;
+                String corpo = String.format(
+                                "O aluno %s fez checkin de aula avulsa na turma %s.",
+                                aluno.getNomeCompleto(), turma != null ? turma.getDescricao() : "N/A");
+                enviarEmailNotificacaoProfessor(emailProfessor, aluno, "Checkin de Aula Avulsa: " + aluno.getNomeCompleto(), corpo);
+        }
+
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacaoProfessor(String emailDestinatario, Aluno aluno, String assunto,
                         String corpo) {

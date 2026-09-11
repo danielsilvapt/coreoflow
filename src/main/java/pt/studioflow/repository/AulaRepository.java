@@ -28,6 +28,7 @@ public interface AulaRepository extends JpaRepository<Aula, Long> {
     @Query("SELECT DISTINCT a FROM Aula a "
             + "JOIN FETCH a.turma t "
             + "LEFT JOIN FETCH t.professor "
+            + "LEFT JOIN FETCH a.professor "
             + "LEFT JOIN FETCH t.modalidade "
             + "LEFT JOIN FETCH a.sala "
             + "WHERE t.studio = :studio")
@@ -36,6 +37,7 @@ public interface AulaRepository extends JpaRepository<Aula, Long> {
     @Query("SELECT DISTINCT a FROM Aula a "
             + "JOIN FETCH a.turma t "
             + "LEFT JOIN FETCH t.professor "
+            + "LEFT JOIN FETCH a.professor "
             + "LEFT JOIN FETCH t.modalidade "
             + "LEFT JOIN FETCH a.sala")
     List<Aula> findAllComHorario();

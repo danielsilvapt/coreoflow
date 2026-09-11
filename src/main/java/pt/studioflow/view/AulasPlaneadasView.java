@@ -312,7 +312,7 @@ public class AulasPlaneadasView extends VerticalLayout {
                     continue;
                 }
                 Turma t = a.getTurma();
-                String prof = t.getProfessor() != null ? t.getProfessor().getNome() : "—";
+                String prof = a.getProfessorEfetivo() != null ? a.getProfessorEfetivo().getNome() : "—";
                 SumarioAula s = idx.get(chave(t.getId(), dia, a.getHoraInicio()));
                 lista.add(new Ocorrencia(dia, a.getHoraInicio(), a.getHoraFim(), t, prof, a.getSala(),
                         "REGULAR", s));

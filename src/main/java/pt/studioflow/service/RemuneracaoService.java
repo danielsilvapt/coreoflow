@@ -201,7 +201,7 @@ public class RemuneracaoService {
                             * percentagem(p, s, freqAluno(m, d.inscricoes)) / 100.0)
                     .sum();
         }
-        return horasAgendadas(t, mes, d.aulas) * valorHoraRegular(p, s);
+        return horasAgendadas(t, mes, d.aulas, p) * valorHoraRegular(p, s);
     }
 
     /**
@@ -264,8 +264,13 @@ public class RemuneracaoService {
         for (Professor p : professores) {
             Studio s = studio;
             TipoRemuneracao modo = tipoEfetivo(p, s);
+            // Inclui turmas onde o professor é o principal OU dá pelo menos um dia
+            // (Aula.professor) de uma turma partilhada com outro professor principal.
             List<Turma> turmasProf = turmas.stream()
-                    .filter(t -> t.getProfessor() != null && t.getProfessor().getId().equals(p.getId()))
+                    .filter(t -> (t.getProfessor() != null && t.getProfessor().getId().equals(p.getId()))
+                            || (t.getAulas() != null && t.getAulas().stream()
+                                    .map(Aula::getProfessorEfetivo)
+                                    .anyMatch(ap -> ap != null && ap.getId().equals(p.getId()))))
                     .toList();
 
             double base = 0, ensaios = 0, privadas = 0;
@@ -299,7 +304,7 @@ public class RemuneracaoService {
                     r -> r.getAno() == mes.getYear() && r.getMesNumero() == mes.getMonthValue()
                             && TextoUtil.contemNome(r.getProfessor(), p.getNome()))) {
                 for (Turma t : turmasProf) {
-                    base += horasAgendadas(t, mes, d.aulas) * valorHoraRegular(p, s);
+                    base += horasAgendadas(t, mes, d.aulas, p) * valorHoraRegular(p, s);
                 }
             }
 
@@ -382,12 +387,18 @@ public class RemuneracaoService {
                 .orElse(2);
     }
 
-    /** Nº de horas agendadas (Aula) para a turma no mês, contando as ocorrências de cada dia. */
-    private static double horasAgendadas(Turma t, YearMonth mes, List<Aula> aulas) {
+    /**
+     * Nº de horas agendadas (Aula) para a turma no mês atribuíveis ao professor
+     * {@code p}, contando as ocorrências de cada dia. Numa turma partilhada, só
+     * conta os dias cujo {@link Aula#getProfessorEfetivo()} seja {@code p}.
+     */
+    private static double horasAgendadas(Turma t, YearMonth mes, List<Aula> aulas, Professor p) {
         double horas = 0;
         for (Aula au : aulas) {
             if (au.getTurma() == null || !au.getTurma().getId().equals(t.getId())) continue;
             if (au.getHoraInicio() == null || au.getHoraFim() == null || au.getDia() == null) continue;
+            Professor efetivo = au.getProfessorEfetivo();
+            if (p != null && (efetivo == null || !efetivo.getId().equals(p.getId()))) continue;
             long ocorrencias = 0;
             for (int dia = 1; dia <= mes.lengthOfMonth(); dia++) {
                 if (mes.atDay(dia).getDayOfWeek() == au.getDia()) ocorrencias++;

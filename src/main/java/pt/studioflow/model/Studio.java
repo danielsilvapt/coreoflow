@@ -207,6 +207,22 @@ public class Studio {
     @Column(name = "vendus_api_key")
     private String vendusApiKey;
 
+    /** Chave API Mollie para cobrar aulas avulso/packs online. Nulo = Mollie desligado, cai em "pagar no estúdio". */
+    @Column(name = "mollie_api_key")
+    private String mollieApiKey;
+
+    // =====================================================
+    // AULAS AVULSO / CHECKIN (por estúdio)
+    // =====================================================
+
+    /** Minutos antes do início da aula em que o checkin já fica disponível. */
+    @Column(name = "checkin_janela_antes_min")
+    private Integer checkinJanelaAntesMin = 5;
+
+    /** Minutos depois do início da aula até o checkin deixar de estar disponível. */
+    @Column(name = "checkin_janela_depois_min")
+    private Integer checkinJanelaDepoisMin = 15;
+
     // =====================================================
     // GETTERS & SETTERS
     // =====================================================
@@ -305,6 +321,16 @@ public class Studio {
 
     public String getVendusApiKey() { return vendusApiKey; }
     public void setVendusApiKey(String vendusApiKey) { this.vendusApiKey = vendusApiKey; }
+
+    public String getMollieApiKey() { return mollieApiKey; }
+    public void setMollieApiKey(String mollieApiKey) { this.mollieApiKey = mollieApiKey; }
+    public boolean isMollieAtivo() { return mollieApiKey != null && !mollieApiKey.isBlank(); }
+
+    public Integer getCheckinJanelaAntesMin() { return checkinJanelaAntesMin != null ? checkinJanelaAntesMin : 5; }
+    public void setCheckinJanelaAntesMin(Integer checkinJanelaAntesMin) { this.checkinJanelaAntesMin = checkinJanelaAntesMin; }
+
+    public Integer getCheckinJanelaDepoisMin() { return checkinJanelaDepoisMin != null ? checkinJanelaDepoisMin : 15; }
+    public void setCheckinJanelaDepoisMin(Integer checkinJanelaDepoisMin) { this.checkinJanelaDepoisMin = checkinJanelaDepoisMin; }
 
     public PlanoSubscricao getPlano() { return plano; }
     public void setPlano(PlanoSubscricao plano) { this.plano = plano; }

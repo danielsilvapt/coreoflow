@@ -217,6 +217,22 @@ public class StudioAdminView extends VerticalLayout {
         TextField vendusApiKey = new TextField("Chave API Vendus");
         vendusApiKey.setValue(studio.getVendusApiKey() != null ? studio.getVendusApiKey() : "");
 
+        TextField mollieApiKey = new TextField("Chave API Mollie (aulas avulso)");
+        mollieApiKey.setValue(studio.getMollieApiKey() != null ? studio.getMollieApiKey() : "");
+        mollieApiKey.setHelperText("Vazio = pagamento de aulas avulso fica sempre como \"pagar no estúdio\".");
+
+        NumberField checkinJanelaAntes = new NumberField("Checkin: minutos antes da aula");
+        checkinJanelaAntes.setValue(studio.getCheckinJanelaAntesMin() != null
+                ? studio.getCheckinJanelaAntesMin().doubleValue() : 5.0);
+        checkinJanelaAntes.setMin(0);
+        checkinJanelaAntes.setStep(1);
+
+        NumberField checkinJanelaDepois = new NumberField("Checkin: minutos depois do início");
+        checkinJanelaDepois.setValue(studio.getCheckinJanelaDepoisMin() != null
+                ? studio.getCheckinJanelaDepoisMin().doubleValue() : 15.0);
+        checkinJanelaDepois.setMin(0);
+        checkinJanelaDepois.setStep(1);
+
         TextField emailCriador = new TextField("Email Criador Transferências");
         emailCriador.setValue(studio.getEmailCriadorTransferencias() != null ? studio.getEmailCriadorTransferencias() : "");
 
@@ -280,7 +296,8 @@ public class StudioAdminView extends VerticalLayout {
                 "Quando desligado, a plataforma não envia nenhum email (convites do portal, "
                         + "notificações, avisos, aniversários, etc.) para este estúdio.");
 
-        form.add(nome, slug, email, corPrimaria, corSecundaria, vendusApiKey, emailCriador,
+        form.add(nome, slug, email, corPrimaria, corSecundaria, vendusApiKey,
+                mollieApiKey, checkinJanelaAntes, checkinJanelaDepois, emailCriador,
                 emailAssinante1, emailAssinante2,
                 mensalidadeCrianca1x, mensalidadeCrianca2x,
                 mensalidadeAdulto1x, mensalidadeAdulto2x, naoSocioAdicional, diaLimitePagamento,
@@ -468,6 +485,11 @@ public class StudioAdminView extends VerticalLayout {
             studio.setCorSecundaria(corSecundaria.getValue());
             studio.setLogoPath(pendingLogoPath[0]);
             studio.setVendusApiKey(vendusApiKey.getValue().trim());
+            studio.setMollieApiKey(mollieApiKey.getValue().trim());
+            studio.setCheckinJanelaAntesMin(checkinJanelaAntes.getValue() != null
+                    ? checkinJanelaAntes.getValue().intValue() : 5);
+            studio.setCheckinJanelaDepoisMin(checkinJanelaDepois.getValue() != null
+                    ? checkinJanelaDepois.getValue().intValue() : 15);
             studio.setEmailCriadorTransferencias(emailCriador.getValue().trim());
             studio.setEmailAssinante1(emailAssinante1.getValue().trim());
             studio.setEmailAssinante2(emailAssinante2.getValue().trim());

@@ -970,6 +970,31 @@ public class SalaScheduleView extends VerticalLayout {
         return minutes * (PIXELS_POR_HORA / 60.0);
     }
 
+    /**
+     * ComboBox de professor para uma {@code Aula} concreta: sobrepõe o professor
+     * principal da turma só para este dia (turma partilhada). As opções ficam
+     * limitadas ao professor principal + coprofessores da turma escolhida em
+     * {@code comboTurma}; a lista atualiza-se e o valor volta ao principal sempre
+     * que a turma muda.
+     */
+    private ComboBox<Professor> criarComboProfessorAula(ComboBox<Turma> comboTurma) {
+        ComboBox<Professor> comboProf = new ComboBox<>("Professor deste dia");
+        comboProf.setWidthFull();
+        comboProf.setItemLabelGenerator(Professor::getNome);
+        comboProf.setHelperText("Por defeito é o professor principal da turma; só mudes se for um coprofessor a dar este dia.");
+        comboTurma.addValueChangeListener(e -> {
+            Turma turma = e.getValue();
+            List<Professor> opcoes = new ArrayList<>();
+            if (turma != null) {
+                if (turma.getProfessor() != null) opcoes.add(turma.getProfessor());
+                opcoes.addAll(turma.getCoProfessores());
+            }
+            comboProf.setItems(opcoes);
+            comboProf.setValue(turma != null ? turma.getProfessor() : null);
+        });
+        return comboProf;
+    }
+
     private void abrirDialogAdicionarAulaRegular() {
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle("Nova Aula Regular");
@@ -987,6 +1012,8 @@ public class SalaScheduleView extends VerticalLayout {
         ComboBox<DayOfWeek> comboDia = new ComboBox<>("Dia da Semana", diasSemana);
         comboDia.setItemLabelGenerator(this::traduzirDia);
         comboDia.setWidthFull();
+
+        ComboBox<Professor> comboProfessor = criarComboProfessorAula(comboTurma);
 
         TimePicker inicio = new TimePicker("Início");
         inicio.setWidthFull();
@@ -1006,7 +1033,7 @@ public class SalaScheduleView extends VerticalLayout {
         periodoLayout.setWidthFull();
         periodoLayout.getStyle().set("flex-wrap", "wrap");
 
-        VerticalLayout form = new VerticalLayout(comboTurma, comboSala, comboDia, tempoLayout, periodoLayout);
+        VerticalLayout form = new VerticalLayout(comboTurma, comboSala, comboDia, comboProfessor, tempoLayout, periodoLayout);
         form.setPadding(false);
         form.setSpacing(true);
         dialog.add(form);
@@ -1016,6 +1043,10 @@ public class SalaScheduleView extends VerticalLayout {
             aula.setTurma(comboTurma.getValue());
             aula.setSala(comboSala.getValue());
             aula.setDia(comboDia.getValue());
+            Turma turmaEscolhida = comboTurma.getValue();
+            Professor profEscolhido = comboProfessor.getValue();
+            aula.setProfessor(turmaEscolhida != null && profEscolhido != null
+                    && profEscolhido.equals(turmaEscolhida.getProfessor()) ? null : profEscolhido);
             aula.setHoraInicio(inicio.getValue());
             aula.setHoraFim(fim.getValue());
             aula.setDataInicio(dataInicio.getValue());
@@ -1247,6 +1278,17 @@ public class SalaScheduleView extends VerticalLayout {
         comboTurma.setItemLabelGenerator(Turma::getDescricao);
         comboTurma.setWidthFull();
 
+        ComboBox<Professor> comboProfessor = criarComboProfessorAula(comboTurma);
+        Turma turmaAtual = aula.getTurma();
+        List<Professor> opcoesProfIniciais = new ArrayList<>();
+        if (turmaAtual != null) {
+            if (turmaAtual.getProfessor() != null) opcoesProfIniciais.add(turmaAtual.getProfessor());
+            opcoesProfIniciais.addAll(turmaAtual.getCoProfessores());
+        }
+        comboProfessor.setItems(opcoesProfIniciais);
+        comboProfessor.setValue(aula.getProfessor() != null ? aula.getProfessor()
+                : (turmaAtual != null ? turmaAtual.getProfessor() : null));
+
         TimePicker inicio = new TimePicker("Início", aula.getHoraInicio());
         TimePicker fim = new TimePicker("Fim", aula.getHoraFim());
         HorizontalLayout tempo = new HorizontalLayout(inicio, fim);
@@ -1267,12 +1309,16 @@ public class SalaScheduleView extends VerticalLayout {
         btnVideos.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         btnVideos.setEnabled(aula.getTurma() != null && data != null);
 
-        VerticalLayout layout = new VerticalLayout(comboTurma, tempo, periodo, btnVideos);
+        VerticalLayout layout = new VerticalLayout(comboTurma, comboProfessor, tempo, periodo, btnVideos);
         layout.setPadding(false);
         dialog.add(layout);
 
         Button guardar = new Button("Guardar Alterações", e -> {
             aula.setTurma(comboTurma.getValue());
+            Turma turmaEscolhida = comboTurma.getValue();
+            Professor profEscolhido = comboProfessor.getValue();
+            aula.setProfessor(turmaEscolhida != null && profEscolhido != null
+                    && profEscolhido.equals(turmaEscolhida.getProfessor()) ? null : profEscolhido);
             aula.setHoraInicio(inicio.getValue());
             aula.setHoraFim(fim.getValue());
             aula.setDataInicio(dataInicio.getValue());
@@ -1533,6 +1579,8 @@ public class SalaScheduleView extends VerticalLayout {
         comboTurma.setItemLabelGenerator(Turma::getDescricao);
         comboTurma.setWidthFull();
 
+        ComboBox<Professor> comboProfessor = criarComboProfessorAula(comboTurma);
+
         TimePicker inicio = new TimePicker("Horário de Início", hora);
         inicio.setWidthFull();
         TimePicker fim = new TimePicker("Horário de Fim", hora.plusHours(1));
@@ -1551,7 +1599,7 @@ public class SalaScheduleView extends VerticalLayout {
         periodo.setWidthFull();
         periodo.getStyle().set("flex-wrap", "wrap");
 
-        VerticalLayout content = new VerticalLayout(comboTurma, tempo, periodo);
+        VerticalLayout content = new VerticalLayout(comboTurma, comboProfessor, tempo, periodo);
         content.setPadding(false);
         dialog.add(content);
 
@@ -1560,6 +1608,10 @@ public class SalaScheduleView extends VerticalLayout {
             a.setTurma(comboTurma.getValue());
             a.setSala(sala);
             a.setDia(data.getDayOfWeek());
+            Turma turmaEscolhida = comboTurma.getValue();
+            Professor profEscolhido = comboProfessor.getValue();
+            a.setProfessor(turmaEscolhida != null && profEscolhido != null
+                    && profEscolhido.equals(turmaEscolhida.getProfessor()) ? null : profEscolhido);
             a.setHoraInicio(inicio.getValue());
             a.setHoraFim(fim.getValue());
             a.setDataInicio(dataInicio.getValue());

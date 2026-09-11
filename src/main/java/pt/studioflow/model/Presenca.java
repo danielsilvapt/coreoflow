@@ -1,6 +1,7 @@
 package pt.studioflow.model;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
 
@@ -31,6 +32,33 @@ public class Presenca {
 
     @Column(nullable = false)
     private Boolean presente = false;
+
+    /** Se veio de matrícula regular ou consumiu um crédito de aula avulsa/pack. Nulo = registo histórico (assume MATRICULA). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "origem")
+    private OrigemPresenca origem;
+
+    /** Quem/o que registou esta presença. Nulo = registo histórico manual anterior a esta funcionalidade. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metodo_registo")
+    private MetodoRegistoPresenca metodoRegisto;
+
+    @Column(name = "hora_registo")
+    private LocalDateTime horaRegisto;
+
+    /** Preenchido só quando este checkin consumiu um crédito de {@link CompraCredito} (auditoria/estorno). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "compra_credito_id")
+    private CompraCredito compraCredito;
+
+    public OrigemPresenca getOrigem() { return origem; }
+    public void setOrigem(OrigemPresenca origem) { this.origem = origem; }
+    public MetodoRegistoPresenca getMetodoRegisto() { return metodoRegisto; }
+    public void setMetodoRegisto(MetodoRegistoPresenca metodoRegisto) { this.metodoRegisto = metodoRegisto; }
+    public LocalDateTime getHoraRegisto() { return horaRegisto; }
+    public void setHoraRegisto(LocalDateTime horaRegisto) { this.horaRegisto = horaRegisto; }
+    public CompraCredito getCompraCredito() { return compraCredito; }
+    public void setCompraCredito(CompraCredito compraCredito) { this.compraCredito = compraCredito; }
 
     public Long getId() {
         return id;
