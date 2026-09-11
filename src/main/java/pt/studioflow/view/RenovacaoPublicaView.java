@@ -27,6 +27,7 @@ import pt.studioflow.model.Aluno;
 import pt.studioflow.model.AlunoTurma;
 import pt.studioflow.model.Idioma;
 import pt.studioflow.model.Modalidade;
+import pt.studioflow.model.PublicoTurma;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
 import pt.studioflow.repository.StudioRepository;
@@ -230,14 +231,21 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         Span saudacao = new Span("Olá, " + aluno.getNomeCompleto() + "! Escolhe as turmas para o novo período:");
 
-        MultiSelectComboBox<Turma> turmas = new MultiSelectComboBox<>(translationService.t("renovacao.turmas", idiomaAtual));
-        turmas.setItems(turmaRepository.findByStudioAndAtivoTrue(studioAtual));
-        turmas.setItemLabelGenerator(t -> t.getModalidade().getDescricao() + " - " + t.getDescricao());
-        turmas.setWidthFull();
-
         Set<Turma> turmasAtuais = aluno.getTurmas() != null
                 ? aluno.getTurmas().stream().map(AlunoTurma::getTurma).collect(Collectors.toSet())
                 : Set.of();
+
+        MultiSelectComboBox<Turma> turmas = new MultiSelectComboBox<>(translationService.t("renovacao.turmas", idiomaAtual));
+        // Turmas com idade compatível + as que o aluno já frequenta (caso a configuração da turma tenha mudado entretanto)
+        List<Turma> turmasElegiveis = turmaRepository.findByStudioAndAtivoTrue(studioAtual).stream()
+                .filter(t -> t.getPublico() == PublicoTurma.AMBAS
+                        || (aluno.isCrianca() && t.getPublico() == PublicoTurma.CRIANCA)
+                        || (!aluno.isCrianca() && t.getPublico() == PublicoTurma.ADULTO)
+                        || turmasAtuais.contains(t))
+                .collect(Collectors.toList());
+        turmas.setItems(turmasElegiveis);
+        turmas.setItemLabelGenerator(t -> t.getModalidade().getDescricao() + " - " + t.getDescricao());
+        turmas.setWidthFull();
         Map<Long, Integer> frequenciaAtual = aluno.getTurmas() != null
                 ? aluno.getTurmas().stream().collect(Collectors.toMap(
                         at -> at.getTurma().getId(), AlunoTurma::getAulasPorSemana, (a, b) -> a))

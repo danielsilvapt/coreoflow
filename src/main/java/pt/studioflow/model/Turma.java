@@ -54,6 +54,11 @@ public class Turma {
     @JoinColumn(name = "sala_id")
     private Sala sala;
 
+    /** Para quem é a turma (criança, adulto ou ambas) — filtra as opções na inscrição pública consoante a data de nascimento. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "publico")
+    private PublicoTurma publico = PublicoTurma.AMBAS;
+
     @OneToMany(mappedBy = "turma", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<AlunoTurma> alunosTurma;
 
@@ -215,6 +220,15 @@ public class Turma {
 
     public void setSala(Sala sala) {
         this.sala = sala;
+    }
+
+    /** Nunca null: turmas antigas sem valor definido contam como "ambas" (comportamento anterior à feature). */
+    public PublicoTurma getPublico() {
+        return publico != null ? publico : PublicoTurma.AMBAS;
+    }
+
+    public void setPublico(PublicoTurma publico) {
+        this.publico = publico;
     }
 
     public List<AlunoTurma> getAlunosTurma() {

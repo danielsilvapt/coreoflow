@@ -37,6 +37,7 @@ import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Aluno.AlunoStatus;
 import pt.studioflow.model.Idioma;
 import pt.studioflow.model.Modalidade;
+import pt.studioflow.model.PublicoTurma;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
 import pt.studioflow.repository.AlunoRepository;
@@ -257,12 +258,9 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         // --- 3. SELEÇÃO DE TURMAS ---
         MultiSelectComboBox<Turma> turmasInteresse = new MultiSelectComboBox<>("Escolha as Turmas");
-        if (studioAtual != null) {
-            turmasInteresse.setItems(turmaRepository.findByStudioAndAtivoTrue(studioAtual));
-        } else {
-            turmasInteresse.setItems(turmaRepository.findAllComplete());
-        }
+        turmasInteresse.setItems(turmasElegiveis(null));
         turmasInteresse.setItemLabelGenerator(t -> t.getModalidade().getDescricao() + " - " + t.getDescricao());
+        turmasInteresse.setHelperText("Indica a data de nascimento para veres só as turmas com idade compatível");
         turmasInteresse.setWidthFull();
 
         containerFrequencias.setPadding(false);
@@ -313,7 +311,21 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
             atualizarResumo.run();
         });
 
-        dataNascimento.addValueChangeListener(ev -> atualizarResumo.run());
+        dataNascimento.addValueChangeListener(ev -> {
+            java.util.List<Turma> elegiveis = turmasElegiveis(dataNascimento.getValue());
+            turmasInteresse.setItems(elegiveis);
+            Set<Turma> selecaoAtual = turmasInteresse.getValue();
+            Set<Turma> selecaoValida = selecaoAtual.stream()
+                    .filter(elegiveis::contains)
+                    .collect(Collectors.toSet());
+            if (selecaoValida.size() != selecaoAtual.size()) {
+                turmasInteresse.setValue(selecaoValida);
+                Notification.show("Algumas turmas foram removidas por não serem elegíveis para a idade indicada.",
+                        4000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_WARNING);
+            } else {
+                atualizarResumo.run();
+            }
+        });
         socio.addValueChangeListener(ev -> atualizarResumo.run());
 
         // --- 4. BINDER ---
@@ -405,6 +417,24 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         add(footer);
     } // fim construirUI
+
+    /**
+     * Turmas ativas do estúdio compatíveis com a idade do aluno. Sem data de
+     * nascimento (ainda não preenchida), mostram-se todas — o filtro aplica-se
+     * assim que a data for indicada, conforme o {@link PublicoTurma} de cada turma.
+     */
+    private java.util.List<Turma> turmasElegiveis(LocalDate dataNasc) {
+        java.util.List<Turma> todas = studioAtual != null
+                ? turmaRepository.findByStudioAndAtivoTrue(studioAtual)
+                : turmaRepository.findAllComplete();
+        if (dataNasc == null) return todas;
+        boolean crianca = java.time.Period.between(dataNasc, LocalDate.now()).getYears() < 18;
+        return todas.stream()
+                .filter(t -> t.getPublico() == PublicoTurma.AMBAS
+                        || (crianca && t.getPublico() == PublicoTurma.CRIANCA)
+                        || (!crianca && t.getPublico() == PublicoTurma.ADULTO))
+                .collect(Collectors.toList());
+    }
 
     private void atualizarResumoInscricao(Set<Turma> selecionadas, LocalDate dataNasc, boolean socioVal) {
         resumoPagamento.removeAll();
