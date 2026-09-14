@@ -69,6 +69,7 @@ public class ConfiguracoesPlataformaView extends VerticalLayout {
 
     // ---- Suporte ----
     private EmailField emailSuporte;
+    private Checkbox alertaErroAtivo;
 
     private VerticalLayout campoSuporte(ConfiguracaoPlataforma c) {
         emailSuporte = new EmailField("Email de suporte");
@@ -76,11 +77,18 @@ public class ConfiguracoesPlataformaView extends VerticalLayout {
         emailSuporte.setWidthFull();
         emailSuporte.setHelperText("Para onde vão os pedidos submetidos pelos utilizadores. "
                 + "São sempre gravados em BD mesmo que o email falhe. Geridos em Suporte.");
-        return grupo(emailSuporte);
+
+        alertaErroAtivo = new Checkbox("Enviar email automático para o suporte quando ocorrer um erro (ERROR)");
+        alertaErroAtivo.setValue(c.isAlertaErroAtivo());
+        alertaErroAtivo.setHelperText("Usa o mesmo email de suporte acima. No máximo 1 email a cada 30 min "
+                + "por erro repetido, para não encher a caixa de correio.");
+
+        return grupo(emailSuporte, alertaErroAtivo);
     }
 
     private void aplicarSuporte(ConfiguracaoPlataforma c) {
         c.setEmailSuporte(trimOrNull(emailSuporte.getValue()));
+        c.setAlertaErroAtivo(alertaErroAtivo.getValue());
     }
 
     // ---- Aviso global ----

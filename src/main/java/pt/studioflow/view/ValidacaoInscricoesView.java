@@ -50,6 +50,7 @@ import pt.studioflow.model.Turma;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
 import pt.studioflow.repository.AulaRepository;
+import pt.studioflow.repository.CompraCreditoRepository;
 import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.repository.MensalidadeRepository;
 import pt.studioflow.repository.PresencaRepository;
@@ -68,6 +69,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     private final AulaRepository aulaRepository;
     private final MensalidadeRepository mensalidadeRepository;
     private final PresencaRepository presencaRepository;
+    private final CompraCreditoRepository compraCreditoRepository;
     private final MensalidadeService mensalidadeService;
     private final MensalidadeConfig mensalidadeConfig;
     private final EmailService emailService;
@@ -90,6 +92,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
             AulaRepository aulaRepository,
             MensalidadeRepository mensalidadeRepository,
             PresencaRepository presencaRepository,
+            CompraCreditoRepository compraCreditoRepository,
             MensalidadeService mensalidadeService,
             MensalidadeConfig mensalidadeConfig,
             EmailService emailService) {
@@ -99,6 +102,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         this.aulaRepository = aulaRepository;
         this.mensalidadeRepository = mensalidadeRepository;
         this.presencaRepository = presencaRepository;
+        this.compraCreditoRepository = compraCreditoRepository;
         this.mensalidadeService = mensalidadeService;
         this.mensalidadeConfig = mensalidadeConfig;
         this.emailService = emailService;
@@ -747,6 +751,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
 
         presencaRepository.deleteByAluno(alunoSimplificado);
         mensalidadeRepository.deleteByAluno(alunoSimplificado);
+        compraCreditoRepository.deleteByAluno(alunoSimplificado);
         alunoTurmaRepository.deleteByAlunoId(id);
 
         repository.findById(id).ifPresent(managedAluno -> {

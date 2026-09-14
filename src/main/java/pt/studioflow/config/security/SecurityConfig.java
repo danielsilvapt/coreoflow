@@ -7,7 +7,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import pt.studioflow.service.CustomUserDetailsService;
 
@@ -27,6 +30,14 @@ public class SecurityConfig extends VaadinWebSecurity {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.authenticationProvider(authenticationProvider);
+
+        // maximumSessions(-1) = sem limite de sessões concorrentes, mas continua a
+        // registar cada sessão no SessionRegistry — é o que permite ao superadmin ver
+        // quantos utilizadores estão ligados agora (dashboard) sem restringir ninguém.
+        http.sessionManagement(session -> session
+                .maximumSessions(-1)
+                .sessionRegistry(sessionRegistry()));
+
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/images/**", "/logos/**", "/icons/**", "/sw.js", "/manifest.webmanifest").permitAll());
 
@@ -92,6 +103,18 @@ public class SecurityConfig extends VaadinWebSecurity {
     @Bean
     public AuthenticationManager authenticationManager() {
         return new org.springframework.security.authentication.ProviderManager(authenticationProvider);
+    }
+
+    /** Regista todas as sessões HTTP autenticadas — consultado em SessaoAtivaService. */
+    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    /** Notifica o SessionRegistry quando uma sessão HTTP é destruída (logout, timeout). */
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
     }
 
 }

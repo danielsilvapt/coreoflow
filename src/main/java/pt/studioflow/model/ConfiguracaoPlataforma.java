@@ -39,6 +39,9 @@ public class ConfiguracaoPlataforma {
     @Column(length = 200)
     private String emailBccSuporte;
 
+    /** Envia automaticamente um email de suporte sempre que surge um log de nível ERROR. */
+    private boolean alertaErroAtivo = true;
+
     // --- Treinador de Dança IA ---
 
     /** Liga a secção "Treinador IA" no menu dos estúdios. */
@@ -126,6 +129,14 @@ public class ConfiguracaoPlataforma {
 
     public void setEmailBccSuporte(String emailBccSuporte) {
         this.emailBccSuporte = emailBccSuporte;
+    }
+
+    public boolean isAlertaErroAtivo() {
+        return alertaErroAtivo;
+    }
+
+    public void setAlertaErroAtivo(boolean alertaErroAtivo) {
+        this.alertaErroAtivo = alertaErroAtivo;
     }
 
     public boolean isTreinadorIaAtivo() {

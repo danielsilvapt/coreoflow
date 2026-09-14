@@ -13,12 +13,15 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import pt.studioflow.config.TenantContext;
+import pt.studioflow.model.ConfiguracaoPlataforma;
 import pt.studioflow.model.LogEntry;
 import pt.studioflow.repository.LogEntryRepository;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -34,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 public class LogCaptureService {
 
     private final LogEntryRepository repo;
+    private final SuporteService suporteService;
 
     @Value("${app.logs.retencao-dias:30}")
     private int retencaoDias;
@@ -42,8 +46,16 @@ public class LogCaptureService {
     private ScheduledExecutorService worker;
     private DbAppender appender;
 
-    public LogCaptureService(LogEntryRepository repo) {
+    /** Último alerta enviado por chave (studio+origem+mensagem), para não repetir o mesmo erro em loop. */
+    private final ConcurrentHashMap<String, LocalDateTime> ultimoAlertaPorChave = new ConcurrentHashMap<>();
+    private static final Duration COOLDOWN_POR_CHAVE = Duration.ofMinutes(30);
+    /** Limite global: nunca mais de um alerta por minuto, mesmo que sejam erros diferentes. */
+    private volatile LocalDateTime ultimoAlertaGlobal = LocalDateTime.MIN;
+    private static final Duration COOLDOWN_GLOBAL = Duration.ofSeconds(60);
+
+    public LogCaptureService(LogEntryRepository repo, SuporteService suporteService) {
         this.repo = repo;
+        this.suporteService = suporteService;
     }
 
     @PostConstruct
@@ -94,6 +106,58 @@ public class LogCaptureService {
         } catch (Exception e) {
             // não voltar a pôr na fila para não crescer sem limite; perde-se este lote
             System.err.println("LogCaptureService: falha a gravar " + lote.size() + " logs - " + e.getMessage());
+        }
+
+        for (LogEntry e : lote) {
+            if ("ERROR".equals(e.getNivel())) {
+                avaliarAlerta(e);
+            }
+        }
+    }
+
+    /**
+     * Envia um email de suporte para o erro, respeitando o cooldown por chave (mesmo
+     * erro repetido) e o cooldown global (proteção contra rajadas de erros diferentes).
+     * Corre sempre na thread de fundo do writer, nunca bloqueia quem gerou o log.
+     */
+    private void avaliarAlerta(LogEntry e) {
+        try {
+            ConfiguracaoPlataforma cfg = suporteService.getConfig();
+            if (!cfg.isAlertaErroAtivo()) {
+                return;
+            }
+
+            LocalDateTime agora = LocalDateTime.now();
+            String chave = (e.getStudioSlug() != null ? e.getStudioSlug() : "-") + "|" + e.getLogger() + "|"
+                    + truncar(e.getMensagem(), 150);
+            LocalDateTime ultimo = ultimoAlertaPorChave.get(chave);
+            if (ultimo != null && Duration.between(ultimo, agora).compareTo(COOLDOWN_POR_CHAVE) < 0) {
+                return;
+            }
+            synchronized (this) {
+                if (Duration.between(ultimoAlertaGlobal, agora).compareTo(COOLDOWN_GLOBAL) < 0) {
+                    return;
+                }
+                ultimoAlertaGlobal = agora;
+            }
+            ultimoAlertaPorChave.put(chave, agora);
+
+            String descricao = "Ocorreu um erro automático na aplicação.\n\n"
+                    + "Origem: " + e.getLogger() + "\n"
+                    + "Thread: " + e.getThread() + "\n"
+                    + "Data: " + agora + "\n\n"
+                    + "Mensagem:\n" + e.getMensagem()
+                    + (e.getStacktrace() != null ? "\n\nStacktrace:\n" + truncar(e.getStacktrace(), 3500) : "");
+
+            suporteService.registarPedido(
+                    e.getStudioSlug() != null ? e.getStudioSlug() : "Plataforma",
+                    "Sistema (alerta automático)",
+                    null,
+                    "ERRO_AUTOMATICO",
+                    "Erro automático: " + e.getLoggerCurto(),
+                    descricao);
+        } catch (Throwable ignore) {
+            // nunca deixar o alerta de erro gerar outro erro
         }
     }
 

@@ -1,5 +1,7 @@
 package pt.studioflow.view;
 
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.H2;
@@ -18,8 +20,10 @@ import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.StudioRepository;
 import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.repository.UserRepository;
+import pt.studioflow.service.SessaoAtivaService;
 
 import java.util.List;
+import java.util.Map;
 
 @Route(value = "admin/dashboard", layout = MainLayout.class)
 @PageTitle("Dashboard | SuperAdmin")
@@ -29,13 +33,16 @@ public class SuperAdminDashboardView extends VerticalLayout {
     public SuperAdminDashboardView(StudioRepository studioRepository,
                                    UserRepository userRepository,
                                    AlunoRepository alunoRepository,
-                                   TurmaRepository turmaRepository) {
+                                   TurmaRepository turmaRepository,
+                                   SessaoAtivaService sessaoAtivaService) {
 
         setSizeFull();
         setPadding(true);
         setSpacing(true);
 
         List<Studio> studios = studioRepository.findAll();
+        Map<String, Long> ligadosPorEstudio = sessaoAtivaService.contarPorEstudio();
+        long totalLigados = ligadosPorEstudio.values().stream().mapToLong(Long::longValue).sum();
 
         // ---- Cards de resumo ----
         long totalStudios = studios.size();
@@ -56,20 +63,30 @@ public class SuperAdminDashboardView extends VerticalLayout {
 
         H2 titulo = new H2("Visão Geral da Plataforma");
         titulo.getStyle().set("margin-top", "0").set("margin-bottom", "8px");
+        Button atualizar = new Button("Atualizar", VaadinIcon.REFRESH.create(),
+                e -> getUI().ifPresent(ui -> ui.getPage().reload()));
+        atualizar.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        HorizontalLayout topo = new HorizontalLayout(titulo, atualizar);
+        topo.setAlignItems(FlexComponent.Alignment.CENTER);
+        topo.setWidthFull();
+        topo.expand(titulo);
+        add(topo);
 
         HorizontalLayout cards = new HorizontalLayout(
                 criarCard("Estúdios", String.valueOf(totalStudios), VaadinIcon.BUILDING, "#4A90E2"),
                 criarCard("Ativos", String.valueOf(totalAtivos), VaadinIcon.CHECK_CIRCLE, "#27AE60"),
                 criarCard("Utilizadores", String.valueOf(totalUsers), VaadinIcon.USERS, "#7B61FF"),
+                criarCard("Ligados agora", String.valueOf(totalLigados), VaadinIcon.SIGN_IN, "#00B8A9"),
                 criarCard("Alunos (total)", String.valueOf(totalAlunos), VaadinIcon.USER_HEART, "#E67E22"),
                 criarCard("Alunos ativos", String.valueOf(totalAlunosAtivos), VaadinIcon.USER_CHECK, "#16A085"),
                 criarCard("Turmas", String.valueOf(totalTurmas), VaadinIcon.GROUP, "#E91E63")
         );
         cards.setWidthFull();
         cards.setSpacing(true);
+        cards.getStyle().set("flex-wrap", "wrap");
 
         // ---- Grid por estúdio ----
-        record StudioStats(Studio studio, int users, int alunos, int alunosAtivos, int turmas) {}
+        record StudioStats(Studio studio, int users, int alunos, int alunosAtivos, int turmas, long ligados) {}
 
         List<StudioStats> rows = studios.stream().map(s -> {
             List<Aluno> alunos = alunoRepository.findAllByStudio(s);
@@ -81,7 +98,8 @@ public class SuperAdminDashboardView extends VerticalLayout {
                     userRepository.findAllByStudio(s).size(),
                     alunos.size(),
                     ativos,
-                    turmaRepository.findAllByStudio(s).size());
+                    turmaRepository.findAllByStudio(s).size(),
+                    ligadosPorEstudio.getOrDefault(s.getNome(), 0L));
         }).toList();
 
         Grid<StudioStats> grid = new Grid<>();
@@ -122,9 +140,23 @@ public class SuperAdminDashboardView extends VerticalLayout {
         grid.addColumn(StudioStats::turmas)
                 .setHeader("Turmas").setAutoWidth(true).setSortable(true);
 
+        grid.addComponentColumn(st -> {
+            long n = st.ligados();
+            Span badge = new Span(String.valueOf(n));
+            badge.getStyle()
+                    .set("background", n > 0 ? "#e0f7f5" : "#f5f5f5")
+                    .set("color", n > 0 ? "#00806f" : "#999")
+                    .set("padding", "2px 10px")
+                    .set("border-radius", "12px")
+                    .set("font-size", "12px")
+                    .set("font-weight", "700");
+            return badge;
+        }).setHeader("Ligados agora").setAutoWidth(true)
+                .setComparator((a, b) -> Long.compare(a.ligados(), b.ligados())).setSortable(true);
+
         grid.setItems(rows);
 
-        add(titulo, cards, grid);
+        add(cards, grid);
         expand(grid);
     }
 
