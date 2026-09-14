@@ -142,9 +142,22 @@ public class Studio {
     @Column(name = "mensalidade_nao_socio_adicional")
     private Double mensalidadeNaoSocioAdicional = 10.0;
 
-    /** Dia do mês em que a mensalidade vence (1–28). Passado esse dia sem pagamento, fica "Em dívida". */
+    /**
+     * Dia do mês em que a mensalidade vence (1–28). Passado esse dia sem pagamento,
+     * fica "Em dívida" automaticamente. Nulo = sem vencimento automático — a
+     * mensalidade nunca passa a "Em dívida" por si só, fica sempre a critério manual
+     * do estúdio (ver {@link pt.studioflow.config.MensalidadeConfig#estadoEfetivo}).
+     */
     @Column(name = "dia_limite_pagamento")
     private Integer diaLimitePagamento = 8;
+
+    /**
+     * Multa por atraso, em percentagem sobre o valor da mensalidade, aplicada
+     * enquanto esta estiver "Em dívida". Por omissão 0% (sem multa) para todos os
+     * estúdios - só entra em vigor se o estúdio configurar um valor > 0.
+     */
+    @Column(name = "multa_atraso_percentagem")
+    private Double multaAtrasoPercentagem = 0.0;
 
     // =====================================================
     // CONFIGURAÇÕES DE DESCONTOS (por estúdio)
@@ -302,6 +315,9 @@ public class Studio {
 
     public Integer getDiaLimitePagamento() { return diaLimitePagamento; }
     public void setDiaLimitePagamento(Integer diaLimitePagamento) { this.diaLimitePagamento = diaLimitePagamento; }
+
+    public Double getMultaAtrasoPercentagem() { return multaAtrasoPercentagem; }
+    public void setMultaAtrasoPercentagem(Double multaAtrasoPercentagem) { this.multaAtrasoPercentagem = multaAtrasoPercentagem; }
 
     public Double getDescontoFamiliaresEuros() { return descontoFamiliaresEuros; }
     public void setDescontoFamiliaresEuros(Double v) { this.descontoFamiliaresEuros = v; }

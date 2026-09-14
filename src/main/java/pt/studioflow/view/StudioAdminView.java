@@ -266,14 +266,23 @@ public class StudioAdminView extends VerticalLayout {
         naoSocioAdicional.setValue(studio.getMensalidadeNaoSocioAdicional());
 
         NumberField diaLimitePagamento = new NumberField("Dia limite de pagamento (1–28)");
-        diaLimitePagamento.setValue(studio.getDiaLimitePagamento() != null
-                ? studio.getDiaLimitePagamento().doubleValue() : 8.0);
+        if (studio.getDiaLimitePagamento() != null) {
+            diaLimitePagamento.setValue(studio.getDiaLimitePagamento().doubleValue());
+        }
         diaLimitePagamento.setMin(1);
         diaLimitePagamento.setMax(28);
         diaLimitePagamento.setStep(1);
+        diaLimitePagamento.setClearButtonVisible(true);
+        diaLimitePagamento.setHelperText("Vazio = sem vencimento automático (nunca passa a \"Em dívida\" por si só).");
         diaLimitePagamento.getElement().setProperty("title",
                 "Dia do mês em que a mensalidade vence. Passado esse dia sem pagamento, "
-                        + "aparece como \"Em dívida\" para o aluno.");
+                        + "aparece como \"Em dívida\" para o aluno. Deixa vazio para desligar esta transição automática.");
+
+        NumberField multaAtraso = new NumberField("Multa por Atraso (%)");
+        multaAtraso.setValue(studio.getMultaAtrasoPercentagem() != null ? studio.getMultaAtrasoPercentagem() : 0.0);
+        multaAtraso.setMin(0);
+        multaAtraso.setStep(1);
+        multaAtraso.setHelperText("Aplicada sobre o valor da mensalidade enquanto estiver \"Em dívida\". 0% = sem multa.");
 
         NumberField descontoFamiliares = new NumberField("Desconto Familiares (€)");
         descontoFamiliares.setValue(studio.getDescontoFamiliaresEuros());
@@ -309,6 +318,7 @@ public class StudioAdminView extends VerticalLayout {
                 emailAssinante1, emailAssinante2,
                 mensalidadeCrianca1x, mensalidadeCrianca2x,
                 mensalidadeAdulto1x, mensalidadeAdulto2x, naoSocioAdicional, diaLimitePagamento,
+                multaAtraso,
                 descontoFamiliares, descontoDirecao, descontoMaisModal, descontoMais65,
                 taxaInscricao, taxaRenovacao,
                 ativo, enviarEmails);
@@ -563,7 +573,8 @@ public class StudioAdminView extends VerticalLayout {
             studio.setMensalidadeAdulto2x(mensalidadeAdulto2x.getValue());
             studio.setMensalidadeNaoSocioAdicional(naoSocioAdicional.getValue());
             studio.setDiaLimitePagamento(diaLimitePagamento.getValue() != null
-                    ? Math.max(1, Math.min(28, (int) Math.round(diaLimitePagamento.getValue()))) : 8);
+                    ? Math.max(1, Math.min(28, (int) Math.round(diaLimitePagamento.getValue()))) : null);
+            studio.setMultaAtrasoPercentagem(multaAtraso.getValue() != null ? Math.max(0, multaAtraso.getValue()) : 0.0);
             studio.setDescontoFamiliaresEuros(descontoFamiliares.getValue());
             studio.setDescontoDirecaoPercentagem(descontoDirecao.getValue());
             studio.setDescontoMaisModalidadesPercentagem(descontoMaisModal.getValue());

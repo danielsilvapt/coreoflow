@@ -32,11 +32,11 @@ class MensalidadeConfigEstadoEfetivoTest {
     }
 
     @Test
-    void diaLimite_usaOmissao8_quandoNuloOuInvalido() {
-        assertThat(config.diaLimitePagamento(studioComDia(null))).isEqualTo(8);
-        assertThat(config.diaLimitePagamento(studioComDia(0))).isEqualTo(8);
-        assertThat(config.diaLimitePagamento(studioComDia(31))).isEqualTo(8);
-        assertThat(config.diaLimitePagamento(null)).isEqualTo(8);
+    void diaLimite_nuloOuInvalido_significaSemVencimentoAutomatico() {
+        assertThat(config.diaLimitePagamento(studioComDia(null))).isNull();
+        assertThat(config.diaLimitePagamento(studioComDia(0))).isNull();
+        assertThat(config.diaLimitePagamento(studioComDia(31))).isNull();
+        assertThat(config.diaLimitePagamento(null)).isNull();
         assertThat(config.diaLimitePagamento(studioComDia(15))).isEqualTo(15);
     }
 
@@ -72,5 +72,42 @@ class MensalidadeConfigEstadoEfetivoTest {
         Mensalidade pago = mensalidade(passado.getYear(), passado.getMonth(), EstadoMensalidade.PAGO);
         assertThat(config.estadoEfetivo(porEmitir, studioComDia(1))).isEqualTo(EstadoMensalidade.POR_EMITIR);
         assertThat(config.estadoEfetivo(pago, studioComDia(1))).isEqualTo(EstadoMensalidade.PAGO);
+    }
+
+    @Test
+    void estadoEfetivo_semDiaLimiteConfigurado_nuncaFicaEmDividaAutomaticamente() {
+        LocalDate passado = LocalDate.now().minusMonths(2);
+        Mensalidade m = mensalidade(passado.getYear(), passado.getMonth(), EstadoMensalidade.FATURADO);
+        assertThat(config.estadoEfetivo(m, studioComDia(null))).isEqualTo(EstadoMensalidade.FATURADO);
+        assertThat(config.dataLimite(passado.getYear(), passado.getMonth(), studioComDia(null))).isNull();
+    }
+
+    @Test
+    void valorComMulta_semDivida_devolveValorBase() {
+        LocalDate futuro = LocalDate.now().plusMonths(1);
+        Mensalidade m = mensalidade(futuro.getYear(), futuro.getMonth(), EstadoMensalidade.FATURADO);
+        m.setValor(100.0);
+        Studio studio = studioComDia(1);
+        studio.setMultaAtrasoPercentagem(10.0);
+        assertThat(config.valorComMulta(m, studio)).isEqualTo(100.0);
+    }
+
+    @Test
+    void valorComMulta_emDivida_somaPercentagemConfigurada() {
+        LocalDate ontem = LocalDate.now().minusDays(1);
+        Studio studio = studioComDia(ontem.getDayOfMonth() <= 28 ? ontem.getDayOfMonth() : 28);
+        studio.setMultaAtrasoPercentagem(10.0);
+        Mensalidade m = mensalidade(ontem.getYear(), ontem.getMonth(), EstadoMensalidade.FATURADO);
+        m.setValor(100.0);
+        assertThat(config.valorComMulta(m, studio)).isEqualTo(110.0);
+    }
+
+    @Test
+    void valorComMulta_emDividaSemMultaConfigurada_devolveValorBase() {
+        LocalDate ontem = LocalDate.now().minusDays(1);
+        Studio studio = studioComDia(ontem.getDayOfMonth() <= 28 ? ontem.getDayOfMonth() : 28);
+        Mensalidade m = mensalidade(ontem.getYear(), ontem.getMonth(), EstadoMensalidade.FATURADO);
+        m.setValor(100.0);
+        assertThat(config.valorComMulta(m, studio)).isEqualTo(100.0);
     }
 }
