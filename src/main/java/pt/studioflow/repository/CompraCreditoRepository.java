@@ -28,4 +28,6 @@ public interface CompraCreditoRepository extends JpaRepository<CompraCredito, Lo
     List<CompraCredito> findByStudioAndDataCompraAfterOrderByDataCompraDesc(Studio studio, LocalDateTime desde);
 
     List<CompraCredito> findByStudio(Studio studio);
+
+    void deleteByAluno(Aluno aluno);
 }
