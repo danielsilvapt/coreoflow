@@ -38,6 +38,7 @@ import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Turma;
 import pt.studioflow.service.ProfessorTurmasService;
 import pt.studioflow.service.R2StorageService;
+import pt.studioflow.service.TurmaService;
 
 import java.time.Duration;
 
@@ -47,6 +48,7 @@ import java.time.Duration;
 public class AlunosProfessorView extends VerticalLayout {
 
     private final ProfessorTurmasService profTurmas;
+    private final TurmaService turmaService;
     private final R2StorageService storageService;
 
     private Grid<AlunoDTO> grid;
@@ -55,8 +57,10 @@ public class AlunosProfessorView extends VerticalLayout {
 
     @Autowired
     public AlunosProfessorView(ProfessorTurmasService profTurmas,
+            TurmaService turmaService,
             R2StorageService storageService) {
         this.profTurmas = profTurmas;
+        this.turmaService = turmaService;
         this.storageService = storageService;
 
         setSizeFull();
@@ -224,11 +228,8 @@ public class AlunosProfessorView extends VerticalLayout {
 
         Map<Aluno, Set<String>> alunoTurmasMap = new HashMap<>();
         for (Turma t : turmasDoProf) {
-            t.getAlunosTurma().forEach(at -> {
-                if (at.getAluno() != null) {
-                    alunoTurmasMap.computeIfAbsent(at.getAluno(), k -> new TreeSet<>()).add(t.getDescricao());
-                }
-            });
+            turmaService.getAlunosDaTurma(t)
+                    .forEach(aluno -> alunoTurmasMap.computeIfAbsent(aluno, k -> new TreeSet<>()).add(t.getDescricao()));
         }
 
         List<AlunoDTO> dtos = alunoTurmasMap.entrySet().stream()
