@@ -211,6 +211,36 @@ public class Studio {
     @Column(name = "mollie_api_key")
     private String mollieApiKey;
 
+    /**
+     * Programa de faturação usado por este estúdio: {@code VENDUS} (por omissão,
+     * comportamento inalterado - continua a depender só de {@link #vendusApiKey}) ou
+     * {@code TOCONLINE}. Guardado como String (mesmo padrão de {@link #tipoRemuneracaoProf}).
+     */
+    @Column(name = "programa_faturacao")
+    private String programaFaturacao = "VENDUS";
+
+    /**
+     * Credenciais OAuth2 do TOCOnline. client_id/client_secret são gerados pelo
+     * próprio estúdio no TOCOnline ("Empresa > Dados API", convidando o "CoreoFlow"
+     * como integrador) e colados aqui pelo superadmin; access/refresh token são
+     * obtidos automaticamente pelo fluxo "Ligar ao TOCOnline" (authorization_code)
+     * e renovados pelo TocOnlineApiService antes de expirarem.
+     */
+    @Column(name = "toconline_client_id")
+    private String tocOnlineClientId;
+
+    @Column(name = "toconline_client_secret")
+    private String tocOnlineClientSecret;
+
+    @Column(name = "toconline_access_token", length = 1000)
+    private String tocOnlineAccessToken;
+
+    @Column(name = "toconline_refresh_token", length = 1000)
+    private String tocOnlineRefreshToken;
+
+    @Column(name = "toconline_token_expira_em")
+    private java.time.LocalDateTime tocOnlineTokenExpiraEm;
+
     // =====================================================
     // AULAS AVULSO / CHECKIN (por estúdio)
     // =====================================================
@@ -325,6 +355,27 @@ public class Studio {
     public String getMollieApiKey() { return mollieApiKey; }
     public void setMollieApiKey(String mollieApiKey) { this.mollieApiKey = mollieApiKey; }
     public boolean isMollieAtivo() { return mollieApiKey != null && !mollieApiKey.isBlank(); }
+
+    public String getProgramaFaturacao() { return programaFaturacao; }
+    public void setProgramaFaturacao(String programaFaturacao) { this.programaFaturacao = programaFaturacao; }
+    public boolean isProgramaFaturacaoTocOnline() { return "TOCONLINE".equals(programaFaturacao); }
+
+    public String getTocOnlineClientId() { return tocOnlineClientId; }
+    public void setTocOnlineClientId(String tocOnlineClientId) { this.tocOnlineClientId = tocOnlineClientId; }
+
+    public String getTocOnlineClientSecret() { return tocOnlineClientSecret; }
+    public void setTocOnlineClientSecret(String tocOnlineClientSecret) { this.tocOnlineClientSecret = tocOnlineClientSecret; }
+
+    public String getTocOnlineAccessToken() { return tocOnlineAccessToken; }
+    public void setTocOnlineAccessToken(String tocOnlineAccessToken) { this.tocOnlineAccessToken = tocOnlineAccessToken; }
+
+    public String getTocOnlineRefreshToken() { return tocOnlineRefreshToken; }
+    public void setTocOnlineRefreshToken(String tocOnlineRefreshToken) { this.tocOnlineRefreshToken = tocOnlineRefreshToken; }
+
+    public java.time.LocalDateTime getTocOnlineTokenExpiraEm() { return tocOnlineTokenExpiraEm; }
+    public void setTocOnlineTokenExpiraEm(java.time.LocalDateTime tocOnlineTokenExpiraEm) { this.tocOnlineTokenExpiraEm = tocOnlineTokenExpiraEm; }
+
+    public boolean isTocOnlineLigado() { return tocOnlineRefreshToken != null && !tocOnlineRefreshToken.isBlank(); }
 
     public Integer getCheckinJanelaAntesMin() { return checkinJanelaAntesMin != null ? checkinJanelaAntesMin : 5; }
     public void setCheckinJanelaAntesMin(Integer checkinJanelaAntesMin) { this.checkinJanelaAntesMin = checkinJanelaAntesMin; }
