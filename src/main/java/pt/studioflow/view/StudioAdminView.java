@@ -33,6 +33,7 @@ import pt.studioflow.model.Studio;
 import pt.studioflow.model.StudioModulo;
 import pt.studioflow.service.LogoUploadService;
 import pt.studioflow.service.StudioService;
+import pt.studioflow.service.TocOnlineApiService;
 import pt.studioflow.view.component.ColorPickerField;
 
 import java.util.Arrays;
@@ -50,11 +51,14 @@ public class StudioAdminView extends VerticalLayout {
 
     private final StudioService studioService;
     private final LogoUploadService logoUploadService;
+    private final TocOnlineApiService tocOnlineApiService;
     private final Grid<Studio> grid = new Grid<>(Studio.class, false);
 
-    public StudioAdminView(StudioService studioService, LogoUploadService logoUploadService) {
+    public StudioAdminView(StudioService studioService, LogoUploadService logoUploadService,
+            TocOnlineApiService tocOnlineApiService) {
         this.studioService = studioService;
         this.logoUploadService = logoUploadService;
+        this.tocOnlineApiService = tocOnlineApiService;
         setSizeFull();
         setPadding(true);
 
@@ -133,6 +137,12 @@ public class StudioAdminView extends VerticalLayout {
 
     private void carregarDados() {
         grid.setItems(studioService.findAll());
+    }
+
+    private void atualizarEstadoTocOnline(Span destino, Studio studio) {
+        destino.setText(studio.isTocOnlineLigado() ? "✅ Ligado" : "⚠️ Não ligado");
+        destino.getStyle().set("font-size", "13px").set("font-weight", "600")
+                .set("color", studio.isTocOnlineLigado() ? "var(--lumo-success-color)" : "var(--lumo-secondary-text-color)");
     }
 
     private void abrirFormulario(Studio studio) {
@@ -329,9 +339,65 @@ public class StudioAdminView extends VerticalLayout {
         // --- Faturação automática ---
         H4 secFat = new H4("Faturação");
         secFat.getStyle().set("margin", "16px 0 4px 0");
-        Checkbox faturacaoAuto = new Checkbox("Emitir fatura Vendus automaticamente ao marcar mensalidade como Faturado");
+        Checkbox faturacaoAuto = new Checkbox("Emitir fatura automaticamente ao marcar mensalidade como Faturado");
         faturacaoAuto.setValue(studio.isFaturacaoAutomatica());
         faturacaoAuto.getStyle().set("font-size", "13px");
+
+        ComboBox<String> programaFaturacao = new ComboBox<>("Programa de Faturação");
+        programaFaturacao.setItems("VENDUS", "TOCONLINE");
+        programaFaturacao.setItemLabelGenerator(v -> "TOCONLINE".equals(v) ? "TOCOnline" : "Vendus");
+        programaFaturacao.setValue(studio.getProgramaFaturacao() != null ? studio.getProgramaFaturacao() : "VENDUS");
+        programaFaturacao.setWidth("220px");
+
+        TextField tocClientId = new TextField("Client ID (TOCOnline)");
+        tocClientId.setValue(studio.getTocOnlineClientId() != null ? studio.getTocOnlineClientId() : "");
+        tocClientId.setHelperText("Gerado no TOCOnline em Empresa > Dados API, convidando \"CoreoFlow\" como integrador.");
+
+        com.vaadin.flow.component.textfield.PasswordField tocClientSecret =
+                new com.vaadin.flow.component.textfield.PasswordField("Client Secret (TOCOnline)");
+        tocClientSecret.setValue(studio.getTocOnlineClientSecret() != null ? studio.getTocOnlineClientSecret() : "");
+
+        Span tocEstado = new Span();
+        atualizarEstadoTocOnline(tocEstado, studio);
+
+        Button tocLigar = new Button("Ligar ao TOCOnline", e -> {
+            String cid = tocClientId.getValue() != null ? tocClientId.getValue().trim() : "";
+            String secret = tocClientSecret.getValue() != null ? tocClientSecret.getValue().trim() : "";
+            if (cid.isBlank() || secret.isBlank()) {
+                Notification.show("Preenche o Client ID e o Client Secret antes de ligar.", 4000,
+                        Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_WARNING);
+                return;
+            }
+            studio.setTocOnlineClientId(cid);
+            studio.setTocOnlineClientSecret(secret);
+            studio.setProgramaFaturacao(programaFaturacao.getValue());
+            studioService.save(studio);
+            try {
+                String url = tocOnlineApiService.gerarUrlAutorizacao(studio);
+                getUI().ifPresent(ui -> ui.getPage().open(url, "_blank"));
+            } catch (Exception ex) {
+                Notification.show("Erro: " + ex.getMessage(), 4000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+
+        Button tocTestar = new Button("Testar Ligação", e -> {
+            String resultado = tocOnlineApiService.testarLigacao(studio);
+            Notification.show(resultado, 5000, Notification.Position.MIDDLE).addThemeVariants(
+                    resultado.startsWith("Ligação OK") ? NotificationVariant.LUMO_SUCCESS : NotificationVariant.LUMO_ERROR);
+        });
+
+        HorizontalLayout tocBotoes = new HorizontalLayout(tocLigar, tocTestar, tocEstado);
+        tocBotoes.setAlignItems(Alignment.CENTER);
+        tocBotoes.setSpacing(true);
+
+        VerticalLayout tocSecao = new VerticalLayout(tocClientId, tocClientSecret, tocBotoes);
+        tocSecao.setPadding(false);
+        tocSecao.setSpacing(true);
+        tocSecao.setVisible("TOCONLINE".equals(programaFaturacao.getValue()));
+
+        programaFaturacao.addValueChangeListener(e ->
+                tocSecao.setVisible("TOCONLINE".equals(programaFaturacao.getValue())));
 
         // --- Remuneração de professores ---
         H4 secRemun = new H4("Remuneração de Professores");
@@ -463,7 +529,7 @@ public class StudioAdminView extends VerticalLayout {
         VerticalLayout content = new VerticalLayout(
                 logoSection, form,
                 secCampos, camposGroup,
-                secFat, faturacaoAuto,
+                secFat, faturacaoAuto, programaFaturacao, tocSecao,
                 secRemun, remunHint, tipoRemun, grupoHora, grupoPerc,
                 secModulos, modulosGroup,
                 secDashboard, dashboardCardsGroup,
@@ -509,6 +575,9 @@ public class StudioAdminView extends VerticalLayout {
 
             // Faturação
             studio.setFaturacaoAutomatica(faturacaoAuto.getValue() ? true : false);
+            studio.setProgramaFaturacao(programaFaturacao.getValue());
+            studio.setTocOnlineClientId(tocClientId.getValue().trim());
+            studio.setTocOnlineClientSecret(tocClientSecret.getValue().trim());
 
             // Campos do aluno
             studio.setCamposAluno(camposGroup.getValue().stream()

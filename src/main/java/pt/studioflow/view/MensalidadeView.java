@@ -45,6 +45,7 @@ import pt.studioflow.model.TipoDesconto;
 import pt.studioflow.model.Turma;
 import pt.studioflow.repository.MensalidadeRepository;
 import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.service.TocOnlineApiService;
 import pt.studioflow.service.VendusApiService;
 
 @Route(value = "mensalidade", layout = MainLayout.class)
@@ -55,6 +56,7 @@ public class MensalidadeView extends VerticalLayout {
     private final MensalidadeRepository mensalidadeRepository;
     private final TurmaRepository turmaRepository;
     private final VendusApiService vendusService;
+    private final TocOnlineApiService tocOnlineService;
 
     private final Grid<Mensalidade> grid = new Grid<>(Mensalidade.class, false);
     private List<Mensalidade> listaMensalidades = new ArrayList<>();
@@ -79,10 +81,12 @@ public class MensalidadeView extends VerticalLayout {
     public MensalidadeView(MensalidadeRepository mensalidadeRepository,
             TurmaRepository turmaRepository,
             VendusApiService vendusService,
+            TocOnlineApiService tocOnlineService,
             pt.studioflow.config.MensalidadeConfig mensalidadeConfig) {
         this.mensalidadeRepository = mensalidadeRepository;
         this.turmaRepository = turmaRepository;
         this.vendusService = vendusService;
+        this.tocOnlineService = tocOnlineService;
         this.mensalidadeConfig = mensalidadeConfig;
 
         setSizeFull();
@@ -416,12 +420,16 @@ public class MensalidadeView extends VerticalLayout {
             m.setEstado(novoEstado);
             mensalidadeRepository.save(m);
 
-            // Faturação automática: ao passar para FATURADO, emite recibo Vendus se ativo
+            // Faturação automática: ao passar para FATURADO, emite fatura no programa configurado (se ativo)
             if (novoEstado == EstadoMensalidade.FATURADO) {
                 pt.studioflow.model.Studio s = pt.studioflow.config.TenantContext.getCurrentStudio();
-                if (s != null && s.isFaturacaoAutomatica()
-                        && s.getVendusApiKey() != null && !s.getVendusApiKey().isBlank()) {
-                    tentarFaturacaoAutomatica(m);
+                if (s != null && s.isFaturacaoAutomatica()) {
+                    if (s.isProgramaFaturacaoTocOnline() && s.isTocOnlineLigado()) {
+                        tentarFaturacaoAutomaticaTocOnline(m, s);
+                    } else if (!s.isProgramaFaturacaoTocOnline()
+                            && s.getVendusApiKey() != null && !s.getVendusApiKey().isBlank()) {
+                        tentarFaturacaoAutomatica(m);
+                    }
                 }
             }
             updateList();
@@ -562,23 +570,39 @@ public class MensalidadeView extends VerticalLayout {
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
+        pt.studioflow.model.Studio studio = TenantContext.getCurrentStudio();
+        boolean tocOnline = studio != null && studio.isProgramaFaturacaoTocOnline();
+
         Dialog confirm = new Dialog();
-        confirm.setHeaderTitle("Emitir Fatura - Vendus");
+        confirm.setHeaderTitle("Emitir Fatura - " + (tocOnline ? "TOCOnline" : "Vendus"));
         confirm.add(
                 new Span("Confirmar emissão de " + m.getValor() + "€ para " + m.getAluno().getNomeCompleto() + "?"));
         Button btnConfirm = new Button("Emitir Agora", ev -> {
-            String resCliente = vendusService.obterClientePorNIF(nif);
-            if (resCliente.contains("ID Vendus: ")) {
-                String idVendus = resCliente.split("ID Vendus: ")[1].replace(")", "").trim();
-                String mesStr = m.getMes().getDisplayName(TextStyle.FULL, new Locale("pt", "PT"));
-                String resultado = vendusService.criarFaturaComVendusPay(idVendus,
-                        "Mensalidade " + mesStr + " " + m.getAno(), m.getValor());
-                if (resultado.contains("Sucesso")) {
-                    m.setEstado(EstadoMensalidade.FATURADO);
-                    mensalidadeRepository.save(m);
-                    updateList();
-                    Notification.show("Fatura emitida!").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            String mesStr = m.getMes().getDisplayName(TextStyle.FULL, new Locale("pt", "PT"));
+            String descricao = "Mensalidade " + mesStr + " " + m.getAno();
+            boolean sucesso;
+            if (tocOnline) {
+                String resultado = tocOnlineService.emitirFatura(studio, nif, m.getAluno().getNomeCompleto(),
+                        descricao, m.getValor());
+                sucesso = resultado.contains("Sucesso");
+                if (!sucesso) {
+                    Notification.show(resultado, 5000, Notification.Position.MIDDLE)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
                 }
+            } else {
+                String resCliente = vendusService.obterClientePorNIF(nif);
+                sucesso = false;
+                if (resCliente.contains("ID Vendus: ")) {
+                    String idVendus = resCliente.split("ID Vendus: ")[1].replace(")", "").trim();
+                    String resultado = vendusService.criarFaturaComVendusPay(idVendus, descricao, m.getValor());
+                    sucesso = resultado.contains("Sucesso");
+                }
+            }
+            if (sucesso) {
+                m.setEstado(EstadoMensalidade.FATURADO);
+                mensalidadeRepository.save(m);
+                updateList();
+                Notification.show("Fatura emitida!").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             }
             confirm.close();
         });
@@ -642,6 +666,28 @@ public class MensalidadeView extends VerticalLayout {
                 mensalidadeRepository.save(m);
                 com.vaadin.flow.component.notification.Notification
                         .show("✅ Fatura Vendus emitida automaticamente")
+                        .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);
+            }
+        } catch (Exception ex) {
+            // ignora erro silenciosamente — a faturação é melhor-esforço
+        }
+    }
+
+    private void tentarFaturacaoAutomaticaTocOnline(Mensalidade m, pt.studioflow.model.Studio studio) {
+        try {
+            String nif = m.getAluno() != null ? m.getAluno().getNumeroContribuinte() : null;
+            if (nif == null || nif.isBlank()) return;
+
+            String descricao = "Mensalidade " + m.getMes().getDisplayName(
+                    java.time.format.TextStyle.FULL, new java.util.Locale("pt")) + " " + m.getAno();
+            String resultado = tocOnlineService.emitirFatura(studio, nif, m.getAluno().getNomeCompleto(),
+                    descricao, m.getValor());
+
+            if (resultado != null && resultado.contains("Sucesso")) {
+                m.setEstado(EstadoMensalidade.FATURADO);
+                mensalidadeRepository.save(m);
+                com.vaadin.flow.component.notification.Notification
+                        .show("✅ Fatura TOCOnline emitida automaticamente")
                         .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);
             }
         } catch (Exception ex) {
