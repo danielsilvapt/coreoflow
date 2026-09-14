@@ -71,6 +71,7 @@ public class CheckinService {
      * consulta já fora da sessão Hibernate original (ex: portal do aluno), o que rebentava
      * com LazyInitializationException.
      */
+    @Transactional(readOnly = true)
     public List<TurmaCheckin> listarTurmasParaCheckin(Aluno aluno, Studio studio, LocalDateTime agora) {
         int antes = studio.getCheckinJanelaAntesMin();
         int depois = studio.getCheckinJanelaDepoisMin();
@@ -101,6 +102,7 @@ public class CheckinService {
     }
 
     /** Turmas ativas do estúdio cuja aula de hoje está dentro da janela de checkin agora (uso no kiosk PRESENÇA). */
+    @Transactional(readOnly = true)
     public List<Turma> listarTurmasNaJanelaAgora(Studio studio, LocalDateTime agora) {
         int antes = studio.getCheckinJanelaAntesMin();
         int depois = studio.getCheckinJanelaDepoisMin();
@@ -113,6 +115,7 @@ public class CheckinService {
     }
 
     /** Alunos não matriculados na turma mas com crédito avulso/pack válido e elegível para ela (uso no kiosk PRESENÇA). */
+    @Transactional(readOnly = true)
     public List<Aluno> listarAvulsosElegiveisParaTurma(Turma turma) {
         return compraCreditoRepository.findByStudio(turma.getStudio()).stream()
                 .filter(c -> c.isElegivelParaTurma(turma))
