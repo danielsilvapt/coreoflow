@@ -769,16 +769,33 @@ public class SalaScheduleView extends VerticalLayout {
                     .set("box-shadow", "0 0 0 1px rgba(245,158,11,0.35), 0 1px 3px rgba(0,0,0,0.1)");
         }
 
+        String professorNome;
+        if (substituida && ocorrencia.getProfessorSubstituto() != null
+                && ocorrencia.getProfessorSubstituto().getNome() != null) {
+            professorNome = ocorrencia.getProfessorSubstituto().getNome();
+        } else if (a.getTurma() != null && a.getTurma().getProfessor() != null
+                && a.getTurma().getProfessor().getNome() != null) {
+            professorNome = a.getTurma().getProfessor().getNome();
+        } else {
+            professorNome = "Sem professor atribuído";
+        }
+        String tituloProfessor = "Professor: " + professorNome;
+
         div.getStyle().set("cursor", "pointer");
         if (isAdmin) {
+            div.getElement().setAttribute("title", tituloProfessor);
             div.addClickListener(e -> abrirDialogEditarAula(a, dataDia));
         } else if (minhaTurma) {
             // Professor, aula sua: planeamento + vídeos.
-            div.getElement().setAttribute("title", planeada ? "Ver / editar plano" : "Planear esta aula");
+            div.getElement().setAttribute("title",
+                    tituloProfessor + " · " + (planeada ? "Ver / editar plano" : "Planear esta aula"));
             div.addClickListener(e -> abrirDialogPlanoAula(a, dataDia, sumario));
         } else if (a.getTurma() != null) {
             // Professor, aula de outro: só vídeos.
+            div.getElement().setAttribute("title", tituloProfessor);
             div.addClickListener(e -> abrirDialogVideosAula(a.getTurma(), dataDia));
+        } else {
+            div.getElement().setAttribute("title", tituloProfessor);
         }
         return div;
     }
@@ -949,6 +966,7 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("border-radius", "6px")
                 .set("padding", "0 4px")
                 .set("box-shadow", "0 1px 3px rgba(0,0,0,0.1)");
+        div.getElement().setAttribute("title", "Professor: " + m.getProfessor());
 
         if (isPendente) {
             div.getStyle().set("border", "1px dashed #475569");
