@@ -85,6 +85,22 @@ public class Aluno {
     @Column(name = "crianca")
     private Integer crianca = 1; // Sim ou Não
 
+    /** Dados do encarregado de educação — só recolhidos/exibidos quando {@link #crianca} é verdadeiro. */
+    @Column(name = "encarregado_nome")
+    private String encarregadoNome;
+
+    @Column(name = "encarregado_parentesco")
+    private String encarregadoParentesco; // Pai, Mãe, Outro
+
+    @Column(name = "encarregado_contribuinte")
+    private String encarregadoContribuinte;
+
+    @Column(name = "encarregado_telemovel")
+    private String encarregadoTelemovel;
+
+    @Column(name = "encarregado_email")
+    private String encarregadoEmail;
+
     @Column(name = "data_quota_pagamento")
     private LocalDate dataQuotaPagamento;
 
@@ -403,4 +419,19 @@ public class Aluno {
 
     public boolean isDadosValidados() { return Boolean.TRUE.equals(dadosValidados); }
     public void setDadosValidados(boolean dadosValidados) { this.dadosValidados = dadosValidados; }
+
+    public String getEncarregadoNome() { return encarregadoNome; }
+    public void setEncarregadoNome(String encarregadoNome) { this.encarregadoNome = encarregadoNome; }
+
+    public String getEncarregadoParentesco() { return encarregadoParentesco; }
+    public void setEncarregadoParentesco(String encarregadoParentesco) { this.encarregadoParentesco = encarregadoParentesco; }
+
+    public String getEncarregadoContribuinte() { return encarregadoContribuinte; }
+    public void setEncarregadoContribuinte(String encarregadoContribuinte) { this.encarregadoContribuinte = encarregadoContribuinte; }
+
+    public String getEncarregadoTelemovel() { return encarregadoTelemovel; }
+    public void setEncarregadoTelemovel(String encarregadoTelemovel) { this.encarregadoTelemovel = encarregadoTelemovel; }
+
+    public String getEncarregadoEmail() { return encarregadoEmail; }
+    public void setEncarregadoEmail(String encarregadoEmail) { this.encarregadoEmail = encarregadoEmail; }
 }

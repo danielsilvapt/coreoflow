@@ -26,6 +26,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
+import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
@@ -91,6 +92,13 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
 
     private final Checkbox ativo = new Checkbox("Ativo");
     private final Checkbox divida = new Checkbox("Dívida");
+
+    private final TextField encarregadoNome = new TextField("Nome do Encarregado de Educação");
+    private final Select<String> encarregadoParentesco = new Select<>();
+    private final TextField encarregadoContribuinte = new TextField("Nº Contribuinte");
+    private final TextField encarregadoTelemovel = new TextField("Telemóvel");
+    private final EmailField encarregadoEmail = new EmailField("Email");
+    private Tab tabEncarregado;
 
     private Dialog dialog;
     private Runnable onSaveCallback;
@@ -183,6 +191,18 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
                 .bind(
                         aluno -> aluno.isCrianca() ? "Criança" : "Adulto",
                         (aluno, valor) -> aluno.setCrianca("Criança".equals(valor)));
+        criancaCombo.addValueChangeListener(ev -> atualizarVisibilidadeTabEncarregado());
+
+        encarregadoParentesco.setLabel("Parentesco");
+        encarregadoParentesco.setItems("Pai", "Mãe", "Outro");
+
+        binder.forField(encarregadoNome).bind(Aluno::getEncarregadoNome, Aluno::setEncarregadoNome);
+        binder.forField(encarregadoParentesco).bind(Aluno::getEncarregadoParentesco, Aluno::setEncarregadoParentesco);
+        binder.forField(encarregadoContribuinte).bind(Aluno::getEncarregadoContribuinte, Aluno::setEncarregadoContribuinte);
+        binder.forField(encarregadoTelemovel).bind(Aluno::getEncarregadoTelemovel, Aluno::setEncarregadoTelemovel);
+        binder.forField(encarregadoEmail)
+                .withValidator(e -> e == null || e.isEmpty() || e.contains("@"), "E-mail inválido")
+                .bind(Aluno::getEncarregadoEmail, Aluno::setEncarregadoEmail);
 
         // Preenche automaticamente Adulto/Criança a partir da data de nascimento
         // (< 18 anos = Criança). Só quando o utilizador mexe no campo, para não
@@ -287,14 +307,30 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         return header;
     }
 
+    private TabSheet tabs;
+
     private TabSheet criarTabs() {
-        TabSheet tabs = new TabSheet();
+        tabs = new TabSheet();
         tabs.setSizeFull();
         tabs.add("🧍 Dados Pessoais", criarFormDadosPessoais());
         tabs.add("📞 Contactos & Morada", criarFormContactos());
+        tabEncarregado = tabs.add("👨‍👩‍👧 Encarregado de Educação", criarFormEncarregado());
         tabs.add("💳 Quotas & Seguro", criarFormQuotas());
         tabs.add("💃 Turmas Inscritas", criarTabTurmas());
         return tabs;
+    }
+
+    private void atualizarVisibilidadeTabEncarregado() {
+        if (tabEncarregado != null) {
+            tabEncarregado.setVisible("Criança".equals(criancaCombo.getValue()));
+        }
+    }
+
+    private FormLayout criarFormEncarregado() {
+        FormLayout f = baseForm();
+        f.add(encarregadoNome, encarregadoParentesco, encarregadoContribuinte, encarregadoTelemovel, encarregadoEmail);
+        f.setColspan(encarregadoNome, 2);
+        return f;
     }
 
     private FormLayout baseForm() {
@@ -432,6 +468,7 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
 
         // 2. Binder e Foto
         binder.setBean(alunoAtual);
+        atualizarVisibilidadeTabEncarregado();
 
         fotoBytes = null;
         fotoMimeType = null;

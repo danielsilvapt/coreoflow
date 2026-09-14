@@ -256,6 +256,30 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         Checkbox socio = new Checkbox("Desejo tornar-me sócio");
 
+        // --- 2.5 DADOS DO ENCARREGADO DE EDUCAÇÃO (só quando o aluno é menor) ---
+        TextField encarregadoNome = new TextField("Nome do Encarregado de Educação");
+        Select<String> encarregadoParentesco = new Select<>();
+        encarregadoParentesco.setLabel("Parentesco");
+        encarregadoParentesco.setItems("Pai", "Mãe", "Outro");
+        TextField encarregadoContribuinte = new TextField("Nº Contribuinte do Encarregado");
+        TextField encarregadoTelemovel = new TextField("Telemóvel do Encarregado");
+        EmailField encarregadoEmail = new EmailField("Email do Encarregado");
+
+        FormLayout formEncarregado = new FormLayout();
+        formEncarregado.add(encarregadoNome, encarregadoParentesco, encarregadoContribuinte,
+                encarregadoTelemovel, encarregadoEmail);
+        formEncarregado.setResponsiveSteps(
+                new FormLayout.ResponsiveStep("0", 1),
+                new FormLayout.ResponsiveStep("600px", 2));
+        formEncarregado.setColspan(encarregadoNome, 2);
+
+        H2 tituloEncarregado = new H2("Dados do Encarregado de Educação");
+        tituloEncarregado.getStyle().set("font-size", "1.1em").set("margin", "0.5em 0 0 0");
+        VerticalLayout seccaoEncarregado = new VerticalLayout(tituloEncarregado, formEncarregado);
+        seccaoEncarregado.setPadding(false);
+        seccaoEncarregado.setSpacing(false);
+        seccaoEncarregado.setVisible(false);
+
         // --- 3. SELEÇÃO DE TURMAS ---
         MultiSelectComboBox<Turma> turmasInteresse = new MultiSelectComboBox<>("Escolha as Turmas");
         turmasInteresse.setItems(turmasElegiveis(null));
@@ -312,6 +336,10 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         });
 
         dataNascimento.addValueChangeListener(ev -> {
+            boolean crianca = ev.getValue() != null
+                    && java.time.Period.between(ev.getValue(), LocalDate.now()).getYears() < 18;
+            seccaoEncarregado.setVisible(crianca);
+
             java.util.List<Turma> elegiveis = turmasElegiveis(dataNascimento.getValue());
             turmasInteresse.setItems(elegiveis);
             Set<Turma> selecaoAtual = turmasInteresse.getValue();
@@ -349,6 +377,13 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
                 .bind(Aluno::getCodigoPostal, Aluno::setCodigoPostal);
         binder.forField(localidade).asRequired("A localidade é obrigatória").bind(Aluno::getLocalidade,
                 Aluno::setLocalidade);
+        binder.forField(encarregadoNome).bind(Aluno::getEncarregadoNome, Aluno::setEncarregadoNome);
+        binder.forField(encarregadoParentesco).bind(Aluno::getEncarregadoParentesco, Aluno::setEncarregadoParentesco);
+        binder.forField(encarregadoContribuinte).bind(Aluno::getEncarregadoContribuinte, Aluno::setEncarregadoContribuinte);
+        binder.forField(encarregadoTelemovel).bind(Aluno::getEncarregadoTelemovel, Aluno::setEncarregadoTelemovel);
+        binder.forField(encarregadoEmail)
+                .withValidator(e -> e == null || e.isEmpty() || e.contains("@"), "E-mail inválido")
+                .bind(Aluno::getEncarregadoEmail, Aluno::setEncarregadoEmail);
 
         // --- 5. LAYOUT RESPONSIVO ---
         FormLayout form = new FormLayout();
@@ -383,8 +418,8 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
             btnSubmeter.setText(translationService.t("inscricao.submeter", idiomaAtual));
         });
 
-        VerticalLayout card = new VerticalLayout(header, layoutFoto, form, turmasInteresse, containerFrequencias,
-                resumoPagamento, btnSubmeter);
+        VerticalLayout card = new VerticalLayout(header, layoutFoto, form, seccaoEncarregado, turmasInteresse,
+                containerFrequencias, resumoPagamento, btnSubmeter);
         card.setMaxWidth("850px");
         card.setWidth("100%");
         card.getStyle()
