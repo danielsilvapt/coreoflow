@@ -19,34 +19,59 @@ import java.time.Year;
 public class MensalidadeConfig {
 
     /**
-     * Dia do mês em que a mensalidade vence, conforme configurado no estúdio.
-     * Valor por omissão (ou fora de 1–28): dia 8.
+     * Dia do mês em que a mensalidade vence, conforme configurado no estúdio, ou
+     * {@code null} se o estúdio não tem vencimento automático definido — nesse
+     * caso a mensalidade nunca passa a {@code EM_DIVIDA} por si só (ver
+     * {@link #estadoEfetivo}). Um valor fora de 1–28 (dado legado/inválido) é
+     * tratado como "não definido", pelo mesmo motivo.
      */
-    public int diaLimitePagamento(Studio studio) {
+    public Integer diaLimitePagamento(Studio studio) {
         Integer d = studio != null ? studio.getDiaLimitePagamento() : null;
-        return (d != null && d >= 1 && d <= 28) ? d : 8;
+        return (d != null && d >= 1 && d <= 28) ? d : null;
     }
 
     /**
-     * Data-limite de pagamento da mensalidade de {@code mes}/{@code ano} para este estúdio.
+     * Data-limite de pagamento da mensalidade de {@code mes}/{@code ano} para este
+     * estúdio, ou {@code null} se o estúdio não tem vencimento automático definido.
      * O dia é limitado ao número de dias do mês (defensivo — a configuração já é 1–28).
      */
     public LocalDate dataLimite(int ano, Month mes, Studio studio) {
-        int dia = Math.min(diaLimitePagamento(studio), mes.length(Year.of(ano).isLeap()));
+        Integer diaConfig = diaLimitePagamento(studio);
+        if (diaConfig == null) return null;
+        int dia = Math.min(diaConfig, mes.length(Year.of(ano).isLeap()));
         return LocalDate.of(ano, mes, dia);
     }
 
     /**
      * Estado "real" da mensalidade hoje: uma mensalidade {@code FATURADO} cuja
-     * data-limite já passou conta como {@code EM_DIVIDA}. Os restantes estados
-     * são devolvidos como estão.
+     * data-limite já passou conta como {@code EM_DIVIDA}. Se o estúdio não tem
+     * vencimento automático definido ({@link #dataLimite} devolve {@code null}),
+     * a mensalidade fica sempre no estado guardado — a transição para dívida
+     * passa a ser sempre manual. Os restantes estados são devolvidos como estão.
      */
     public EstadoMensalidade estadoEfetivo(Mensalidade m, Studio studio) {
-        if (m.getEstado() == EstadoMensalidade.FATURADO
-                && LocalDate.now().isAfter(dataLimite(m.getAno(), m.getMes(), studio))) {
-            return EstadoMensalidade.EM_DIVIDA;
+        if (m.getEstado() == EstadoMensalidade.FATURADO) {
+            LocalDate limite = dataLimite(m.getAno(), m.getMes(), studio);
+            if (limite != null && LocalDate.now().isAfter(limite)) {
+                return EstadoMensalidade.EM_DIVIDA;
+            }
         }
         return m.getEstado();
+    }
+
+    /**
+     * Valor efetivo a cobrar por esta mensalidade: o valor base, com a multa por
+     * atraso do estúdio somada em cima enquanto estiver {@code EM_DIVIDA}. Sem
+     * multa configurada (0% por omissão) devolve sempre o valor base.
+     */
+    public double valorComMulta(Mensalidade m, Studio studio) {
+        double base = m.getValor();
+        if (estadoEfetivo(m, studio) != EstadoMensalidade.EM_DIVIDA) {
+            return base;
+        }
+        double percentagem = studio != null && studio.getMultaAtrasoPercentagem() != null
+                ? studio.getMultaAtrasoPercentagem() : 0.0;
+        return base + base * (percentagem / 100.0);
     }
 
     /**

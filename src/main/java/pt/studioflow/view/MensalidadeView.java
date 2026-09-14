@@ -473,6 +473,13 @@ public class MensalidadeView extends VerticalLayout {
                 aplicarFiltros(); // Atualiza stats conforme valor mudou
             }
         });
+
+        // Em dívida com multa configurada: mostra o total efetivo (valor + multa) como
+        // referência, mas o campo continua a editar o valor base da mensalidade.
+        double comMulta = mensalidadeConfig.valorComMulta(m, TenantContext.getCurrentStudio());
+        if (comMulta > m.getValor()) {
+            field.setHelperText(String.format("Com multa: %.2f €", comMulta));
+        }
         return field;
     }
 
@@ -490,8 +497,9 @@ public class MensalidadeView extends VerticalLayout {
         double estimada = filtradas.stream().mapToDouble(Mensalidade::getValor).sum();
         double pago = filtradas.stream().filter(m -> m.getEstado() == EstadoMensalidade.PAGO)
                 .mapToDouble(Mensalidade::getValor).sum();
+        pt.studioflow.model.Studio studioAtual = TenantContext.getCurrentStudio();
         double divida = filtradas.stream().filter(m -> calcularEstadoEfetivo(m) == EstadoMensalidade.EM_DIVIDA)
-                .mapToDouble(Mensalidade::getValor).sum();
+                .mapToDouble(m -> mensalidadeConfig.valorComMulta(m, studioAtual)).sum();
         long pendentes = filtradas.stream().filter(m -> m.getEstado() == EstadoMensalidade.POR_EMITIR).count();
         receitaEstimadaLabel.setText(String.format("%.2f€", estimada));
         totalPagoLabel.setText(String.format("%.2f€", pago));

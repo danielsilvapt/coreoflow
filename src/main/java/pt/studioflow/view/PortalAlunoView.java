@@ -289,22 +289,25 @@ public class PortalAlunoView extends VerticalLayout {
                 .set("box-shadow", "0 2px 8px rgba(0,0,0,0.08)")
                 .set("margin", "16px 16px 0");
 
-        int diaLimite = mensalidadeConfig.diaLimitePagamento(studio);
+        Integer diaLimite = mensalidadeConfig.diaLimitePagamento(studio);
 
         if (proxima == null) {
             card.getStyle().set("border-left", "5px solid #27AE60");
             H3 t = new H3("Sem mensalidades por pagar 🎉");
             t.getStyle().set("margin", "0").set("font-size", "16px");
-            Span nota = new Span("As mensalidades vencem no dia " + diaLimite + " de cada mês.");
+            Span nota = new Span(diaLimite != null
+                    ? "As mensalidades vencem no dia " + diaLimite + " de cada mês."
+                    : "Este estúdio não tem vencimento automático definido.");
             nota.getStyle().set("color", "#888").set("font-size", "13px");
             card.add(t, nota);
             return card;
         }
 
         LocalDate limite = mensalidadeConfig.dataLimite(proxima.getAno(), proxima.getMes(), studio);
-        long dias = ChronoUnit.DAYS.between(LocalDate.now(), limite);
+        long dias = limite != null ? ChronoUnit.DAYS.between(LocalDate.now(), limite) : Long.MAX_VALUE;
         boolean divida = mensalidadeConfig.estadoEfetivo(proxima, studio) == EstadoMensalidade.EM_DIVIDA;
-        String cor = divida ? "#E74C3C" : (dias <= 7 ? "#E67E22" : "#27AE60");
+        double valorEfetivo = mensalidadeConfig.valorComMulta(proxima, studio);
+        String cor = divida ? "#E74C3C" : (limite != null && dias <= 7 ? "#E67E22" : "#27AE60");
         card.getStyle().set("border-left", "5px solid " + cor);
 
         Span label = new Span("PRÓXIMA MENSALIDADE");
@@ -313,16 +316,20 @@ public class PortalAlunoView extends VerticalLayout {
 
         String periodo = capitalizar(proxima.getMes().getDisplayName(TextStyle.FULL, new Locale("pt")))
                 + " " + proxima.getAno();
-        Span titulo = new Span(periodo + " · " + String.format("%.2f €", proxima.getValor()));
+        Span titulo = new Span(periodo + " · " + String.format("%.2f €", valorEfetivo));
         titulo.getStyle().set("font-size", "20px").set("font-weight", "700").set("color", "#2D3436");
 
-        Span venc = new Span("Vence a " + limite.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        Span venc = new Span(limite != null
+                ? "Vence a " + limite.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                : "Sem data de vencimento automática definida");
         venc.getStyle().set("color", "#555").set("font-size", "13px");
 
         String estadoTxt;
         if (divida) {
             long atraso = ChronoUnit.DAYS.between(limite, LocalDate.now());
             estadoTxt = "⚠️ Em dívida há " + atraso + (atraso == 1 ? " dia" : " dias");
+        } else if (limite == null) {
+            estadoTxt = "Faturado";
         } else if (dias <= 0) {
             estadoTxt = "Vence hoje";
         } else if (dias <= 7) {
@@ -407,7 +414,8 @@ public class PortalAlunoView extends VerticalLayout {
 
         grid.addColumn(m -> m.getMes().getDisplayName(TextStyle.SHORT, new Locale("pt"))
                 + " " + m.getAno()).setHeader("Período").setAutoWidth(true);
-        grid.addColumn(m -> String.format("%.2f €", m.getValor())).setHeader("Valor").setAutoWidth(true);
+        grid.addColumn(m -> String.format("%.2f €", mensalidadeConfig.valorComMulta(m, studio)))
+                .setHeader("Valor").setAutoWidth(true);
         grid.addComponentColumn(m -> {
             String[] cfg = switch (mensalidadeConfig.estadoEfetivo(m, studio)) {
                 case PAGO -> new String[]{"#e8f5e9","#27AE60","Pago"};
