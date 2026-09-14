@@ -25,6 +25,13 @@ public class ColorPickerField extends CustomField<String> {
                 .set("border-radius", "6px");
         colorInput.addValueChangeListener(e -> setModelValue(e.getValue(), true));
         add(colorInput);
+
+        // Sem isto, o valor inicial só fica no <input> visual — o valor "modelo" do
+        // CustomField (o que getValue() devolve) fica null até o utilizador tocar no
+        // seletor. Quando este componente é usado fora de um Binder (ex: StudioAdminView,
+        // que lê corPrimaria.getValue() diretamente ao guardar), guardar sem mexer na cor
+        // gravava null e apagava a cor já definida.
+        setModelValue(corPorOmissao, false);
     }
 
     public ColorPickerField(String label) {
