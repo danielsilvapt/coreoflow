@@ -99,7 +99,8 @@ public class SalaScheduleView extends VerticalLayout {
     /** Professor associado ao utilizador (null se admin ou não resolvido). */
     private Professor professorLogado;
 
-    private final int HORA_INICIO = 9;
+    private final int HORA_INICIO_MINUTOS = 7 * 60 + 30; // grelha começa às 07:30
+    private final double HORA_INICIO = HORA_INICIO_MINUTOS / 60.0;
     private final int HORA_FIM = 23;
     private final int PIXELS_POR_HORA = 65;
 
@@ -606,7 +607,7 @@ public class SalaScheduleView extends VerticalLayout {
         corpoGrelha.getStyle()
                 .set("display", "grid")
                 .set("grid-template-columns", gridTemplate)
-                .set("height", ((HORA_FIM - HORA_INICIO) * PIXELS_POR_HORA) + "px")
+                .set("height", Math.round((HORA_FIM - HORA_INICIO) * PIXELS_POR_HORA) + "px")
                 .set("position", "relative");
 
         Div colHoras = new Div();
@@ -614,11 +615,21 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("position", "relative")
                 .set("border-right", "1px solid #cbd5e1")
                 .set("background-color", "#f8fafc");
-        for (int h = HORA_INICIO; h < HORA_FIM; h++) {
+        // Primeira marca é a própria hora de início da grelha (07:30), depois uma por cada hora cheia.
+        Span horaLabelInicio = new Span(String.format("%02d:%02d", HORA_INICIO_MINUTOS / 60, HORA_INICIO_MINUTOS % 60));
+        horaLabelInicio.getStyle()
+                .set("position", "absolute")
+                .set("top", "0px")
+                .set("left", "8px")
+                .set("font-size", "0.7rem")
+                .set("font-weight", "500")
+                .set("color", "#64748b");
+        colHoras.add(horaLabelInicio);
+        for (int h = (HORA_INICIO_MINUTOS / 60) + 1; h < HORA_FIM; h++) {
             Span horaLabel = new Span(String.format("%02d:00", h));
             horaLabel.getStyle()
                     .set("position", "absolute")
-                    .set("top", ((h - HORA_INICIO) * PIXELS_POR_HORA) + "px")
+                    .set("top", Math.round((h - HORA_INICIO) * PIXELS_POR_HORA) + "px")
                     .set("left", "8px")
                     .set("font-size", "0.7rem")
                     .set("font-weight", "500")
@@ -642,13 +653,34 @@ public class SalaScheduleView extends VerticalLayout {
                     coluna.getStyle().set("background-color", "#f0fdf4");
                 }
 
-                for (int h = HORA_INICIO; h < HORA_FIM; h++) {
+                // Primeiro slot cobre só a meia-hora inicial (07:30–08:00); os restantes são de hora inteira.
+                Div slotMeiaHoraInicial = new Div();
+                slotMeiaHoraInicial.addClassName("grid-slot");
+                slotMeiaHoraInicial.getStyle()
+                        .set("position", "absolute")
+                        .set("top", "0px")
+                        .set("width", "100%")
+                        .set("height", (PIXELS_POR_HORA / 2) + "px")
+                        .set("border-top", "1px solid #f1f5f9")
+                        .set("cursor", "pointer")
+                        .set("z-index", "0");
+                LocalTime horaInicioFixa = LocalTime.of(HORA_INICIO_MINUTOS / 60, HORA_INICIO_MINUTOS % 60);
+                slotMeiaHoraInicial.addClickListener(e -> {
+                    if (isAdmin) {
+                        abrirDialogEscolherTipoAula(dataDia, horaInicioFixa, sala);
+                    } else {
+                        abrirDialogAdicionarAulaPontualPrePreenchido(dataDia, horaInicioFixa, sala);
+                    }
+                });
+                coluna.add(slotMeiaHoraInicial);
+
+                for (int h = (HORA_INICIO_MINUTOS / 60) + 1; h < HORA_FIM; h++) {
                     final int horaFixa = h;
                     Div slotClique = new Div();
                     slotClique.addClassName("grid-slot"); // Vinculado ao CSS injetado para hover sofisticado
                     slotClique.getStyle()
                             .set("position", "absolute")
-                            .set("top", ((h - HORA_INICIO) * PIXELS_POR_HORA) + "px")
+                            .set("top", Math.round((h - HORA_INICIO) * PIXELS_POR_HORA) + "px")
                             .set("width", "100%")
                             .set("height", PIXELS_POR_HORA + "px")
                             .set("border-top", "1px solid #f1f5f9")
@@ -980,7 +1012,7 @@ public class SalaScheduleView extends VerticalLayout {
     }
 
     private double calcularTop(LocalTime hora) {
-        int minutes = (hora.getHour() - HORA_INICIO) * 60 + hora.getMinute();
+        int minutes = (hora.getHour() * 60 + hora.getMinute()) - HORA_INICIO_MINUTOS;
         return minutes * (PIXELS_POR_HORA / 60.0);
     }
 
