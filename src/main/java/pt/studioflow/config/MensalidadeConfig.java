@@ -131,6 +131,36 @@ public class MensalidadeConfig {
         return turma.getMensalidadeSocio() + adicional;
     }
 
+    private static final java.util.Set<Month> MESES_MEIO_MENSALIDADE =
+            java.util.EnumSet.of(Month.SEPTEMBER, Month.DECEMBER, Month.JULY);
+
+    /**
+     * Meses em que o modelo {@code HORAS_SEMANA} cobra meia mensalidade
+     * (Setembro, Dezembro, Julho) em vez do valor completo da tabela.
+     */
+    public boolean isMesMeioMensalidade(Month mes) {
+        return MESES_MEIO_MENSALIDADE.contains(mes);
+    }
+
+    /**
+     * Valor da mensalidade no modelo {@code HORAS_SEMANA}, para um total de
+     * {@code horasPorSemana} de aula somadas entre todas as turmas do aluno
+     * (acima de 6h/semana usa sempre o escalão "6 ou mais", ex.: passe). O valor
+     * de meio mês é sempre metade do valor completo do escalão.
+     */
+    public double valorTabelaHoras(Studio studio, int horasPorSemana, boolean meioMes) {
+        Double cheio = switch (Math.max(1, horasPorSemana)) {
+            case 1 -> studio.getTabelaHoras1();
+            case 2 -> studio.getTabelaHoras2();
+            case 3 -> studio.getTabelaHoras3();
+            case 4 -> studio.getTabelaHoras4();
+            case 5 -> studio.getTabelaHoras5();
+            default -> studio.getTabelaHoras6Mais();
+        };
+        double valor = cheio != null ? cheio : 0.0;
+        return meioMes ? Math.round(valor * 50.0) / 100.0 : valor;
+    }
+
     // Métodos de conveniência que lêem do Studio atual da sessão
     public double getValorCrianca1x(Studio studio) { return studio.getMensalidadeCrianca1x(); }
     public double getValorCrianca2x(Studio studio) { return studio.getMensalidadeCrianca2x(); }
@@ -155,9 +185,12 @@ public class MensalidadeConfig {
     public ResumoInscricao calcularResumo(Studio studio, double mensalidadeBaseTotal, boolean renovacao,
                                            boolean temFamiliarInscrito, int numModalidadesInteresse) {
         double taxa = renovacao ? calcularTaxaRenovacao(studio) : calcularTaxaInscricao(studio);
-        double descontoFamiliar = temFamiliarInscrito && studio.getDescontoFamiliaresEuros() != null
+        // Modelo HORAS_SEMANA: tabela fechada, sem descontos (nem família, nem +modalidades).
+        boolean semDescontos = studio.isModeloHorasSemana();
+        double descontoFamiliar = !semDescontos && temFamiliarInscrito && studio.getDescontoFamiliaresEuros() != null
                 ? studio.getDescontoFamiliaresEuros() : 0.0;
-        double descontoMultiModalidade = numModalidadesInteresse > 1 && studio.getDescontoMaisModalidadesPercentagem() != null
+        double descontoMultiModalidade = !semDescontos && numModalidadesInteresse > 1
+                && studio.getDescontoMaisModalidadesPercentagem() != null
                 ? mensalidadeBaseTotal * (studio.getDescontoMaisModalidadesPercentagem() / 100.0) : 0.0;
         double total = Math.max(0.0, mensalidadeBaseTotal + taxa - descontoFamiliar - descontoMultiModalidade);
         return new ResumoInscricao(mensalidadeBaseTotal, taxa, descontoFamiliar, descontoMultiModalidade, total);

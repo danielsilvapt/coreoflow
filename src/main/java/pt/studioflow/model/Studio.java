@@ -143,6 +143,41 @@ public class Studio {
     private Double mensalidadeNaoSocioAdicional = 10.0;
 
     /**
+     * Modelo de preçário usado para calcular as mensalidades: {@code PADRAO}
+     * (criança/adulto × 1x/2x, por omissão) ou {@code HORAS_SEMANA} (tabela única
+     * por total de horas de aula por semana do aluno, somadas entre todas as
+     * turmas — ver {@link pt.studioflow.config.MensalidadeConfig#valorTabelaHoras}).
+     * Guardado como String (mesmo padrão de {@link #tipoRemuneracaoProf}).
+     */
+    @Column(name = "modelo_precario")
+    private String modeloPrecario = "PADRAO";
+
+    /**
+     * Tabela de mensalidades do modelo {@code HORAS_SEMANA}: cada campo é o valor
+     * de mensalidade completa para o respetivo total de horas de aula por semana
+     * do aluno (somadas entre todas as turmas); {@code tabelaHoras6Mais} cobre 6
+     * ou mais horas (ex.: "Passe EDNL"). O valor de meio mês (Setembro, Dezembro,
+     * Julho) é sempre metade do valor completo — não tem campo próprio.
+     */
+    @Column(name = "tabela_horas_1")
+    private Double tabelaHoras1 = 35.0;
+
+    @Column(name = "tabela_horas_2")
+    private Double tabelaHoras2 = 43.0;
+
+    @Column(name = "tabela_horas_3")
+    private Double tabelaHoras3 = 49.0;
+
+    @Column(name = "tabela_horas_4")
+    private Double tabelaHoras4 = 56.0;
+
+    @Column(name = "tabela_horas_5")
+    private Double tabelaHoras5 = 60.0;
+
+    @Column(name = "tabela_horas_6_mais")
+    private Double tabelaHoras6Mais = 65.0;
+
+    /**
      * Dia do mês em que a mensalidade vence (1–28). Passado esse dia sem pagamento,
      * fica "Em dívida" automaticamente. Nulo = sem vencimento automático — a
      * mensalidade nunca passa a "Em dívida" por si só, fica sempre a critério manual
@@ -312,6 +347,28 @@ public class Studio {
 
     public Double getMensalidadeNaoSocioAdicional() { return mensalidadeNaoSocioAdicional; }
     public void setMensalidadeNaoSocioAdicional(Double v) { this.mensalidadeNaoSocioAdicional = v; }
+
+    public String getModeloPrecario() { return modeloPrecario; }
+    public void setModeloPrecario(String modeloPrecario) { this.modeloPrecario = modeloPrecario; }
+    public boolean isModeloHorasSemana() { return "HORAS_SEMANA".equals(modeloPrecario); }
+
+    public Double getTabelaHoras1() { return tabelaHoras1; }
+    public void setTabelaHoras1(Double v) { this.tabelaHoras1 = v; }
+
+    public Double getTabelaHoras2() { return tabelaHoras2; }
+    public void setTabelaHoras2(Double v) { this.tabelaHoras2 = v; }
+
+    public Double getTabelaHoras3() { return tabelaHoras3; }
+    public void setTabelaHoras3(Double v) { this.tabelaHoras3 = v; }
+
+    public Double getTabelaHoras4() { return tabelaHoras4; }
+    public void setTabelaHoras4(Double v) { this.tabelaHoras4 = v; }
+
+    public Double getTabelaHoras5() { return tabelaHoras5; }
+    public void setTabelaHoras5(Double v) { this.tabelaHoras5 = v; }
+
+    public Double getTabelaHoras6Mais() { return tabelaHoras6Mais; }
+    public void setTabelaHoras6Mais(Double v) { this.tabelaHoras6Mais = v; }
 
     public Integer getDiaLimitePagamento() { return diaLimitePagamento; }
     public void setDiaLimitePagamento(Integer diaLimitePagamento) { this.diaLimitePagamento = diaLimitePagamento; }
