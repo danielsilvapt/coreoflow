@@ -265,6 +265,59 @@ public class StudioAdminView extends VerticalLayout {
         NumberField naoSocioAdicional = new NumberField("Adicional Não Sócio (€)");
         naoSocioAdicional.setValue(studio.getMensalidadeNaoSocioAdicional());
 
+        ComboBox<String> modeloPrecario = new ComboBox<>("Modelo de Preçário");
+        modeloPrecario.setItems("PADRAO", "HORAS_SEMANA");
+        modeloPrecario.setItemLabelGenerator(v -> "HORAS_SEMANA".equals(v)
+                ? "Tabela por horas/semana (pacote único)" : "Criança/Adulto × 1x/2x");
+        modeloPrecario.setValue(studio.getModeloPrecario() != null ? studio.getModeloPrecario() : "PADRAO");
+        modeloPrecario.setWidthFull();
+        modeloPrecario.setHelperText("\"Tabela por horas/semana\": soma as aulas/semana de todas as turmas do "
+                + "aluno e cobra um valor único de pacote. Desliga os descontos automáticos de família e "
+                + "+modalidades, e aplica meia mensalidade automática em Setembro, Dezembro e Julho.");
+
+        NumberField tabelaHoras1 = new NumberField("1h/semana — mensalidade completa (€)");
+        tabelaHoras1.setValue(studio.getTabelaHoras1() != null ? studio.getTabelaHoras1() : 35.0);
+        tabelaHoras1.setMin(0);
+
+        NumberField tabelaHoras2 = new NumberField("2h/semana — mensalidade completa (€)");
+        tabelaHoras2.setValue(studio.getTabelaHoras2() != null ? studio.getTabelaHoras2() : 43.0);
+        tabelaHoras2.setMin(0);
+
+        NumberField tabelaHoras3 = new NumberField("3h/semana — mensalidade completa (€)");
+        tabelaHoras3.setValue(studio.getTabelaHoras3() != null ? studio.getTabelaHoras3() : 49.0);
+        tabelaHoras3.setMin(0);
+
+        NumberField tabelaHoras4 = new NumberField("4h/semana — mensalidade completa (€)");
+        tabelaHoras4.setValue(studio.getTabelaHoras4() != null ? studio.getTabelaHoras4() : 56.0);
+        tabelaHoras4.setMin(0);
+
+        NumberField tabelaHoras5 = new NumberField("5h/semana — mensalidade completa (€)");
+        tabelaHoras5.setValue(studio.getTabelaHoras5() != null ? studio.getTabelaHoras5() : 60.0);
+        tabelaHoras5.setMin(0);
+
+        NumberField tabelaHoras6Mais = new NumberField("6+ horas/semana — passe (€)");
+        tabelaHoras6Mais.setValue(studio.getTabelaHoras6Mais() != null ? studio.getTabelaHoras6Mais() : 65.0);
+        tabelaHoras6Mais.setMin(0);
+        tabelaHoras6Mais.setHelperText("O valor de meio mês (Set/Dez/Jul) é sempre metade do valor completo do escalão.");
+
+        FormLayout grupoPadrao = new FormLayout(mensalidadeCrianca1x, mensalidadeCrianca2x,
+                mensalidadeAdulto1x, mensalidadeAdulto2x, naoSocioAdicional);
+        grupoPadrao.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
+        grupoPadrao.setWidthFull();
+
+        FormLayout grupoHorasSemana = new FormLayout(tabelaHoras1, tabelaHoras2, tabelaHoras3,
+                tabelaHoras4, tabelaHoras5, tabelaHoras6Mais);
+        grupoHorasSemana.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
+        grupoHorasSemana.setWidthFull();
+
+        Runnable ajustarVisibilidadeModelo = () -> {
+            boolean horas = "HORAS_SEMANA".equals(modeloPrecario.getValue());
+            grupoPadrao.setVisible(!horas);
+            grupoHorasSemana.setVisible(horas);
+        };
+        modeloPrecario.addValueChangeListener(e -> ajustarVisibilidadeModelo.run());
+        ajustarVisibilidadeModelo.run();
+
         NumberField diaLimitePagamento = new NumberField("Dia limite de pagamento (1–28)");
         if (studio.getDiaLimitePagamento() != null) {
             diaLimitePagamento.setValue(studio.getDiaLimitePagamento().doubleValue());
@@ -316,12 +369,15 @@ public class StudioAdminView extends VerticalLayout {
         form.add(nome, slug, email, corPrimaria, corSecundaria, vendusApiKey,
                 mollieApiKey, checkinJanelaAntes, checkinJanelaDepois, emailCriador,
                 emailAssinante1, emailAssinante2,
-                mensalidadeCrianca1x, mensalidadeCrianca2x,
-                mensalidadeAdulto1x, mensalidadeAdulto2x, naoSocioAdicional, diaLimitePagamento,
+                diaLimitePagamento,
                 multaAtraso,
                 descontoFamiliares, descontoDirecao, descontoMaisModal, descontoMais65,
                 taxaInscricao, taxaRenovacao,
                 ativo, enviarEmails);
+
+        // --- Modelo de Preçário ---
+        H4 secPrecario = new H4("Modelo de Preçário");
+        secPrecario.getStyle().set("margin", "16px 0 4px 0");
 
         // --- Campos do aluno ---
         H4 secCampos = new H4("Campos do Formulário de Aluno");
@@ -538,6 +594,7 @@ public class StudioAdminView extends VerticalLayout {
 
         VerticalLayout content = new VerticalLayout(
                 logoSection, form,
+                secPrecario, modeloPrecario, grupoPadrao, grupoHorasSemana,
                 secCampos, camposGroup,
                 secFat, faturacaoAuto, programaFaturacao, tocSecao,
                 secRemun, remunHint, tipoRemun, grupoHora, grupoPerc,
@@ -572,6 +629,13 @@ public class StudioAdminView extends VerticalLayout {
             studio.setMensalidadeAdulto1x(mensalidadeAdulto1x.getValue());
             studio.setMensalidadeAdulto2x(mensalidadeAdulto2x.getValue());
             studio.setMensalidadeNaoSocioAdicional(naoSocioAdicional.getValue());
+            studio.setModeloPrecario(modeloPrecario.getValue());
+            studio.setTabelaHoras1(tabelaHoras1.getValue());
+            studio.setTabelaHoras2(tabelaHoras2.getValue());
+            studio.setTabelaHoras3(tabelaHoras3.getValue());
+            studio.setTabelaHoras4(tabelaHoras4.getValue());
+            studio.setTabelaHoras5(tabelaHoras5.getValue());
+            studio.setTabelaHoras6Mais(tabelaHoras6Mais.getValue());
             studio.setDiaLimitePagamento(diaLimitePagamento.getValue() != null
                     ? Math.max(1, Math.min(28, (int) Math.round(diaLimitePagamento.getValue()))) : null);
             studio.setMultaAtrasoPercentagem(multaAtraso.getValue() != null ? Math.max(0, multaAtraso.getValue()) : 0.0);

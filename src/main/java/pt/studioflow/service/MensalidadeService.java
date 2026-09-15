@@ -54,10 +54,14 @@ public class MensalidadeService {
     }
 
     /**
-     * Gera mensalidades para um aluno de uma turma, considerando:
-     * - Tipo de aluno (criança/adulto)
-     * - Frequência de aulas por semana
-     * - Se não for sócio, adiciona 10€
+     * Gera mensalidades para um aluno de uma turma, considerando o modelo de
+     * preçário do estúdio:
+     * - Turma com mensalidade própria (competição, workshops) → esse valor, sempre.
+     * - Modelo {@code HORAS_SEMANA} → pacote único por total de horas/semana do
+     *   aluno, repartido proporcionalmente por todas as suas turmas (ver
+     *   {@link #gerarMensalidadesModeloHorasSemana}).
+     * - Modelo {@code PADRAO} (omissão) → criança/adulto × 1x/2x, com acréscimo
+     *   de não-sócio.
      */
     @Transactional
     public void gerarMensalidadesParaAluno(Aluno aluno, Turma turma) {
@@ -73,40 +77,84 @@ public class MensalidadeService {
             return;
         }
 
-        // 🔹 Determinar aulas por semana e tipo de aluno
-        int aulasPorSemana = at.getAulasPorSemana(); // 1 ou 2
-        boolean crianca = aluno.isCrianca();
-        boolean socio = aluno.isSocio();
-
-        // 🔹 Calcular valor base com base no tipo e frequência
-        double valorBase;
         pt.studioflow.model.Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
         if (studio == null) {
             // fallback: recarrega o aluno para garantir que o studio está acessível
             aluno = alunoRepository.findById(aluno.getId()).orElse(aluno);
             studio = aluno.getStudio();
         }
-        // Turmas com mensalidade própria (competição, workshops) não seguem a tabela
-        // do estúdio nem levam o acréscimo de não-sócio — o valor configurado é final.
-        Double valorProprio = config.valorProprioDaTurma(turma, socio);
-        if (valorProprio != null) {
-            valorBase = valorProprio;
-        } else {
-            if (crianca) {
-                valorBase = (aulasPorSemana == 1 ? config.getValorCrianca1x(studio) : config.getValorCrianca2x(studio));
-            } else {
-                valorBase = (aulasPorSemana == 1 ? config.getValorAdulto1x(studio) : config.getValorAdulto2x(studio));
-            }
 
-            // Acrescenta adicional se não for sócio
-            if (!socio) {
-                valorBase += studio.getMensalidadeNaoSocioAdicional();
-            }
+        // Turmas com mensalidade própria (competição, workshops) não seguem a tabela
+        // do estúdio nem levam o acréscimo de não-sócio — o valor configurado é final,
+        // independentemente do modelo de preçário do estúdio.
+        Double valorProprio = config.valorProprioDaTurma(turma, aluno.isSocio());
+        if (valorProprio != null) {
+            double valor = valorProprio;
+            gerarMensalidadesComValor(aluno, turma, studio, mes -> valor);
+            return;
         }
 
-        // 🔹 Gerar mensalidades do mês atual até junho (fim do ano letivo).
-        // O ano letivo começa em setembro (ano N) e termina em junho (ano N+1),
-        // por isso o ciclo tem de atravessar a mudança de ano civil.
+        if (studio != null && studio.isModeloHorasSemana()) {
+            gerarMensalidadesModeloHorasSemana(aluno, studio);
+            return;
+        }
+
+        int aulasPorSemana = at.getAulasPorSemana(); // 1 ou 2
+        boolean crianca = aluno.isCrianca();
+        boolean socio = aluno.isSocio();
+
+        double valorBase = crianca
+                ? (aulasPorSemana == 1 ? config.getValorCrianca1x(studio) : config.getValorCrianca2x(studio))
+                : (aulasPorSemana == 1 ? config.getValorAdulto1x(studio) : config.getValorAdulto2x(studio));
+        if (!socio) {
+            valorBase += studio.getMensalidadeNaoSocioAdicional();
+        }
+
+        double valorFinal = valorBase;
+        gerarMensalidadesComValor(aluno, turma, studio, mes -> valorFinal);
+    }
+
+    /**
+     * Modelo {@code HORAS_SEMANA}: soma as "aulas por semana" de todas as turmas
+     * do aluno (excluindo as com mensalidade própria e as sem mensalidade),
+     * procura o pacote correspondente na tabela do estúdio (com meio mês
+     * automático em Setembro/Dezembro/Julho) e reparte esse valor por cada turma,
+     * proporcionalmente ao seu peso semanal — assim a receita/remuneração por
+     * turma continua a fazer sentido apesar do valor ser um pacote único.
+     * Não recalcula mensalidades já geradas noutras turmas (mesma limitação do
+     * modelo PADRAO: a mudança só se reflete nos meses ainda por gerar).
+     */
+    private void gerarMensalidadesModeloHorasSemana(Aluno aluno, pt.studioflow.model.Studio studio) {
+        List<AlunoTurma> inscricoes = alunoTurmaRepository.findByAluno(aluno).stream()
+                .filter(a -> !a.isSemMensalidade())
+                .filter(a -> config.valorProprioDaTurma(a.getTurma(), aluno.isSocio()) == null)
+                .toList();
+        if (inscricoes.isEmpty()) {
+            return;
+        }
+
+        int totalHoras = inscricoes.stream().mapToInt(AlunoTurma::getAulasPorSemana).sum();
+        if (totalHoras <= 0) {
+            return;
+        }
+
+        for (AlunoTurma insc : inscricoes) {
+            double fracao = insc.getAulasPorSemana() / (double) totalHoras;
+            gerarMensalidadesComValor(aluno, insc.getTurma(), studio, mes -> {
+                double pacote = config.valorTabelaHoras(studio, totalHoras, config.isMesMeioMensalidade(mes));
+                return Math.round(pacote * fracao * 100.0) / 100.0;
+            });
+        }
+    }
+
+    /**
+     * Gera as mensalidades em falta (do mês atual até junho, atravessando o
+     * ano civil quando necessário) de {@code aluno}/{@code turma}, com o valor
+     * calculado por mês através de {@code valorPorMes}. Meses já existentes
+     * ficam intactos (idempotente).
+     */
+    private void gerarMensalidadesComValor(Aluno aluno, Turma turma, pt.studioflow.model.Studio studio,
+            java.util.function.Function<Month, Double> valorPorMes) {
         LocalDate hoje = LocalDate.now();
         int mesAtual = hoje.getMonthValue();
 
@@ -141,7 +189,7 @@ public class MensalidadeService {
             m.setAno(ano);
             m.setMes(monthEnum);
             m.setEstado(EstadoMensalidade.POR_EMITIR);
-            m.setValor(valorBase);
+            m.setValor(valorPorMes.apply(monthEnum));
             m.setStudio(studio);
 
             mensalidades.add(m);
