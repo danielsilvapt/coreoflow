@@ -40,6 +40,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.RolesAllowed;
+import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Aluno.AlunoStatus;
 import pt.studioflow.model.AlunoTurma;
@@ -264,6 +265,7 @@ public class PresencasView extends VerticalLayout {
             novo.setTelemovel(txtTel.getValue());
             novo.setStatus(AlunoStatus.EXPERIMENTAL);
             novo.setAtivo(false);
+            novo.setStudio(TenantContext.getCurrentStudio());
             novo = alunoRepository.save(novo);
 
             AlunoTurma at = new AlunoTurma();
