@@ -251,6 +251,9 @@ public class ConvitesProfessorView extends VerticalLayout {
             for (Aluno aluno : selecionados) {
                 InscricaoEvento inscricao = inscricaoRepository.findByAlunoAndConvite(aluno, convite)
                         .orElse(new InscricaoEvento(aluno, convite));
+                if (inscricao.getStudio() == null) {
+                    inscricao.setStudio(convite.getStudio());
+                }
                 inscricaoRepository.save(inscricao);
                 emailService.enviarConvocatoria(aluno, convite);
                 enviados++;
