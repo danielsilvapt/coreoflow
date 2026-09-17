@@ -41,7 +41,7 @@ public class Aluno {
     }
 
     @Column(name = "numero_socios")
-    private int numeroSocio;
+    private Integer numeroSocio;
 
     @Column(name = "nome_completo")
     private String nomeCompleto;
@@ -371,11 +371,11 @@ public class Aluno {
         this.ativo = ativo ? 1 : 0;
     }
 
-    public int getNumeroSocio() {
+    public Integer getNumeroSocio() {
         return numeroSocio;
     }
 
-    public void setNumeroSocio(int numeroSocio) {
+    public void setNumeroSocio(Integer numeroSocio) {
         this.numeroSocio = numeroSocio;
     }
 
