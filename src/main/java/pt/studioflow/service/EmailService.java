@@ -15,6 +15,7 @@ import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Convite;
 import pt.studioflow.model.Professor;
 import pt.studioflow.model.Studio;
+import pt.studioflow.model.TipoEvento;
 import pt.studioflow.model.Turma;
 
 import java.util.ArrayList;
@@ -350,7 +351,7 @@ public class EmailService {
 
                         // Se for uma Competição, o estúdio recebe cópia oculta (Bcc) — não
                         // expõe o endereço do estúdio ao professor destinatário.
-                        if (convite.getEvento() != null && convite.getEvento().contains("Competição")) {
+                        if (convite.getTipo() == TipoEvento.COMPETICAO) {
                                 helper.addBcc(emailAdmin(studioDe(aluno)));
                         }
 
