@@ -138,6 +138,12 @@ public class ConvitesView extends VerticalLayout {
             return span;
         }).setHeader("Evento").setSortable(true).setComparator(Convite::getEvento).setFrozen(true).setAutoWidth(true);
 
+        // TIPO
+        grid.addColumn(c -> {
+            TipoEvento tipo = c.getTipo();
+            return tipo != null ? tipo.getLabel() : TipoEvento.OUTRO.getLabel();
+        }).setHeader("Tipo").setSortable(true).setAutoWidth(true);
+
         // DATA COM BADGE VERDE SE PASSADO
         colunaData = grid.addComponentColumn(c -> {
             String dataFormatada = c.getData() != null ? c.getData().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))

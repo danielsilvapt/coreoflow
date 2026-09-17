@@ -18,6 +18,11 @@ public class Convite {
     @Column(nullable = false)
     private String evento;
 
+    /** Tipo do evento — decide, entre outras coisas, quem recebe cópia dos emails de confirmação. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo")
+    private TipoEvento tipo = TipoEvento.OUTRO;
+
     private LocalDate data;
 
     private LocalTime hora;
@@ -74,6 +79,14 @@ public class Convite {
 
     public void setEvento(String evento) {
         this.evento = evento;
+    }
+
+    public TipoEvento getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(TipoEvento tipo) {
+        this.tipo = tipo;
     }
 
     public LocalDate getData() {

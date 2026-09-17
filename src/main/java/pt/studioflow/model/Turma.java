@@ -8,13 +8,14 @@ import java.util.Set;
 import jakarta.persistence.*;
 
 @Entity
+@Table(uniqueConstraints = @UniqueConstraint(name = "uk_turma_studio_codigo", columnNames = {"studio_id", "codigo"}))
 public class Turma {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "codigo", nullable = false, unique = true)
+    @Column(name = "codigo", nullable = false)
     private String codigo;
 
     @Column(name = "descricao", nullable = false)

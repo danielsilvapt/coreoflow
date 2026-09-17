@@ -2,6 +2,7 @@ package pt.studioflow.view;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.notification.Notification;
@@ -13,6 +14,7 @@ import com.vaadin.flow.component.timepicker.TimePicker;
 import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Convite;
 import pt.studioflow.model.Studio;
+import pt.studioflow.model.TipoEvento;
 import pt.studioflow.repository.ConviteRepository;
 import java.time.Duration;
 
@@ -25,6 +27,10 @@ public class ConviteDialog extends Dialog {
 
         // 2. Criar os componentes dentro do construtor para evitar problemas de referência
         TextField evento = new TextField("Nome do Evento");
+        ComboBox<TipoEvento> tipo = new ComboBox<>("Tipo de Evento");
+        tipo.setItems(TipoEvento.values());
+        tipo.setItemLabelGenerator(TipoEvento::getLabel);
+        tipo.setValue(TipoEvento.OUTRO);
         DatePicker data = new DatePicker("Data");
         TimePicker hora = new TimePicker("Hora"); 
         TextField local = new TextField("Local");
@@ -32,6 +38,7 @@ public class ConviteDialog extends Dialog {
 
         // 3. Configuração de Estilo Forçada
         evento.setWidthFull();
+        tipo.setWidthFull();
         data.setWidthFull();
         
         // Configuração da Hora
@@ -46,7 +53,7 @@ public class ConviteDialog extends Dialog {
 
         // 4. Layout Vertical Simples (Sem FormLayout)
         VerticalLayout mainLayout = new VerticalLayout();
-        mainLayout.add(evento, data, hora, local, observacoes);
+        mainLayout.add(evento, tipo, data, hora, local, observacoes);
         mainLayout.setPadding(true);
         mainLayout.setSpacing(true);
         
@@ -70,6 +77,7 @@ public class ConviteDialog extends Dialog {
             try {
                 Convite c = new Convite();
                 c.setEvento(evento.getValue());
+                c.setTipo(tipo.getValue() != null ? tipo.getValue() : TipoEvento.OUTRO);
                 c.setData(data.getValue());
                 c.setHora(hora.getValue());
                 c.setLocal(local.getValue());

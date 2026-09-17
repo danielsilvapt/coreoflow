@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 
 @Route(value = "convites-professor", layout = MainLayout.class)
 @UIScope
-@RolesAllowed({ "DELEG", "PROF" })
+@RolesAllowed({ "DELEG", "PROF", "ADMIN" })
 public class ConvitesProfessorView extends VerticalLayout {
 
     private final ConviteRepository conviteRepository;
@@ -68,7 +68,8 @@ public class ConvitesProfessorView extends VerticalLayout {
         // 1. Identificar Permissões
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean isDelegado = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_DELEG") || a.getAuthority().equals("DELEG"));
+                .anyMatch(a -> a.getAuthority().equals("ROLE_DELEG") || a.getAuthority().equals("DELEG"))
+                || profTurmas.isAdmin();
 
         // Turmas da sessão: DELEG vê todas as do estúdio; PROF só as suas
         // (professor principal ou co-professor) — via ProfessorTurmasService.
