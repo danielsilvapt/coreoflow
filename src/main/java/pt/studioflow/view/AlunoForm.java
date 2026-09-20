@@ -218,6 +218,7 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
                 .bind(Aluno::getNumeroContribuinte, Aluno::setNumeroContribuinte);
 
         binder.forField(numeroSocio)
+                .withNullRepresentation("")
                 .asRequired("O número de sócio é obrigatório")
                 .withConverter(new StringToIntegerConverter("Insira um número inteiro válido"))
                 .bind(Aluno::getNumeroSocio, Aluno::setNumeroSocio);
