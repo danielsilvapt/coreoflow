@@ -303,12 +303,16 @@ public class RegistoHorasView extends VerticalLayout {
 
         FormLayout form = new FormLayout();
         profComboDialog.setItemLabelGenerator(Professor::getNome);
+        profComboDialog.setRequiredIndicatorVisible(true);
         profComboDialog.addValueChangeListener(e -> {
             if (e.getValue() != null)
                 carregarTurmasDialog(e.getValue());
         });
+        turmaComboDialog.setRequiredIndicatorVisible(true);
         turmaComboDialog.addValueChangeListener(e -> tentarAutoPreencherHoras());
+        dataPicker.setRequiredIndicatorVisible(true);
         dataPicker.addValueChangeListener(e -> tentarAutoPreencherHoras());
+        tipoComboDialog.setRequiredIndicatorVisible(true);
         tipoComboDialog.setItems("Aula regular", "Ensaio", "Aula privada", "Workshop");
 
         VerticalLayout timeXpLayout = new VerticalLayout();
@@ -432,8 +436,10 @@ public class RegistoHorasView extends VerticalLayout {
 
     private void salvarRegisto() {
         if (inicioPicker.getValue() == null || fimPicker.getValue() == null || turmaComboDialog.getValue() == null
-                || profComboDialog.getValue() == null) {
-            Notification.show("Faltam dados.").addThemeVariants(NotificationVariant.LUMO_ERROR);
+                || profComboDialog.getValue() == null || tipoComboDialog.getValue() == null
+                || dataPicker.getValue() == null) {
+            Notification.show("Faltam dados: preenche Professor, Turma, Tipo, Data e horário.")
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
         RegistoHoras r = (registoSendoEditado != null) ? registoSendoEditado : new RegistoHoras();
