@@ -286,13 +286,24 @@ public class DashboardView extends Div {
                                 // BI do Professor
                                 VerticalLayout vBI = new VerticalLayout();
                                 vBI.setPadding(false);
-                                // Conta cabeças: aluno em várias turmas do professor só conta uma vez
+                                // Conta cabeças: aluno em várias turmas do professor só conta uma vez.
+                                // Só alunos ativados e confirmados (sem experimentais nem pendentes)
+                                // e com pelo menos uma presença registada numa turma do professor
                                 final int META_BONUS_ALUNOS = 20;
+                                Set<Long> idsTurmasProfBI = turmas.stream().filter(t -> t.getProfessor() != null
+                                                        && normalizar(t.getProfessor().getNome()).contains(busca))
+                                                .map(Turma::getId).collect(Collectors.toSet());
+                                Set<Long> alunosComPresencaProf = todasPresencas.stream()
+                                                .filter(p -> p.isPresente() && p.getAluno() != null && p.getTurma() != null
+                                                        && idsTurmasProfBI.contains(p.getTurma().getId()))
+                                                .map(p -> p.getAluno().getId()).collect(Collectors.toSet());
                                 int tAlunos = (int) turmas.stream().filter(t -> t.getProfessor() != null
                                                 && normalizar(t.getProfessor().getNome()).contains(busca))
                                                 .flatMap(t -> alunoTurmaRepository.findByTurma(t).stream())
                                                 .map(AlunoTurma::getAluno)
-                                                .filter(Objects::nonNull)
+                                                .filter(a -> a != null && a.isAtivo()
+                                                        && a.getStatus() == Aluno.AlunoStatus.ATIVO
+                                                        && alunosComPresencaProf.contains(a.getId()))
                                                 .map(Aluno::getId)
                                                 .distinct().count();
                                 vBI.add(new Span("Alunos Ativos: " + tAlunos));
