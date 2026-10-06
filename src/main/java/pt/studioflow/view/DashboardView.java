@@ -286,14 +286,20 @@ public class DashboardView extends Div {
                                 // BI do Professor
                                 VerticalLayout vBI = new VerticalLayout();
                                 vBI.setPadding(false);
-                                int tAlunos = turmas.stream().filter(t -> t.getProfessor() != null
+                                // Conta cabeças: aluno em várias turmas do professor só conta uma vez
+                                final int META_BONUS_ALUNOS = 20;
+                                int tAlunos = (int) turmas.stream().filter(t -> t.getProfessor() != null
                                                 && normalizar(t.getProfessor().getNome()).contains(busca))
-                                                .mapToInt(t -> alunoTurmaRepository.findByTurma(t).size()).sum();
+                                                .flatMap(t -> alunoTurmaRepository.findByTurma(t).stream())
+                                                .map(AlunoTurma::getAluno)
+                                                .filter(Objects::nonNull)
+                                                .map(Aluno::getId)
+                                                .distinct().count();
                                 vBI.add(new Span("Alunos Ativos: " + tAlunos));
                                 ProgressBar pbBI = new ProgressBar();
-                                pbBI.setValue(Math.max(0.0, Math.min(1.0, (double) tAlunos / 50.0)));
-                                vBI.add(new Span("Meta 50 alunos"), pbBI);
-                                if (tAlunos >= 20) {
+                                pbBI.setValue(Math.max(0.0, Math.min(1.0, (double) tAlunos / META_BONUS_ALUNOS)));
+                                vBI.add(new Span("Meta " + META_BONUS_ALUNOS + " alunos"), pbBI);
+                                if (tAlunos >= META_BONUS_ALUNOS) {
                                         Span s = new Span("Elegível para Bónus!");
                                         s.getStyle().set("color", "#2e7d32").set("font-weight", "bold");
                                         vBI.add(s);
