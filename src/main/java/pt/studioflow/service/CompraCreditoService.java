@@ -16,6 +16,7 @@ import pt.studioflow.model.OrigemCompraCredito;
 import pt.studioflow.model.PackAula;
 import pt.studioflow.model.Studio;
 import pt.studioflow.repository.CompraCreditoRepository;
+import pt.studioflow.repository.StudioRepository;
 
 @Service
 public class CompraCreditoService {
@@ -23,12 +24,14 @@ public class CompraCreditoService {
     private final CompraCreditoRepository compraCreditoRepository;
     private final MollieApiService mollieApiService;
     private final EmailService emailService;
+    private final StudioRepository studioRepository;
 
     public CompraCreditoService(CompraCreditoRepository compraCreditoRepository,
-            MollieApiService mollieApiService, EmailService emailService) {
+            MollieApiService mollieApiService, EmailService emailService, StudioRepository studioRepository) {
         this.compraCreditoRepository = compraCreditoRepository;
         this.mollieApiService = mollieApiService;
         this.emailService = emailService;
+        this.studioRepository = studioRepository;
     }
 
     public static class ResultadoCompra {
@@ -52,7 +55,10 @@ public class CompraCreditoService {
     public ResultadoCompra criarCompra(Aluno aluno, PackAula pack, Modalidade modalidadeEscolhida,
             boolean usarMollie, OrigemCompraCredito origem, String redirectUrl, String webhookUrl) {
 
-        Studio studio = pack.getStudio();
+        // O pack vem da vista já desligado da sessão: o seu studio é um proxy LAZY que não
+        // pode ser inicializado aqui. getId() não inicializa o proxy — recarrega-se pelo id.
+        Studio studio = studioRepository.findById(pack.getStudio().getId())
+                .orElseThrow(() -> new IllegalStateException("Estúdio do pack não encontrado."));
 
         CompraCredito compra = new CompraCredito();
         compra.setStudio(studio);
