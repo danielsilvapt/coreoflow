@@ -5,11 +5,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.AlunoTurma;
+import pt.studioflow.model.Aula;
 import pt.studioflow.model.EstadoMensalidade;
 import pt.studioflow.model.ListaEspera;
 import pt.studioflow.model.Mensalidade;
 import pt.studioflow.model.Turma;
 import pt.studioflow.repository.AlunoTurmaRepository;
+import pt.studioflow.repository.AulaRepository;
 import pt.studioflow.repository.ListaEsperaRepository;
 import pt.studioflow.repository.MensalidadeRepository;
 
@@ -22,13 +24,39 @@ public class AlunoTurmaService {
     private final AlunoTurmaRepository repository;
     private final ListaEsperaRepository listaEsperaRepository;
     private final MensalidadeRepository mensalidadeRepository;
+    private final AulaRepository aulaRepository;
 
     public AlunoTurmaService(AlunoTurmaRepository repository,
                               ListaEsperaRepository listaEsperaRepository,
-                              MensalidadeRepository mensalidadeRepository) {
+                              MensalidadeRepository mensalidadeRepository,
+                              AulaRepository aulaRepository) {
         this.repository = repository;
         this.listaEsperaRepository = listaEsperaRepository;
         this.mensalidadeRepository = mensalidadeRepository;
+        this.aulaRepository = aulaRepository;
+    }
+
+    /**
+     * Frequência semanal da turma segundo o mapa de salas: nº de dias distintos com
+     * aula regular (ensaios e aulas já terminadas não contam). A tabela de
+     * mensalidades só distingue 1x e 2x, por isso 3 ou mais dias contam como 2x.
+     * Sem horário no mapa mantém-se o antigo valor por omissão (2x).
+     */
+    @Transactional(readOnly = true)
+    public int aulasPorSemanaDaTurma(Turma turma) {
+        return aulasPorSemana(aulaRepository.findByTurma(turma), LocalDate.now());
+    }
+
+    static int aulasPorSemana(List<Aula> aulas, LocalDate hoje) {
+        long dias = aulas.stream()
+                .filter(a -> a.getDia() != null)
+                .filter(a -> !"ENSAIO".equalsIgnoreCase(a.getTipo()))
+                .filter(a -> a.getDataFim() == null || !a.getDataFim().isBefore(hoje))
+                .map(Aula::getDia)
+                .distinct()
+                .count();
+        if (dias == 0) return 2;
+        return dias == 1 ? 1 : 2;
     }
 
     @Transactional
@@ -37,6 +65,7 @@ public class AlunoTurmaService {
         AlunoTurma at = new AlunoTurma();
         at.setAluno(aluno);
         at.setTurma(turma);
+        at.setAulasPorSemana(aulasPorSemanaDaTurma(turma));
         repository.save(at);
     }
 

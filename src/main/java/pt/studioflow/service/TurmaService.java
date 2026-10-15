@@ -16,6 +16,7 @@ import pt.studioflow.model.Sala;
 import pt.studioflow.model.Turma;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
+import pt.studioflow.repository.AulaRepository;
 import pt.studioflow.repository.AvaliacaoAlunoRepository;
 import pt.studioflow.repository.ListaEsperaRepository;
 import pt.studioflow.repository.MarcacaoSalaRepository;
@@ -36,6 +37,9 @@ public class TurmaService {
 
     @Autowired
     private AlunoTurmaRepository alunoTurmaRepository;
+
+    @Autowired
+    private AulaRepository aulaRepository;
 
     @Autowired
     private MensalidadeRepository mensalidadeRepository;
@@ -141,6 +145,7 @@ public class TurmaService {
         AlunoTurma associacao = new AlunoTurma();
         associacao.setAluno(novo);
         associacao.setTurma(turma);
+        associacao.setAulasPorSemana(AlunoTurmaService.aulasPorSemana(aulaRepository.findByTurma(turma), LocalDate.now()));
         // associacao.setDataInscricao(LocalDate.now());
 
         alunoTurmaRepository.save(associacao);

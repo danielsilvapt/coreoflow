@@ -1,6 +1,8 @@
 package pt.studioflow.view;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.vaadin.flow.component.UI;
@@ -49,9 +51,12 @@ public class TurmaAlunosView extends VerticalLayout {
     private Grid<Aluno> gridDisponiveis;
     private Grid<Aluno> gridTurma;
 
-    // Variável para rastrear a frequência selecionada no cartão antes do
-    // arrastamento
-    private int frequenciaSelecionada = 2;
+    // Frequência da turma segundo o mapa de salas (1x/2x), usada como valor
+    // inicial de cada cartão; o que se escolher num cartão fica por aluno, para o
+    // arrastamento usar a escolha desse aluno e não a do último cartão mexido.
+    private int frequenciaTurma = 2;
+    private final Map<Long, Integer> frequenciaPorAluno = new HashMap<>();
+    private Long turmaDaFrequencia;
 
     public TurmaAlunosView(TurmaRepository turmaRepository, AlunoRepository alunoRepository,
             AlunoTurmaRepository alunoTurmaRepository, AlunoTurmaService alunoTurmaService,
@@ -190,7 +195,8 @@ public class TurmaAlunosView extends VerticalLayout {
         gridTurma.addDropListener(e -> {
             Aluno selecionado = gridDisponiveis.asSingleSelect().getValue();
             if (selecionado != null) {
-                adicionarAluno(selecionado, frequenciaSelecionada);
+                adicionarAluno(selecionado,
+                        frequenciaPorAluno.getOrDefault(selecionado.getId(), frequenciaTurma));
             }
         });
     }
@@ -210,10 +216,14 @@ public class TurmaAlunosView extends VerticalLayout {
         // Seletor de Frequência (1x ou 2x)
         ComboBox<Integer> freq = new ComboBox<>();
         freq.setItems(1, 2);
-        freq.setValue(2);
+        freq.setValue(frequenciaPorAluno.getOrDefault(aluno.getId(), frequenciaTurma));
         freq.setWidth("70px");
         freq.addThemeName("small");
-        freq.addValueChangeListener(e -> frequenciaSelecionada = e.getValue());
+        freq.addValueChangeListener(e -> {
+            if (e.getValue() != null) {
+                frequenciaPorAluno.put(aluno.getId(), e.getValue());
+            }
+        });
 
         // Impedir que o clique no seletor inicie o drag
         freq.getElement().addEventListener("mousedown", e -> {
@@ -246,10 +256,19 @@ public class TurmaAlunosView extends VerticalLayout {
     private void atualizarGrids() {
         Turma turma = turmaCombo.getValue();
         if (turma == null) {
+            frequenciaTurma = 2;
+            frequenciaPorAluno.clear();
+            turmaDaFrequencia = null;
             gridDisponiveis.setItems(List.of());
             gridTurma.setItems(List.of());
             return;
         }
+        if (!turma.getId().equals(turmaDaFrequencia)) {
+            // Outra turma: as escolhas feitas nos cartões da anterior não se aplicam.
+            frequenciaPorAluno.clear();
+            turmaDaFrequencia = turma.getId();
+        }
+        frequenciaTurma = alunoTurmaService.aulasPorSemanaDaTurma(turma);
         String filtro = searchAluno.getValue() == null ? "" : searchAluno.getValue().toLowerCase();
         List<Aluno> naTurma = alunoTurmaRepository.findByTurma(turma).stream().map(AlunoTurma::getAluno)
                 .collect(Collectors.toList());
