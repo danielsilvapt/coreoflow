@@ -146,9 +146,11 @@ public class MensalidadeConfig {
      * Valor da mensalidade no modelo {@code HORAS_SEMANA}, para um total de
      * {@code horasPorSemana} de aula somadas entre todas as turmas do aluno
      * (acima de 6h/semana usa sempre o escalão "6 ou mais", ex.: passe). O valor
-     * de meio mês é sempre metade do valor completo do escalão.
+     * de meio mês é sempre metade do valor completo do escalão, e só se aplica se
+     * o estúdio tiver a meia mensalidade automática ligada.
      */
     public double valorTabelaHoras(Studio studio, int horasPorSemana, boolean meioMes) {
+        meioMes = meioMes && studio.isMeiaMensalidadeAutomatica();
         Double cheio = switch (Math.max(1, horasPorSemana)) {
             case 1 -> studio.getTabelaHoras1();
             case 2 -> studio.getTabelaHoras2();
@@ -159,6 +161,36 @@ public class MensalidadeConfig {
         };
         double valor = cheio != null ? cheio : 0.0;
         return meioMes ? Math.round(valor * 50.0) / 100.0 : valor;
+    }
+
+    /**
+     * Mensalidade estimada (mês completo) de cada turma de um conjunto de
+     * inscrições do mesmo aluno, respeitando o modelo de preçário do estúdio.
+     * No modelo {@code HORAS_SEMANA} as aulas/semana de todas as turmas (sem
+     * mensalidade própria) somam-se num único escalão, repartido por turma de
+     * forma proporcional — o mesmo que {@code MensalidadeService} gera. Usado
+     * pelos formulários públicos e pela validação de inscrições.
+     */
+    public java.util.Map<Turma, Double> estimarMensalidadesPorTurma(Studio studio,
+            java.util.Map<Turma, Integer> turmasEFrequencia, boolean crianca, boolean socio) {
+        java.util.Map<Turma, Double> resultado = new java.util.LinkedHashMap<>();
+        String tipo = crianca ? "crianca" : "adulto";
+        if (!studio.isModeloHorasSemana()) {
+            turmasEFrequencia.forEach((t, freq) ->
+                    resultado.put(t, calcularMensalidade(studio, t, tipo, freq, socio)));
+            return resultado;
+        }
+
+        int totalHoras = turmasEFrequencia.entrySet().stream()
+                .filter(e -> valorProprioDaTurma(e.getKey(), socio) == null)
+                .mapToInt(java.util.Map.Entry::getValue).sum();
+        double pacote = totalHoras > 0 ? valorTabelaHoras(studio, totalHoras, false) : 0.0;
+        turmasEFrequencia.forEach((t, freq) -> {
+            Double proprio = valorProprioDaTurma(t, socio);
+            resultado.put(t, proprio != null ? proprio
+                    : Math.round(pacote * freq / (double) totalHoras * 100.0) / 100.0);
+        });
+        return resultado;
     }
 
     // Métodos de conveniência que lêem do Studio atual da sessão
@@ -192,11 +224,17 @@ public class MensalidadeConfig {
         double descontoMultiModalidade = !semDescontos && numModalidadesInteresse > 1
                 && studio.getDescontoMaisModalidadesPercentagem() != null
                 ? mensalidadeBaseTotal * (studio.getDescontoMaisModalidadesPercentagem() / 100.0) : 0.0;
-        double total = Math.max(0.0, mensalidadeBaseTotal + taxa - descontoFamiliar - descontoMultiModalidade);
-        return new ResumoInscricao(mensalidadeBaseTotal, taxa, descontoFamiliar, descontoMultiModalidade, total);
+        // Aluno novo num estúdio que oferece a 1ª mensalidade: o 1º pagamento é só a taxa.
+        double ofertaPrimeiraMensalidade = !renovacao && studio.isPrimeiraMensalidadeGratis()
+                ? Math.max(0.0, mensalidadeBaseTotal - descontoFamiliar - descontoMultiModalidade) : 0.0;
+        double total = Math.max(0.0, mensalidadeBaseTotal + taxa - descontoFamiliar - descontoMultiModalidade
+                - ofertaPrimeiraMensalidade);
+        return new ResumoInscricao(mensalidadeBaseTotal, taxa, descontoFamiliar, descontoMultiModalidade,
+                ofertaPrimeiraMensalidade, total);
     }
 
     /** Breakdown do valor estimado mostrado ao candidato no formulário público. */
     public record ResumoInscricao(double mensalidadeBase, double taxa, double descontoFamiliar,
-                                   double descontoMultiModalidade, double total) {}
+                                   double descontoMultiModalidade, double ofertaPrimeiraMensalidade,
+                                   double total) {}
 }

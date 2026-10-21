@@ -465,11 +465,18 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                 : 0;
         String tipo = idade > 0 && idade < 18 ? "crianca" : "adulto";
 
+        java.util.Map<Turma, Integer> turmasEFrequencia = new java.util.LinkedHashMap<>();
+        for (LinhaMensalidade linha : linhas) {
+            turmasEFrequencia.merge(linha.turma(), linha.aulasPorSemana(), Integer::sum);
+        }
+        java.util.Map<Turma, Double> valores = mensalidadeConfig.estimarMensalidadesPorTurma(
+                studio, turmasEFrequencia, "crianca".equals(tipo), socio);
+
         double base = 0;
         List<Span> linhasMensalidades = new ArrayList<>();
-        for (LinhaMensalidade linha : linhas) {
-            Turma t = linha.turma();
-            double valor = mensalidadeConfig.calcularMensalidade(studio, t, tipo, linha.aulasPorSemana(), socio);
+        for (java.util.Map.Entry<Turma, Double> entry : valores.entrySet()) {
+            Turma t = entry.getKey();
+            double valor = entry.getValue();
             base += valor;
             String modalidade = t.getModalidade() != null ? t.getModalidade().getDescricao() + " - " : "";
             Span linhaSpan = new Span(modalidade + t.getDescricao() + ": " + formatarEuro(valor) + "/mês");
@@ -494,6 +501,9 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         box.add(criarLinhaValor(renovacao ? "Taxa de renovação" : "Taxa de inscrição", resumo.taxa(), false));
         if (resumo.descontoMultiModalidade() > 0) {
             box.add(criarLinhaValor("Desconto +modalidades", -resumo.descontoMultiModalidade(), true));
+        }
+        if (resumo.ofertaPrimeiraMensalidade() > 0) {
+            box.add(criarLinhaValor("1ª mensalidade oferecida", -resumo.ofertaPrimeiraMensalidade(), true));
         }
 
         Span totalMensal = new Span("Total mensal: "
@@ -602,6 +612,11 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         repository.save(aluno);
 
         vincularTurmasEFinanceiro(aluno, notasComInteresses, isRenovacao);
+
+        Studio studioAtual = TenantContext.getCurrentStudio();
+        if (!isRenovacao && studioAtual != null && studioAtual.isPrimeiraMensalidadeGratis()) {
+            mensalidadeService.oferecerPrimeiraMensalidade(aluno);
+        }
 
         if (isRenovacao) {
             try {
@@ -715,6 +730,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                 Turma turma = turmasCompletas.getOrDefault(at.getTurma().getId(), at.getTurma());
                 double valor = mensalidades.stream()
                         .filter(m -> m.getTurma() != null && turma.getId().equals(m.getTurma().getId()))
+                        .filter(m -> !MensalidadeService.OBS_OFERTA_PRIMEIRA.equals(m.getObservacoes()))
                         .mapToDouble(Mensalidade::getValor)
                         .findFirst().orElse(0);
                 total += valor;

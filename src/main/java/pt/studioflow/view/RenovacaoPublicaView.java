@@ -315,12 +315,14 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
         resumoPagamento.removeAll();
         if (selecionadas.isEmpty()) return;
 
-        double mensalidadeBaseTotal = selecionadas.stream()
-                .mapToDouble(t -> {
-                    Select<String> freqSelect = mapaFrequencias.get(t.getId());
-                    int freq = (freqSelect != null && "1 vez / semana".equals(freqSelect.getValue())) ? 1 : 2;
-                    return mensalidadeConfig.calcularMensalidade(studioAtual, t, aluno.isCrianca() ? "crianca" : "adulto", freq, aluno.isSocio());
-                }).sum();
+        java.util.Map<Turma, Integer> turmasEFrequencia = new java.util.LinkedHashMap<>();
+        for (Turma t : selecionadas) {
+            Select<String> freqSelect = mapaFrequencias.get(t.getId());
+            turmasEFrequencia.put(t, (freqSelect != null && "1 vez / semana".equals(freqSelect.getValue())) ? 1 : 2);
+        }
+        double mensalidadeBaseTotal = mensalidadeConfig
+                .estimarMensalidadesPorTurma(studioAtual, turmasEFrequencia, aluno.isCrianca(), aluno.isSocio())
+                .values().stream().mapToDouble(Double::doubleValue).sum();
 
         long numModalidades = selecionadas.stream().map(Turma::getModalidade).map(Modalidade::getId).distinct().count();
 
