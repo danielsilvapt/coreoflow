@@ -63,6 +63,7 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
     private Studio studioAtual = null;
     private boolean temFamiliarInscrito = false;
     private Idioma idiomaAtual = Idioma.PT;
+    private CamposSaude camposSaude;
 
     private final Map<Long, Select<String>> mapaFrequencias = new HashMap<>();
     private final VerticalLayout containerFrequencias = new VerticalLayout();
@@ -129,6 +130,9 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
                 idiomaAtual = ev.getValue();
                 titulo.setText(translationService.t("renovacao.titulo", idiomaAtual));
                 subtitulo.setText(translationService.t("renovacao.subtitulo", idiomaAtual));
+                if (camposSaude != null) {
+                    camposSaude.setIdioma(idiomaAtual);
+                }
             });
             header.add(seletorIdioma);
         }
@@ -301,19 +305,24 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
         btnSubmeter.setHeight("50px");
         btnSubmeter.addClickListener(e -> submeter(aluno, turmas.getValue()));
 
-        card.add(saudacao, turmas, containerFrequencias, resumoPagamento, btnSubmeter);
+        camposSaude = new CamposSaude(translationService, idiomaAtual);
+        camposSaude.preencher(aluno);
+
+        card.add(saudacao, turmas, containerFrequencias, camposSaude, resumoPagamento, btnSubmeter);
     }
 
     private void atualizarResumo(Aluno aluno, Set<Turma> selecionadas) {
         resumoPagamento.removeAll();
         if (selecionadas.isEmpty()) return;
 
-        double mensalidadeBaseTotal = selecionadas.stream()
-                .mapToDouble(t -> {
-                    Select<String> freqSelect = mapaFrequencias.get(t.getId());
-                    int freq = (freqSelect != null && "1 vez / semana".equals(freqSelect.getValue())) ? 1 : 2;
-                    return mensalidadeConfig.calcularMensalidade(studioAtual, t, aluno.isCrianca() ? "crianca" : "adulto", freq, aluno.isSocio());
-                }).sum();
+        java.util.Map<Turma, Integer> turmasEFrequencia = new java.util.LinkedHashMap<>();
+        for (Turma t : selecionadas) {
+            Select<String> freqSelect = mapaFrequencias.get(t.getId());
+            turmasEFrequencia.put(t, (freqSelect != null && "1 vez / semana".equals(freqSelect.getValue())) ? 1 : 2);
+        }
+        double mensalidadeBaseTotal = mensalidadeConfig
+                .estimarMensalidadesPorTurma(studioAtual, turmasEFrequencia, aluno.isCrianca(), aluno.isSocio())
+                .values().stream().mapToDouble(Double::doubleValue).sum();
 
         long numModalidades = selecionadas.stream().map(Turma::getModalidade).map(Modalidade::getId).distinct().count();
 
@@ -342,6 +351,12 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
     private void submeter(Aluno aluno, Set<Turma> selecionadas) {
         if (selecionadas.isEmpty()) {
             Notification.show("Escolhe pelo menos uma turma.").addThemeVariants(NotificationVariant.LUMO_WARNING);
+            return;
+        }
+
+        if (!camposSaude.validarEAplicar(aluno)) {
+            Notification.show(translationService.t("saude.obrigatorio", idiomaAtual))
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
             return;
         }
 

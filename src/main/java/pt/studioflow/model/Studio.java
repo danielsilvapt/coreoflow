@@ -178,6 +178,22 @@ public class Studio {
     private Double tabelaHoras6Mais = 65.0;
 
     /**
+     * Modelo {@code HORAS_SEMANA}: cobra meia mensalidade automática em Setembro,
+     * Dezembro e Julho. Nulo (estúdios anteriores a esta opção) conta como ligado,
+     * para manter o comportamento original.
+     */
+    @Column(name = "meia_mensalidade_automatica")
+    private Boolean meiaMensalidadeAutomatica = true;
+
+    /**
+     * Oferece a primeira mensalidade a alunos novos: ao aceitar a inscrição, as
+     * mensalidades do primeiro mês gerado ficam a 0€ e pagas. Não se aplica a
+     * renovações. Desligado por omissão.
+     */
+    @Column(name = "primeira_mensalidade_gratis")
+    private Boolean primeiraMensalidadeGratis = false;
+
+    /**
      * Dia do mês em que a mensalidade vence (1–28). Passado esse dia sem pagamento,
      * fica "Em dívida" automaticamente. Nulo = sem vencimento automático — a
      * mensalidade nunca passa a "Em dívida" por si só, fica sempre a critério manual
@@ -369,6 +385,12 @@ public class Studio {
 
     public Double getTabelaHoras6Mais() { return tabelaHoras6Mais; }
     public void setTabelaHoras6Mais(Double v) { this.tabelaHoras6Mais = v; }
+
+    public boolean isMeiaMensalidadeAutomatica() { return !Boolean.FALSE.equals(meiaMensalidadeAutomatica); }
+    public void setMeiaMensalidadeAutomatica(Boolean v) { this.meiaMensalidadeAutomatica = v; }
+
+    public boolean isPrimeiraMensalidadeGratis() { return Boolean.TRUE.equals(primeiraMensalidadeGratis); }
+    public void setPrimeiraMensalidadeGratis(Boolean v) { this.primeiraMensalidadeGratis = v; }
 
     public Integer getDiaLimitePagamento() { return diaLimitePagamento; }
     public void setDiaLimitePagamento(Integer diaLimitePagamento) { this.diaLimitePagamento = diaLimitePagamento; }

@@ -396,6 +396,9 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         form.setColspan(nomeCompleto, 2);
         form.setColspan(morada, 2);
 
+        CamposSaude camposSaude = new CamposSaude(translationService, idiomaAtual);
+        camposSaude.bind(binder);
+
         // --- 6. BOTÃO SUBMETER ---
         Button btnSubmeter = new Button("Finalizar Inscrição");
         btnSubmeter.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
@@ -416,9 +419,10 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
             morada.setLabel(translationService.t("inscricao.morada", idiomaAtual));
             turmasInteresse.setLabel(translationService.t("inscricao.turmas", idiomaAtual));
             btnSubmeter.setText(translationService.t("inscricao.submeter", idiomaAtual));
+            camposSaude.setIdioma(idiomaAtual);
         });
 
-        VerticalLayout card = new VerticalLayout(header, layoutFoto, form, seccaoEncarregado, turmasInteresse,
+        VerticalLayout card = new VerticalLayout(header, layoutFoto, form, seccaoEncarregado, camposSaude, turmasInteresse,
                 containerFrequencias, resumoPagamento, btnSubmeter);
         card.setMaxWidth("850px");
         card.setWidth("100%");
@@ -477,12 +481,14 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         boolean crianca = dataNasc != null && java.time.Period.between(dataNasc, LocalDate.now()).getYears() < 18;
 
-        double mensalidadeBaseTotal = selecionadas.stream()
-                .mapToDouble(t -> {
-                    Select<String> freqSelect = mapaFrequencias.get(t.getId());
-                    int freq = (freqSelect != null && "1 vez / semana".equals(freqSelect.getValue())) ? 1 : 2;
-                    return mensalidadeConfig.calcularMensalidade(studioAtual, t, crianca ? "crianca" : "adulto", freq, socioVal);
-                }).sum();
+        java.util.Map<Turma, Integer> turmasEFrequencia = new java.util.LinkedHashMap<>();
+        for (Turma t : selecionadas) {
+            Select<String> freqSelect = mapaFrequencias.get(t.getId());
+            turmasEFrequencia.put(t, (freqSelect != null && "1 vez / semana".equals(freqSelect.getValue())) ? 1 : 2);
+        }
+        double mensalidadeBaseTotal = mensalidadeConfig
+                .estimarMensalidadesPorTurma(studioAtual, turmasEFrequencia, crianca, socioVal)
+                .values().stream().mapToDouble(Double::doubleValue).sum();
 
         long numModalidades = selecionadas.stream().map(Turma::getModalidade).map(Modalidade::getId).distinct().count();
 
@@ -492,8 +498,11 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         resumoPagamento.add(
                 linhaResumo("Mensalidade estimada", resumo.mensalidadeBase(), false),
                 linhaResumo("Taxa de inscrição", resumo.taxa(), false),
-                linhaResumo("Desconto +modalidades", -resumo.descontoMultiModalidade(), resumo.descontoMultiModalidade() > 0),
-                linhaResumo("Total estimado (1º pagamento)", resumo.total(), false));
+                linhaResumo("Desconto +modalidades", -resumo.descontoMultiModalidade(), resumo.descontoMultiModalidade() > 0));
+        if (resumo.ofertaPrimeiraMensalidade() > 0) {
+            resumoPagamento.add(linhaResumo("1ª mensalidade oferecida", -resumo.ofertaPrimeiraMensalidade(), true));
+        }
+        resumoPagamento.add(linhaResumo("Total estimado (1º pagamento)", resumo.total(), false));
     }
 
     private HorizontalLayout linhaResumo(String label, double valor, boolean destacarDesconto) {
