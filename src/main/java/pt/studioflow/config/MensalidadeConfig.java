@@ -203,6 +203,19 @@ public class MensalidadeConfig {
         return studio.getTaxaInscricao() != null ? studio.getTaxaInscricao() : 0.0;
     }
 
+    /**
+     * Valor depois do desconto de familiares/irmãos do estúdio: a percentagem, se
+     * configurada (&gt; 0), senão o valor fixo em euros. Nunca fica negativo.
+     */
+    public double aplicarDescontoFamiliar(Studio studio, double valor) {
+        Double pct = studio.getDescontoFamiliaresPercentagem();
+        if (pct != null && pct > 0) {
+            return Math.round(valor * (1 - pct / 100.0) * 100.0) / 100.0;
+        }
+        double euros = studio.getDescontoFamiliaresEuros() != null ? studio.getDescontoFamiliaresEuros() : 0.0;
+        return Math.max(0.0, valor - euros);
+    }
+
     public double calcularTaxaRenovacao(Studio studio) {
         return studio.getTaxaRenovacao() != null ? studio.getTaxaRenovacao() : 0.0;
     }
@@ -217,10 +230,11 @@ public class MensalidadeConfig {
     public ResumoInscricao calcularResumo(Studio studio, double mensalidadeBaseTotal, boolean renovacao,
                                            boolean temFamiliarInscrito, int numModalidadesInteresse) {
         double taxa = renovacao ? calcularTaxaRenovacao(studio) : calcularTaxaInscricao(studio);
-        // Modelo HORAS_SEMANA: tabela fechada, sem descontos (nem família, nem +modalidades).
+        // Modelo HORAS_SEMANA: o escalão já cobre várias modalidades, por isso não há
+        // desconto +modalidades; o desconto de familiares/irmãos aplica-se em todos os modelos.
         boolean semDescontos = studio.isModeloHorasSemana();
-        double descontoFamiliar = !semDescontos && temFamiliarInscrito && studio.getDescontoFamiliaresEuros() != null
-                ? studio.getDescontoFamiliaresEuros() : 0.0;
+        double descontoFamiliar = temFamiliarInscrito
+                ? mensalidadeBaseTotal - aplicarDescontoFamiliar(studio, mensalidadeBaseTotal) : 0.0;
         double descontoMultiModalidade = !semDescontos && numModalidadesInteresse > 1
                 && studio.getDescontoMaisModalidadesPercentagem() != null
                 ? mensalidadeBaseTotal * (studio.getDescontoMaisModalidadesPercentagem() / 100.0) : 0.0;
