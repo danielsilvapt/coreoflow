@@ -396,6 +396,9 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         form.setColspan(nomeCompleto, 2);
         form.setColspan(morada, 2);
 
+        CamposSaude camposSaude = new CamposSaude(translationService, idiomaAtual);
+        camposSaude.bind(binder);
+
         // --- 6. BOTÃO SUBMETER ---
         Button btnSubmeter = new Button("Finalizar Inscrição");
         btnSubmeter.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
@@ -416,9 +419,10 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
             morada.setLabel(translationService.t("inscricao.morada", idiomaAtual));
             turmasInteresse.setLabel(translationService.t("inscricao.turmas", idiomaAtual));
             btnSubmeter.setText(translationService.t("inscricao.submeter", idiomaAtual));
+            camposSaude.setIdioma(idiomaAtual);
         });
 
-        VerticalLayout card = new VerticalLayout(header, layoutFoto, form, seccaoEncarregado, turmasInteresse,
+        VerticalLayout card = new VerticalLayout(header, layoutFoto, form, seccaoEncarregado, camposSaude, turmasInteresse,
                 containerFrequencias, resumoPagamento, btnSubmeter);
         card.setMaxWidth("850px");
         card.setWidth("100%");

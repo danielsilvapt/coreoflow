@@ -162,6 +162,17 @@ public class Aluno {
     @Column(name = "pede_desconto_familiar")
     private Boolean pedeDescontoFamiliar = false;
 
+    /**
+     * Resposta a "O aluno tem algum problema de saúde?" no formulário público. Boolean para
+     * distinguir "não respondido" (NULL, fichas anteriores a este campo) de "Não".
+     */
+    @Column(name = "tem_problema_saude")
+    private Boolean temProblemaSaude;
+
+    /** Descrição do problema de saúde, quando {@link #temProblemaSaude} é true. */
+    @Column(name = "problema_saude", length = 1000)
+    private String problemaSaude;
+
     @OneToMany(mappedBy = "aluno", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Presenca> presencas;
 
@@ -416,6 +427,14 @@ public class Aluno {
 
     public boolean isPedeDescontoFamiliar() { return pedeDescontoFamiliar != null && pedeDescontoFamiliar; }
     public void setPedeDescontoFamiliar(boolean pedeDescontoFamiliar) { this.pedeDescontoFamiliar = pedeDescontoFamiliar; }
+
+    public Boolean getTemProblemaSaude() { return temProblemaSaude; }
+    public void setTemProblemaSaude(Boolean temProblemaSaude) { this.temProblemaSaude = temProblemaSaude; }
+
+    public String getProblemaSaude() { return problemaSaude; }
+    public void setProblemaSaude(String problemaSaude) {
+        this.problemaSaude = problemaSaude != null && !problemaSaude.isBlank() ? problemaSaude.trim() : null;
+    }
 
     public boolean isDadosValidados() { return Boolean.TRUE.equals(dadosValidados); }
     public void setDadosValidados(boolean dadosValidados) { this.dadosValidados = dadosValidados; }

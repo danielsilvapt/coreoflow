@@ -43,6 +43,21 @@ public class TranslationService {
         add("inscricao.sucesso.msg", " entrará em contacto muito em breve.",
                 " will contact you very soon.", " vous contactera très bientôt.");
 
+        // Saúde (inscrição e renovação)
+        add("saude.pergunta", "O aluno tem algum problema de saúde?", "Does the student have any health condition?",
+                "L'élève a-t-il un problème de santé ?");
+        add("saude.sim", "Sim", "Yes", "Oui");
+        add("saude.nao", "Não", "No", "Non");
+        add("saude.qual", "Qual?", "Which one?", "Lequel ?");
+        add("saude.placeholder", "Ex: asma, alergias, problemas cardíacos, lesões, medicação habitual...",
+                "E.g. asthma, allergies, heart conditions, injuries, regular medication...",
+                "Ex : asthme, allergies, problèmes cardiaques, blessures, traitement habituel...");
+        add("saude.obrigatorio", "Indica se o aluno tem algum problema de saúde.",
+                "Please indicate whether the student has any health condition.",
+                "Indique si l'élève a un problème de santé.");
+        add("saude.indicaQual", "Indica qual o problema de saúde.", "Please specify the health condition.",
+                "Indique le problème de santé.");
+
         // Renovação de Matrícula
         add("renovacao.titulo", "Renovação de Matrícula", "Enrollment Renewal", "Renouvellement d'Inscription");
         add("renovacao.subtitulo", "Continua connosco! Indica o teu email para começar.",

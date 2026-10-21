@@ -348,6 +348,16 @@ public class ValidacaoInscricoesView extends VerticalLayout {
 
         content.add(new H3("Dados de Contacto"), form, createField("Morada", moradaLimpa));
 
+        if (Boolean.TRUE.equals(aluno.getTemProblemaSaude())) {
+            Div avisoSaude = new Div(new Icon(VaadinIcon.DOCTOR), new Span(" Problema de saúde: "
+                    + (aluno.getProblemaSaude() != null ? aluno.getProblemaSaude() : "(não especificado)")));
+            avisoSaude.getStyle().set("background", "#FDECEA").set("color", "#8A1C1C").set("padding", "12px")
+                    .set("border-radius", "8px").set("width", "100%").set("white-space", "pre-wrap");
+            content.add(avisoSaude);
+        } else if (Boolean.FALSE.equals(aluno.getTemProblemaSaude())) {
+            content.add(createField("Problemas de saúde", "Nenhum"));
+        }
+
         if (aluno.getTurmas() != null && !aluno.getTurmas().isEmpty()) {
             content.add(new Hr(), new H3("Turma Vinculada"));
             HorizontalLayout badges = new HorizontalLayout();
