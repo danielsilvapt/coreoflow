@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import pt.studioflow.config.MensalidadeConfig;
 import pt.studioflow.model.Studio;
+import pt.studioflow.model.Turma;
 
 /** Testes puros da tabela de preçário por horas/semana (modelo HORAS_SEMANA). */
 class MensalidadeConfigTabelaHorasTest {
@@ -67,6 +68,68 @@ class MensalidadeConfigTabelaHorasTest {
         assertThat(config.valorTabelaHoras(s, 4, true)).isEqualTo(28.0);
         assertThat(config.valorTabelaHoras(s, 5, true)).isEqualTo(30.0);
         assertThat(config.valorTabelaHoras(s, 6, true)).isEqualTo(32.5);
+    }
+
+    @Test
+    void valorTabelaHoras_meiaMensalidadeDesligada_cobraValorCheio() {
+        Studio s = studioComTabelaPadrao();
+        s.setMeiaMensalidadeAutomatica(false);
+        assertThat(config.valorTabelaHoras(s, 2, true)).isEqualTo(43.0);
+    }
+
+    @Test
+    void estimarMensalidadesPorTurma_duasModalidades1x_contamComo2xSemana() {
+        Studio s = studioComTabelaPadrao();
+        s.setModeloPrecario("HORAS_SEMANA");
+        Turma ballet = new Turma();
+        Turma hipHop = new Turma();
+        java.util.Map<Turma, Integer> turmas = new java.util.LinkedHashMap<>();
+        turmas.put(ballet, 1);
+        turmas.put(hipHop, 1);
+
+        java.util.Map<Turma, Double> valores = config.estimarMensalidadesPorTurma(s, turmas, true, true);
+
+        assertThat(valores.get(ballet)).isEqualTo(21.5);
+        assertThat(valores.get(hipHop)).isEqualTo(21.5);
+        assertThat(valores.values().stream().mapToDouble(Double::doubleValue).sum()).isEqualTo(43.0);
+    }
+
+    @Test
+    void estimarMensalidadesPorTurma_modeloPadrao_valorPorTurma() {
+        Studio s = studioComTabelaPadrao();
+        s.setMensalidadeCrianca1x(28.0);
+        s.setMensalidadeNaoSocioAdicional(10.0);
+        Turma t = new Turma();
+
+        java.util.Map<Turma, Double> valores = config.estimarMensalidadesPorTurma(
+                s, java.util.Map.of(t, 1), true, true);
+
+        assertThat(valores.get(t)).isEqualTo(28.0);
+    }
+
+    @Test
+    void calcularResumo_primeiraMensalidadeGratis_alunoNovoPagaSoTaxa() {
+        Studio s = studioComTabelaPadrao();
+        s.setModeloPrecario("HORAS_SEMANA");
+        s.setTaxaInscricao(25.0);
+        s.setPrimeiraMensalidadeGratis(true);
+
+        MensalidadeConfig.ResumoInscricao resumo = config.calcularResumo(s, 43.0, false, false, 2);
+
+        assertThat(resumo.ofertaPrimeiraMensalidade()).isEqualTo(43.0);
+        assertThat(resumo.total()).isEqualTo(25.0);
+    }
+
+    @Test
+    void calcularResumo_primeiraMensalidadeGratis_naoAplicaARenovacoes() {
+        Studio s = studioComTabelaPadrao();
+        s.setTaxaRenovacao(10.0);
+        s.setPrimeiraMensalidadeGratis(true);
+
+        MensalidadeConfig.ResumoInscricao resumo = config.calcularResumo(s, 43.0, true, false, 1);
+
+        assertThat(resumo.ofertaPrimeiraMensalidade()).isZero();
+        assertThat(resumo.total()).isEqualTo(53.0);
     }
 
     @Test

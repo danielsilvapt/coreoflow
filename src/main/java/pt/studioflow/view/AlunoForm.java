@@ -28,7 +28,9 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.textfield.EmailField;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
@@ -77,6 +79,11 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
 
     private final TextField numeroIdentificacao = new TextField("Nº Identificação");
     private final TextField numeroContribuinte = new TextField("Nº Contribuinte");
+
+    // Ligados por nome em bindInstanceFields. RadioButtonGroup (e não Checkbox) para manter
+    // NULL em fichas antigas sem resposta, em vez de as gravar como "Não"
+    private final RadioButtonGroup<Boolean> temProblemaSaude = new RadioButtonGroup<>("Problema de saúde?");
+    private final TextArea problemaSaude = new TextArea("Qual?");
 
     private final Checkbox socio = new Checkbox("Sócio");
 
@@ -356,6 +363,14 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         if (campoAtivo(CampoAluno.NACIONALIDADE)) f.add(nacionalidade);
         if (campoAtivo(CampoAluno.N_IDENTIFICACAO)) f.add(numeroIdentificacao);
         if (campoAtivo(CampoAluno.N_CONTRIBUINTE)) f.add(numeroContribuinte);
+
+        temProblemaSaude.setItems(Boolean.TRUE, Boolean.FALSE);
+        temProblemaSaude.setItemLabelGenerator(v -> Boolean.TRUE.equals(v) ? "Sim" : "Não");
+        problemaSaude.setMaxLength(1000);
+        problemaSaude.setVisible(false);
+        temProblemaSaude.addValueChangeListener(e -> problemaSaude.setVisible(Boolean.TRUE.equals(e.getValue())));
+        f.add(temProblemaSaude, problemaSaude);
+        f.setColspan(problemaSaude, 2);
         return f;
     }
 

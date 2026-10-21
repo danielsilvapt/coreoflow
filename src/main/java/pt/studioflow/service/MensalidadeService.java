@@ -200,6 +200,37 @@ public class MensalidadeService {
         }
     }
 
+    /** Observação que marca as mensalidades oferecidas na inscrição. */
+    public static final String OBS_OFERTA_PRIMEIRA = "1ª mensalidade oferecida na inscrição";
+
+    /**
+     * Oferece a primeira mensalidade a um aluno novo: as mensalidades do mês mais
+     * antigo gerado (todas as turmas desse mês) passam a 0€ e pagas. Não faz nada
+     * se o aluno já recebeu esta oferta antes.
+     */
+    @Transactional
+    public void oferecerPrimeiraMensalidade(Aluno aluno) {
+        List<Mensalidade> mensalidades = mensalidadeRepository.findByAluno(aluno);
+        if (mensalidades.isEmpty()
+                || mensalidades.stream().anyMatch(m -> OBS_OFERTA_PRIMEIRA.equals(m.getObservacoes()))) {
+            return;
+        }
+        java.time.YearMonth primeiro = mensalidades.stream()
+                .map(m -> java.time.YearMonth.of(m.getAno(), m.getMes()))
+                .min(java.util.Comparator.naturalOrder()).get();
+        List<Mensalidade> doPrimeiroMes = mensalidades.stream()
+                .filter(m -> m.getAno() == primeiro.getYear() && m.getMes() == primeiro.getMonth())
+                .filter(m -> m.getEstado() == EstadoMensalidade.POR_EMITIR)
+                .toList();
+        doPrimeiroMes.forEach(m -> {
+            m.setValor(0.0);
+            m.setEstado(EstadoMensalidade.PAGO);
+            m.setDiaPagamento(LocalDate.now());
+            m.setObservacoes(OBS_OFERTA_PRIMEIRA);
+        });
+        mensalidadeRepository.saveAll(doPrimeiroMes);
+    }
+
     /**
      * Gera mensalidades para todos os alunos de uma turma.
      */

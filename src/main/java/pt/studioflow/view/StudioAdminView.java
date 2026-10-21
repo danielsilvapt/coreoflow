@@ -273,7 +273,7 @@ public class StudioAdminView extends VerticalLayout {
         modeloPrecario.setWidthFull();
         modeloPrecario.setHelperText("\"Tabela por horas/semana\": soma as aulas/semana de todas as turmas do "
                 + "aluno e cobra um valor único de pacote. Desliga os descontos automáticos de família e "
-                + "+modalidades, e aplica meia mensalidade automática em Setembro, Dezembro e Julho.");
+                + "+modalidades.");
 
         NumberField tabelaHoras1 = new NumberField("1h/semana — mensalidade completa (€)");
         tabelaHoras1.setValue(studio.getTabelaHoras1() != null ? studio.getTabelaHoras1() : 35.0);
@@ -298,7 +298,9 @@ public class StudioAdminView extends VerticalLayout {
         NumberField tabelaHoras6Mais = new NumberField("6+ horas/semana — passe (€)");
         tabelaHoras6Mais.setValue(studio.getTabelaHoras6Mais() != null ? studio.getTabelaHoras6Mais() : 65.0);
         tabelaHoras6Mais.setMin(0);
-        tabelaHoras6Mais.setHelperText("O valor de meio mês (Set/Dez/Jul) é sempre metade do valor completo do escalão.");
+
+        Checkbox meiaMensalidade = new Checkbox("Meia mensalidade automática em Setembro, Dezembro e Julho");
+        meiaMensalidade.setValue(studio.isMeiaMensalidadeAutomatica());
 
         FormLayout grupoPadrao = new FormLayout(mensalidadeCrianca1x, mensalidadeCrianca2x,
                 mensalidadeAdulto1x, mensalidadeAdulto2x, naoSocioAdicional);
@@ -306,7 +308,8 @@ public class StudioAdminView extends VerticalLayout {
         grupoPadrao.setWidthFull();
 
         FormLayout grupoHorasSemana = new FormLayout(tabelaHoras1, tabelaHoras2, tabelaHoras3,
-                tabelaHoras4, tabelaHoras5, tabelaHoras6Mais);
+                tabelaHoras4, tabelaHoras5, tabelaHoras6Mais, meiaMensalidade);
+        grupoHorasSemana.setColspan(meiaMensalidade, 3);
         grupoHorasSemana.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
         grupoHorasSemana.setWidthFull();
 
@@ -357,6 +360,9 @@ public class StudioAdminView extends VerticalLayout {
         taxaRenovacao.setValue(studio.getTaxaRenovacao() != null ? studio.getTaxaRenovacao() : 0.0);
         taxaRenovacao.setMin(0);
 
+        Checkbox primeiraGratis = new Checkbox("1ª mensalidade gratuita para alunos novos");
+        primeiraGratis.setValue(studio.isPrimeiraMensalidadeGratis());
+
         Checkbox ativo = new Checkbox("Estúdio ativo");
         ativo.setValue(studio.isAtivo());
 
@@ -372,7 +378,7 @@ public class StudioAdminView extends VerticalLayout {
                 diaLimitePagamento,
                 multaAtraso,
                 descontoFamiliares, descontoDirecao, descontoMaisModal, descontoMais65,
-                taxaInscricao, taxaRenovacao,
+                taxaInscricao, taxaRenovacao, primeiraGratis,
                 ativo, enviarEmails);
 
         // --- Modelo de Preçário ---
@@ -636,6 +642,7 @@ public class StudioAdminView extends VerticalLayout {
             studio.setTabelaHoras4(tabelaHoras4.getValue());
             studio.setTabelaHoras5(tabelaHoras5.getValue());
             studio.setTabelaHoras6Mais(tabelaHoras6Mais.getValue());
+            studio.setMeiaMensalidadeAutomatica(meiaMensalidade.getValue());
             studio.setDiaLimitePagamento(diaLimitePagamento.getValue() != null
                     ? Math.max(1, Math.min(28, (int) Math.round(diaLimitePagamento.getValue()))) : null);
             studio.setMultaAtrasoPercentagem(multaAtraso.getValue() != null ? Math.max(0, multaAtraso.getValue()) : 0.0);
@@ -645,6 +652,7 @@ public class StudioAdminView extends VerticalLayout {
             studio.setDescontoMais65Percentagem(descontoMais65.getValue());
             studio.setTaxaInscricao(taxaInscricao.getValue());
             studio.setTaxaRenovacao(taxaRenovacao.getValue());
+            studio.setPrimeiraMensalidadeGratis(primeiraGratis.getValue());
             studio.setAtivo(ativo.getValue());
             studio.setEnviarEmails(Boolean.TRUE.equals(enviarEmails.getValue()));
 
