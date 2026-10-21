@@ -399,7 +399,7 @@ public class MensalidadeView extends VerticalLayout {
 
         // Aplica a dedução por cima do valor base correto
         return switch (tipo) {
-            case DESCONTO_FAMILIARES -> Math.max(0.0, valorBase - TenantContext.getCurrentStudio().getDescontoFamiliaresEuros());
+            case DESCONTO_FAMILIARES -> mensalidadeConfig.aplicarDescontoFamiliar(TenantContext.getCurrentStudio(), valorBase);
             case DESCONTO_MAIS_DE_UMA_MODALIDADE -> valorBase * (1 - (TenantContext.getCurrentStudio().getDescontoMaisModalidadesPercentagem() / 100.0));
             case DESCONTO_ELEMENTO_DIRECAO -> valorBase * (1 - (TenantContext.getCurrentStudio().getDescontoDirecaoPercentagem() / 100.0));
             case DESCONTO_MAIS_65 -> valorBase * (1 - (TenantContext.getCurrentStudio().getDescontoMais65Percentagem() / 100.0));

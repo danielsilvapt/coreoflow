@@ -343,6 +343,10 @@ public class StudioAdminView extends VerticalLayout {
         NumberField descontoFamiliares = new NumberField("Desconto Familiares (€)");
         descontoFamiliares.setValue(studio.getDescontoFamiliaresEuros());
 
+        NumberField descontoFamiliaresPct = new NumberField("Desconto Familiares/Irmãos (%)");
+        descontoFamiliaresPct.setValue(studio.getDescontoFamiliaresPercentagem());
+        descontoFamiliaresPct.setHelperText("Se preenchido, substitui o valor em €.");
+
         NumberField descontoDirecao = new NumberField("Desconto Direção (%)");
         descontoDirecao.setValue(studio.getDescontoDirecaoPercentagem());
 
@@ -377,7 +381,7 @@ public class StudioAdminView extends VerticalLayout {
                 emailAssinante1, emailAssinante2,
                 diaLimitePagamento,
                 multaAtraso,
-                descontoFamiliares, descontoDirecao, descontoMaisModal, descontoMais65,
+                descontoFamiliares, descontoFamiliaresPct, descontoDirecao, descontoMaisModal, descontoMais65,
                 taxaInscricao, taxaRenovacao, primeiraGratis,
                 ativo, enviarEmails);
 
@@ -647,6 +651,7 @@ public class StudioAdminView extends VerticalLayout {
                     ? Math.max(1, Math.min(28, (int) Math.round(diaLimitePagamento.getValue()))) : null);
             studio.setMultaAtrasoPercentagem(multaAtraso.getValue() != null ? Math.max(0, multaAtraso.getValue()) : 0.0);
             studio.setDescontoFamiliaresEuros(descontoFamiliares.getValue());
+            studio.setDescontoFamiliaresPercentagem(descontoFamiliaresPct.getValue());
             studio.setDescontoDirecaoPercentagem(descontoDirecao.getValue());
             studio.setDescontoMaisModalidadesPercentagem(descontoMaisModal.getValue());
             studio.setDescontoMais65Percentagem(descontoMais65.getValue());

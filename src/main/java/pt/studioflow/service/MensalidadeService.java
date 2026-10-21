@@ -90,7 +90,7 @@ public class MensalidadeService {
         Double valorProprio = config.valorProprioDaTurma(turma, aluno.isSocio());
         if (valorProprio != null) {
             double valor = valorProprio;
-            gerarMensalidadesComValor(aluno, turma, studio, mes -> valor);
+            gerarMensalidadesComValor(aluno, turma, studio, mes -> valor, null);
             return;
         }
 
@@ -109,9 +109,14 @@ public class MensalidadeService {
         if (!socio) {
             valorBase += studio.getMensalidadeNaoSocioAdicional();
         }
+        boolean familiar = aluno.isDescontoFamiliar();
+        if (familiar) {
+            valorBase = config.aplicarDescontoFamiliar(studio, valorBase);
+        }
 
         double valorFinal = valorBase;
-        gerarMensalidadesComValor(aluno, turma, studio, mes -> valorFinal);
+        gerarMensalidadesComValor(aluno, turma, studio, mes -> valorFinal,
+                familiar ? TipoDesconto.DESCONTO_FAMILIARES : null);
     }
 
     /**
@@ -138,12 +143,17 @@ public class MensalidadeService {
             return;
         }
 
+        // Desconto de familiares/irmãos: incide sobre o pacote, antes de o repartir.
+        boolean familiar = aluno.isDescontoFamiliar();
         for (AlunoTurma insc : inscricoes) {
             double fracao = insc.getAulasPorSemana() / (double) totalHoras;
             gerarMensalidadesComValor(aluno, insc.getTurma(), studio, mes -> {
                 double pacote = config.valorTabelaHoras(studio, totalHoras, config.isMesMeioMensalidade(mes));
+                if (familiar) {
+                    pacote = config.aplicarDescontoFamiliar(studio, pacote);
+                }
                 return Math.round(pacote * fracao * 100.0) / 100.0;
-            });
+            }, familiar ? TipoDesconto.DESCONTO_FAMILIARES : null);
         }
     }
 
@@ -154,7 +164,7 @@ public class MensalidadeService {
      * ficam intactos (idempotente).
      */
     private void gerarMensalidadesComValor(Aluno aluno, Turma turma, pt.studioflow.model.Studio studio,
-            java.util.function.Function<Month, Double> valorPorMes) {
+            java.util.function.Function<Month, Double> valorPorMes, TipoDesconto desconto) {
         LocalDate hoje = LocalDate.now();
         int mesAtual = hoje.getMonthValue();
 
@@ -190,6 +200,7 @@ public class MensalidadeService {
             m.setMes(monthEnum);
             m.setEstado(EstadoMensalidade.POR_EMITIR);
             m.setValor(valorPorMes.apply(monthEnum));
+            m.setDesconto(desconto);
             m.setStudio(studio);
 
             mensalidades.add(m);

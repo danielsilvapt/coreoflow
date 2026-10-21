@@ -35,6 +35,7 @@ class MensalidadePacotePagoTest {
     @Autowired private AlunoRepository alunoRepository;
     @Autowired private MensalidadeRepository mensalidadeRepository;
     @Autowired private MensalidadeService mensalidadeService;
+    @Autowired private pt.studioflow.repository.AlunoTurmaRepository alunoTurmaRepository;
 
     private Studio studio;
     private Modalidade modalidade;
@@ -103,6 +104,35 @@ class MensalidadePacotePagoTest {
                 .isEqualTo(EstadoMensalidade.POR_EMITIR);
         assertThat(mensalidadeRepository.findById(propria.getId()).get().getEstado())
                 .isEqualTo(EstadoMensalidade.POR_EMITIR);
+    }
+
+    @Test
+    void gerar_modeloHorasSemana_irmaoComDescontoPercentual() {
+        preparar("pacote-irmao", "HORAS_SEMANA");
+        studio.setDescontoFamiliaresPercentagem(10.0);
+        studio.setMeiaMensalidadeAutomatica(false);
+        studio = studioRepository.save(studio);
+        aluno.setDescontoFamiliar(true);
+        aluno = alunoRepository.save(aluno);
+        Turma a = turma("A", null);
+        Turma b = turma("B", null);
+        for (Turma t : java.util.List.of(a, b)) {
+            pt.studioflow.model.AlunoTurma at = new pt.studioflow.model.AlunoTurma();
+            at.setAluno(aluno);
+            at.setTurma(t);
+            at.setAulasPorSemana(1);
+            alunoTurmaRepository.save(at);
+        }
+
+        mensalidadeService.gerarMensalidadesParaAluno(aluno, a);
+
+        java.util.List<Mensalidade> geradas = mensalidadeRepository.findByAluno(aluno);
+        assertThat(geradas).isNotEmpty();
+        // 43€ (2 aulas/semana) - 10% = 38,70€, repartidos por 2 turmas
+        assertThat(geradas).allSatisfy(m -> {
+            assertThat(m.getValor()).isEqualTo(19.35);
+            assertThat(m.getDesconto()).isEqualTo(pt.studioflow.model.TipoDesconto.DESCONTO_FAMILIARES);
+        });
     }
 
     @Test
