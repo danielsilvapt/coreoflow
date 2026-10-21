@@ -217,6 +217,13 @@ public class Studio {
     @Column(name = "desconto_familiares_euros")
     private Double descontoFamiliaresEuros = 5.0;
 
+    /**
+     * Desconto de familiares/irmãos em percentagem sobre a mensalidade. Quando &gt; 0
+     * substitui {@link #descontoFamiliaresEuros}. Nulo/0 = usa o valor em euros.
+     */
+    @Column(name = "desconto_familiares_percentagem")
+    private Double descontoFamiliaresPercentagem;
+
     @Column(name = "desconto_direcao_percentagem")
     private Double descontoDirecaoPercentagem = 50.0;
 
@@ -400,6 +407,9 @@ public class Studio {
 
     public Double getDescontoFamiliaresEuros() { return descontoFamiliaresEuros; }
     public void setDescontoFamiliaresEuros(Double v) { this.descontoFamiliaresEuros = v; }
+
+    public Double getDescontoFamiliaresPercentagem() { return descontoFamiliaresPercentagem; }
+    public void setDescontoFamiliaresPercentagem(Double v) { this.descontoFamiliaresPercentagem = v; }
 
     public Double getDescontoDirecaoPercentagem() { return descontoDirecaoPercentagem; }
     public void setDescontoDirecaoPercentagem(Double v) { this.descontoDirecaoPercentagem = v; }

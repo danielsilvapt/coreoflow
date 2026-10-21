@@ -163,6 +163,13 @@ public class Aluno {
     private Boolean pedeDescontoFamiliar = false;
 
     /**
+     * Desconto de familiares/irmãos confirmado pela secretaria: as mensalidades geradas
+     * levam {@link TipoDesconto#DESCONTO_FAMILIARES} com o valor configurado no estúdio.
+     */
+    @Column(name = "desconto_familiar")
+    private Boolean descontoFamiliar = false;
+
+    /**
      * Resposta a "O aluno tem algum problema de saúde?" no formulário público. Boolean para
      * distinguir "não respondido" (NULL, fichas anteriores a este campo) de "Não".
      */
@@ -427,6 +434,9 @@ public class Aluno {
 
     public boolean isPedeDescontoFamiliar() { return pedeDescontoFamiliar != null && pedeDescontoFamiliar; }
     public void setPedeDescontoFamiliar(boolean pedeDescontoFamiliar) { this.pedeDescontoFamiliar = pedeDescontoFamiliar; }
+
+    public boolean isDescontoFamiliar() { return Boolean.TRUE.equals(descontoFamiliar); }
+    public void setDescontoFamiliar(boolean descontoFamiliar) { this.descontoFamiliar = descontoFamiliar; }
 
     public Boolean getTemProblemaSaude() { return temProblemaSaude; }
     public void setTemProblemaSaude(Boolean temProblemaSaude) { this.temProblemaSaude = temProblemaSaude; }

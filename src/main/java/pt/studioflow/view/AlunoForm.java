@@ -86,6 +86,7 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
     private final TextArea problemaSaude = new TextArea("Qual?");
 
     private final Checkbox socio = new Checkbox("Sócio");
+    private final Checkbox descontoFamiliar = new Checkbox("Desconto de irmãos/familiares");
 
     private final TextField numeroSocio = new TextField("Nº Sócio");
     private final Select<String> seguroDesportivo = new Select<>();
@@ -295,7 +296,7 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         if (campoAtivo(CampoAluno.GENERO)) infoRapida.add(genero);
         if (campoAtivo(CampoAluno.SOCIO)) infoRapida.add(numeroSocio);
 
-        HorizontalLayout socioAtivoRow = new HorizontalLayout(ativo);
+        HorizontalLayout socioAtivoRow = new HorizontalLayout(ativo, descontoFamiliar);
         socioAtivoRow.setSpacing(true);
         if (campoAtivo(CampoAluno.SOCIO)) {
             socioAtivoRow.addComponentAsFirst(socio);

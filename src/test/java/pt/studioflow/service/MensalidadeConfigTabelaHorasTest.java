@@ -140,17 +140,27 @@ class MensalidadeConfigTabelaHorasTest {
     }
 
     @Test
-    void calcularResumo_modeloHorasSemana_ignoraDescontos() {
+    void calcularResumo_modeloHorasSemana_semDescontoMaisModalidades_comDescontoIrmaos() {
         Studio s = studioComTabelaPadrao();
         s.setModeloPrecario("HORAS_SEMANA");
-        s.setDescontoFamiliaresEuros(5.0);
+        s.setDescontoFamiliaresPercentagem(10.0);
         s.setDescontoMaisModalidadesPercentagem(25.0);
         s.setTaxaInscricao(25.0);
 
         MensalidadeConfig.ResumoInscricao resumo = config.calcularResumo(s, 43.0, false, true, 2);
 
-        assertThat(resumo.descontoFamiliar()).isZero();
+        assertThat(resumo.descontoFamiliar()).isCloseTo(4.3, org.assertj.core.data.Offset.offset(0.001));
         assertThat(resumo.descontoMultiModalidade()).isZero();
-        assertThat(resumo.total()).isEqualTo(43.0 + 25.0);
+        assertThat(resumo.total()).isCloseTo(38.7 + 25.0, org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    @Test
+    void aplicarDescontoFamiliar_percentagemSubstituiEuros() {
+        Studio s = studioComTabelaPadrao();
+        s.setDescontoFamiliaresEuros(5.0);
+        assertThat(config.aplicarDescontoFamiliar(s, 43.0)).isEqualTo(38.0);
+
+        s.setDescontoFamiliaresPercentagem(10.0);
+        assertThat(config.aplicarDescontoFamiliar(s, 43.0)).isEqualTo(38.7);
     }
 }

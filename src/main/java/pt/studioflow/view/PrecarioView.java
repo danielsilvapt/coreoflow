@@ -112,6 +112,10 @@ public class PrecarioView extends VerticalLayout {
 
         // --- Descontos ---
         NumberField descFamiliares = campoEuro("Desconto familiares (€)", studio.getDescontoFamiliaresEuros());
+        NumberField descFamiliaresPct = campoEuro("Desconto familiares/irmãos (%)",
+                studio.getDescontoFamiliaresPercentagem());
+        descFamiliaresPct.setHelperText("Se preenchido, substitui o valor em €. Aplica-se aos alunos marcados "
+                + "com \"Desconto de irmãos/familiares\" na ficha.");
         NumberField descDirecao = campoEuro("Desconto direção (%)", studio.getDescontoDirecaoPercentagem());
         NumberField descMaisModal = campoEuro("Desconto +modalidades (%)", studio.getDescontoMaisModalidadesPercentagem());
         NumberField descMais65 = campoEuro("Desconto +65 anos (%)", studio.getDescontoMais65Percentagem());
@@ -141,6 +145,7 @@ public class PrecarioView extends VerticalLayout {
             studio.setTaxaRenovacao(taxaRenovacao.getValue());
             studio.setPrimeiraMensalidadeGratis(primeiraGratis.getValue());
             studio.setDescontoFamiliaresEuros(descFamiliares.getValue());
+            studio.setDescontoFamiliaresPercentagem(descFamiliaresPct.getValue());
             studio.setDescontoDirecaoPercentagem(descDirecao.getValue());
             studio.setDescontoMaisModalidadesPercentagem(descMaisModal.getValue());
             studio.setDescontoMais65Percentagem(descMais65.getValue());
@@ -154,7 +159,7 @@ public class PrecarioView extends VerticalLayout {
         add(seccao("Mensalidades"), modeloPrecario, grupoPadrao, grupoHoras,
                 seccao("Pagamentos e taxas"), grelha(diaLimite, multa, taxaInscricao, taxaRenovacao),
                 primeiraGratis,
-                seccao("Descontos"), grelha(descFamiliares, descDirecao, descMaisModal, descMais65),
+                seccao("Descontos"), grelha(descFamiliares, descFamiliaresPct, descDirecao, descMaisModal, descMais65),
                 notaAlteracoes, guardar);
     }
 

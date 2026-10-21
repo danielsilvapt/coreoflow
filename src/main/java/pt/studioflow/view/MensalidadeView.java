@@ -77,17 +77,24 @@ public class MensalidadeView extends VerticalLayout {
     private List<Mensalidade> ultimaFiltragem = new ArrayList<>();
 
     private final pt.studioflow.config.MensalidadeConfig mensalidadeConfig;
+    private final pt.studioflow.service.MensalidadeService mensalidadeService;
+
+    // Modelo por aulas/semana: cada linha da grelha representa o pacote do aluno no mês;
+    // aqui ficam as partes (uma por turma) de cada linha, indexadas pelo id da linha.
+    private java.util.Map<Long, List<Mensalidade>> pacotes = new java.util.HashMap<>();
 
     public MensalidadeView(MensalidadeRepository mensalidadeRepository,
             TurmaRepository turmaRepository,
             VendusApiService vendusService,
             TocOnlineApiService tocOnlineService,
-            pt.studioflow.config.MensalidadeConfig mensalidadeConfig) {
+            pt.studioflow.config.MensalidadeConfig mensalidadeConfig,
+            pt.studioflow.service.MensalidadeService mensalidadeService) {
         this.mensalidadeRepository = mensalidadeRepository;
         this.turmaRepository = turmaRepository;
         this.vendusService = vendusService;
         this.tocOnlineService = tocOnlineService;
         this.mensalidadeConfig = mensalidadeConfig;
+        this.mensalidadeService = mensalidadeService;
 
         setSizeFull();
         setPadding(true);
@@ -243,14 +250,15 @@ public class MensalidadeView extends VerticalLayout {
                     .set("border-radius", "50%").set("display", "flex").set("align-items", "center")
                     .set("justify-content", "center").set("font-weight", "bold").set("color", "#FF5D13");
 
-            VerticalLayout info = new VerticalLayout(new Span(m.getAluno().getNomeCompleto()),
-                    new Span(m.getTurma().getDescricao()));
+            List<Mensalidade> partes = partes(m);
+            Span turmas = new Span(partes.size() > 1
+                    ? partes.size() + " aulas/semana · " + partes.stream()
+                            .map(p -> p.getTurma().getDescricao()).collect(Collectors.joining(", "))
+                    : m.getTurma().getDescricao());
+            turmas.getStyle().set("font-size", "10px").set("color", "#7f8c8d");
+            VerticalLayout info = new VerticalLayout(new Span(m.getAluno().getNomeCompleto()), turmas);
             info.setPadding(false);
             info.setSpacing(false);
-            info.getChildren().forEach(c -> {
-                if (((Span) c).getText().equals(m.getTurma().getDescricao()))
-                    c.getStyle().set("font-size", "10px").set("color", "#7f8c8d");
-            });
             layout.add(avatar, info);
             return layout;
         })).setHeader("Aluno / Turma").setFlexGrow(1);
@@ -290,14 +298,22 @@ public class MensalidadeView extends VerticalLayout {
 
         selectDesconto.addValueChangeListener(event -> {
             TipoDesconto novoDesconto = event.getValue();
-            m.setDesconto(novoDesconto);
-
             atualizarCorSelectDesconto(selectDesconto, novoDesconto);
 
-            double novoValor = calcularValorComDesconto(m, novoDesconto);
-            m.setValor(novoValor);
-
-            mensalidadeRepository.save(m);
+            List<Mensalidade> partes = partes(m);
+            if (estudioPorPacote()) {
+                // Pacote: o desconto incide sobre o escalão total e é repartido pelas partes.
+                pt.studioflow.model.Studio s = TenantContext.getCurrentStudio();
+                double escalao = mensalidadeConfig.valorTabelaHoras(s, partes.size(),
+                        mensalidadeConfig.isMesMeioMensalidade(m.getMes()));
+                partes.forEach(p -> p.setDesconto(novoDesconto));
+                repartir(partes, aplicarDesconto(escalao, novoDesconto));
+                mensalidadeRepository.saveAll(partes);
+            } else {
+                m.setDesconto(novoDesconto);
+                m.setValor(calcularValorComDesconto(m, novoDesconto));
+                mensalidadeRepository.save(m);
+            }
             updateList();
         });
 
@@ -373,15 +389,17 @@ public class MensalidadeView extends VerticalLayout {
 
     private double calcularValorComDesconto(Mensalidade m, TipoDesconto tipo) {
         // Busca o valor base (25, 28, 30 ou 33) definido nas propriedades
-        double valorBase = obterValorBaseTabela(m);
+        return aplicarDesconto(obterValorBaseTabela(m), tipo);
+    }
 
+    private double aplicarDesconto(double valorBase, TipoDesconto tipo) {
         if (tipo == null) {
             return valorBase;
         }
 
         // Aplica a dedução por cima do valor base correto
         return switch (tipo) {
-            case DESCONTO_FAMILIARES -> Math.max(0.0, valorBase - TenantContext.getCurrentStudio().getDescontoFamiliaresEuros());
+            case DESCONTO_FAMILIARES -> mensalidadeConfig.aplicarDescontoFamiliar(TenantContext.getCurrentStudio(), valorBase);
             case DESCONTO_MAIS_DE_UMA_MODALIDADE -> valorBase * (1 - (TenantContext.getCurrentStudio().getDescontoMaisModalidadesPercentagem() / 100.0));
             case DESCONTO_ELEMENTO_DIRECAO -> valorBase * (1 - (TenantContext.getCurrentStudio().getDescontoDirecaoPercentagem() / 100.0));
             case DESCONTO_MAIS_65 -> valorBase * (1 - (TenantContext.getCurrentStudio().getDescontoMais65Percentagem() / 100.0));
@@ -392,6 +410,8 @@ public class MensalidadeView extends VerticalLayout {
         Button badge = new Button();
         badge.addClassName("status-badge");
         EstadoMensalidade estado = calcularEstadoEfetivo(m);
+        List<Mensalidade> partes = partes(m);
+        boolean misto = partes.stream().map(this::calcularEstadoEfetivo).distinct().count() > 1;
 
         switch (estado) {
             case PAGO -> {
@@ -415,12 +435,29 @@ public class MensalidadeView extends VerticalLayout {
                 badge.setIcon(VaadinIcon.CLOCK.create());
             }
         }
+        if (misto) {
+            badge.setText("Misto");
+            badge.getElement().setAttribute("title", partes.stream()
+                    .map(p -> p.getTurma().getDescricao() + ": " + calcularEstadoEfetivo(p))
+                    .collect(Collectors.joining("\n")));
+        }
         badge.addClickListener(e -> {
             EstadoMensalidade novoEstado = proximoEstado(m);
-            m.setEstado(novoEstado);
-            mensalidadeRepository.save(m);
+            partes.forEach(p -> p.setEstado(novoEstado));
+            mensalidadeRepository.saveAll(partes);
 
-            // Faturação automática: ao passar para FATURADO, emite fatura no programa configurado (se ativo)
+            // Modelo por aulas/semana: o mês é um pacote único, pagar uma parte paga as restantes
+            // (incluindo partes que os filtros atuais escondem).
+            int outrasPagas = mensalidadeService.marcarPacoteDoMesComoPago(m,
+                    pt.studioflow.config.TenantContext.getCurrentStudio());
+            if (outrasPagas > 0) {
+                Notification.show("Também marcadas como pagas " + outrasPagas
+                        + " outra(s) mensalidade(s) de " + m.getAluno().getNomeCompleto() + " neste mês.")
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            }
+
+            // Faturação automática: ao passar para FATURADO, emite uma fatura (do pacote inteiro)
+            // no programa configurado (se ativo)
             if (novoEstado == EstadoMensalidade.FATURADO) {
                 pt.studioflow.model.Studio s = pt.studioflow.config.TenantContext.getCurrentStudio();
                 if (s != null && s.isFaturacaoAutomatica()) {
@@ -460,24 +497,29 @@ public class MensalidadeView extends VerticalLayout {
     }
 
     private Component criarCampoValor(Mensalidade m) {
+        // Num pacote (modelo por aulas/semana) o campo mostra e edita o total do mês;
+        // um total novo é repartido igualmente pelas partes.
+        List<Mensalidade> partes = partes(m);
+        double total = arred(partes.stream().mapToDouble(Mensalidade::getValor).sum());
         NumberField field = new NumberField();
-        field.setValue(m.getValor());
+        field.setValue(total);
         field.setSuffixComponent(new Span("€"));
         field.setWidth("90px");
         field.addThemeName("small");
-        field.setReadOnly(m.getEstado() == EstadoMensalidade.PAGO);
+        field.setReadOnly(partes.stream().anyMatch(p -> p.getEstado() == EstadoMensalidade.PAGO));
         field.addValueChangeListener(e -> {
-            if (e.getValue() != null && !e.getValue().equals(m.getValor())) {
-                m.setValor(e.getValue());
-                mensalidadeRepository.save(m);
+            if (e.getValue() != null && Math.abs(e.getValue() - total) > 0.001) {
+                repartir(partes, e.getValue());
+                mensalidadeRepository.saveAll(partes);
                 aplicarFiltros(); // Atualiza stats conforme valor mudou
             }
         });
 
         // Em dívida com multa configurada: mostra o total efetivo (valor + multa) como
         // referência, mas o campo continua a editar o valor base da mensalidade.
-        double comMulta = mensalidadeConfig.valorComMulta(m, TenantContext.getCurrentStudio());
-        if (comMulta > m.getValor()) {
+        pt.studioflow.model.Studio studio = TenantContext.getCurrentStudio();
+        double comMulta = partes.stream().mapToDouble(p -> mensalidadeConfig.valorComMulta(p, studio)).sum();
+        if (comMulta > total + 0.001) {
             field.setHelperText(String.format("Com multa: %.2f €", comMulta));
         }
         return field;
@@ -531,17 +573,92 @@ public class MensalidadeView extends VerticalLayout {
                                                                                                                   // adicionada
                 .collect(Collectors.toList());
 
-        grid.setItems(filtradas);
+        List<Mensalidade> linhas = agruparEmPacotes(filtradas);
+        grid.setItems(linhas);
         updateStats(filtradas);
 
-        ultimaFiltragem = filtradas;
+        // Num estúdio por pacote, faturar abrange o pacote inteiro de cada aluno mostrado.
+        ultimaFiltragem = linhas.stream().flatMap(m -> partes(m).stream()).distinct().collect(Collectors.toList());
         boolean turmaEspecifica = turmaFilter.getValue() instanceof Turma;
         boolean mesEspecifico = mesFilter.getValue() != null && !mesFilter.getValue().equals("Todos");
-        long porFaturar = filtradas.stream().filter(m -> m.getEstado() == EstadoMensalidade.POR_EMITIR).count();
+        long porFaturar = ultimaFiltragem.stream().filter(m -> m.getEstado() == EstadoMensalidade.POR_EMITIR).count();
 
         btnFaturarTodos.setVisible(turmaEspecifica && mesEspecifico);
         btnFaturarTodos.setText("Faturar Todos (" + porFaturar + ")");
         btnFaturarTodos.setEnabled(porFaturar > 0);
+    }
+
+    // =====================================================
+    // PACOTES (modelo por aulas/semana)
+    // =====================================================
+
+    private boolean estudioPorPacote() {
+        pt.studioflow.model.Studio s = TenantContext.getCurrentStudio();
+        return s != null && s.isModeloHorasSemana();
+    }
+
+    /**
+     * Chave do pacote de uma mensalidade: aluno + ano + mês. Turmas com mensalidade
+     * própria (competição, workshops) são cobranças à parte e ficam sozinhas.
+     */
+    private String chavePacote(Mensalidade m) {
+        if (mensalidadeConfig.valorProprioDaTurma(m.getTurma(), m.getAluno().isSocio()) != null) {
+            return "m" + m.getId();
+        }
+        return m.getAluno().getId() + "-" + m.getAno() + "-" + m.getMes();
+    }
+
+    /**
+     * Nos estúdios por aulas/semana devolve uma linha por pacote (aluno/mês), com
+     * todas as partes — incluindo as que os filtros escondem, ex.: filtro de turma —
+     * guardadas em {@link #pacotes}. Nos outros estúdios devolve a lista tal como está.
+     */
+    private List<Mensalidade> agruparEmPacotes(List<Mensalidade> filtradas) {
+        pacotes = new java.util.HashMap<>();
+        if (!estudioPorPacote()) {
+            return filtradas;
+        }
+        java.util.Map<String, List<Mensalidade>> todasPorChave = listaMensalidades.stream()
+                .sorted(Comparator.comparing(Mensalidade::getId))
+                .collect(Collectors.groupingBy(this::chavePacote, java.util.LinkedHashMap::new, Collectors.toList()));
+        java.util.Set<String> vistas = new java.util.HashSet<>();
+        List<Mensalidade> linhas = new ArrayList<>();
+        for (Mensalidade m : filtradas) {
+            String chave = chavePacote(m);
+            if (vistas.add(chave)) {
+                List<Mensalidade> partes = todasPorChave.getOrDefault(chave, List.of(m));
+                pacotes.put(m.getId(), partes);
+                linhas.add(m);
+            }
+        }
+        return linhas;
+    }
+
+    /** Partes do pacote representado por esta linha (só ela própria fora do modelo por pacote). */
+    private List<Mensalidade> partes(Mensalidade m) {
+        return pacotes.getOrDefault(m.getId(), List.of(m));
+    }
+
+    /** Reparte {@code total} igualmente pelas partes; os cêntimos que sobram vão para a última. */
+    private void repartir(List<Mensalidade> partes, double total) {
+        double parte = arred(total / partes.size());
+        for (int i = 0; i < partes.size(); i++) {
+            partes.get(i).setValor(i < partes.size() - 1 ? parte : arred(total - parte * (partes.size() - 1)));
+        }
+    }
+
+    private static double arred(double v) {
+        return Math.round(v * 100.0) / 100.0;
+    }
+
+    private double totalPacote(Mensalidade m) {
+        return arred(partes(m).stream().mapToDouble(Mensalidade::getValor).sum());
+    }
+
+    private void marcarPacoteFaturado(Mensalidade m) {
+        List<Mensalidade> partes = partes(m);
+        partes.forEach(p -> p.setEstado(EstadoMensalidade.FATURADO));
+        mensalidadeRepository.saveAll(partes);
     }
 
     private void confirmarFaturarTodos() {
@@ -584,14 +701,14 @@ public class MensalidadeView extends VerticalLayout {
         Dialog confirm = new Dialog();
         confirm.setHeaderTitle("Emitir Fatura - " + (tocOnline ? "TOCOnline" : "Vendus"));
         confirm.add(
-                new Span("Confirmar emissão de " + m.getValor() + "€ para " + m.getAluno().getNomeCompleto() + "?"));
+                new Span("Confirmar emissão de " + totalPacote(m) + "€ para " + m.getAluno().getNomeCompleto() + "?"));
         Button btnConfirm = new Button("Emitir Agora", ev -> {
             String mesStr = m.getMes().getDisplayName(TextStyle.FULL, new Locale("pt", "PT"));
             String descricao = "Mensalidade " + mesStr + " " + m.getAno();
             boolean sucesso;
             if (tocOnline) {
                 String resultado = tocOnlineService.emitirFatura(studio, nif, m.getAluno().getNomeCompleto(),
-                        descricao, m.getValor());
+                        descricao, totalPacote(m));
                 sucesso = resultado.contains("Sucesso");
                 if (!sucesso) {
                     Notification.show(resultado, 5000, Notification.Position.MIDDLE)
@@ -602,13 +719,12 @@ public class MensalidadeView extends VerticalLayout {
                 sucesso = false;
                 if (resCliente.contains("ID Vendus: ")) {
                     String idVendus = resCliente.split("ID Vendus: ")[1].replace(")", "").trim();
-                    String resultado = vendusService.criarFaturaComVendusPay(idVendus, descricao, m.getValor());
+                    String resultado = vendusService.criarFaturaComVendusPay(idVendus, descricao, totalPacote(m));
                     sucesso = resultado.contains("Sucesso");
                 }
             }
             if (sucesso) {
-                m.setEstado(EstadoMensalidade.FATURADO);
-                mensalidadeRepository.save(m);
+                marcarPacoteFaturado(m);
                 updateList();
                 Notification.show("Fatura emitida!").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             }
@@ -622,9 +738,12 @@ public class MensalidadeView extends VerticalLayout {
     private void confirmarEliminacao(Mensalidade m) {
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle("Eliminar Registo");
-        dialog.add(new Span("Deseja realmente eliminar esta mensalidade?"));
+        List<Mensalidade> partes = partes(m);
+        dialog.add(new Span(partes.size() > 1
+                ? "Deseja realmente eliminar as " + partes.size() + " mensalidades deste mês (todas as turmas)?"
+                : "Deseja realmente eliminar esta mensalidade?"));
         Button del = new Button("Eliminar", e -> {
-            mensalidadeRepository.delete(m);
+            mensalidadeRepository.deleteAll(partes);
             updateList();
             dialog.close();
         });
@@ -667,11 +786,10 @@ public class MensalidadeView extends VerticalLayout {
             String idVendus = resCliente.split("ID Vendus: ")[1].replace(")", "").trim();
             String descricao = "Mensalidade " + m.getMes().getDisplayName(
                     java.time.format.TextStyle.FULL, new java.util.Locale("pt")) + " " + m.getAno();
-            String resultado = vendusService.criarFaturaComVendusPay(idVendus, descricao, m.getValor());
+            String resultado = vendusService.criarFaturaComVendusPay(idVendus, descricao, totalPacote(m));
 
             if (resultado != null && resultado.contains("uccess")) {
-                m.setEstado(EstadoMensalidade.FATURADO);
-                mensalidadeRepository.save(m);
+                marcarPacoteFaturado(m);
                 com.vaadin.flow.component.notification.Notification
                         .show("✅ Fatura Vendus emitida automaticamente")
                         .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);
@@ -689,11 +807,10 @@ public class MensalidadeView extends VerticalLayout {
             String descricao = "Mensalidade " + m.getMes().getDisplayName(
                     java.time.format.TextStyle.FULL, new java.util.Locale("pt")) + " " + m.getAno();
             String resultado = tocOnlineService.emitirFatura(studio, nif, m.getAluno().getNomeCompleto(),
-                    descricao, m.getValor());
+                    descricao, totalPacote(m));
 
             if (resultado != null && resultado.contains("Sucesso")) {
-                m.setEstado(EstadoMensalidade.FATURADO);
-                mensalidadeRepository.save(m);
+                marcarPacoteFaturado(m);
                 com.vaadin.flow.component.notification.Notification
                         .show("✅ Fatura TOCOnline emitida automaticamente")
                         .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);
