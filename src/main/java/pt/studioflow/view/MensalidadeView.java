@@ -77,17 +77,20 @@ public class MensalidadeView extends VerticalLayout {
     private List<Mensalidade> ultimaFiltragem = new ArrayList<>();
 
     private final pt.studioflow.config.MensalidadeConfig mensalidadeConfig;
+    private final pt.studioflow.service.MensalidadeService mensalidadeService;
 
     public MensalidadeView(MensalidadeRepository mensalidadeRepository,
             TurmaRepository turmaRepository,
             VendusApiService vendusService,
             TocOnlineApiService tocOnlineService,
-            pt.studioflow.config.MensalidadeConfig mensalidadeConfig) {
+            pt.studioflow.config.MensalidadeConfig mensalidadeConfig,
+            pt.studioflow.service.MensalidadeService mensalidadeService) {
         this.mensalidadeRepository = mensalidadeRepository;
         this.turmaRepository = turmaRepository;
         this.vendusService = vendusService;
         this.tocOnlineService = tocOnlineService;
         this.mensalidadeConfig = mensalidadeConfig;
+        this.mensalidadeService = mensalidadeService;
 
         setSizeFull();
         setPadding(true);
@@ -419,6 +422,15 @@ public class MensalidadeView extends VerticalLayout {
             EstadoMensalidade novoEstado = proximoEstado(m);
             m.setEstado(novoEstado);
             mensalidadeRepository.save(m);
+
+            // Modelo por aulas/semana: o mês é um pacote único, pagar uma parte paga as restantes.
+            int outrasPagas = mensalidadeService.marcarPacoteDoMesComoPago(m,
+                    pt.studioflow.config.TenantContext.getCurrentStudio());
+            if (outrasPagas > 0) {
+                Notification.show("Também marcadas como pagas " + outrasPagas
+                        + " outra(s) mensalidade(s) de " + m.getAluno().getNomeCompleto() + " neste mês.")
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            }
 
             // Faturação automática: ao passar para FATURADO, emite fatura no programa configurado (se ativo)
             if (novoEstado == EstadoMensalidade.FATURADO) {

@@ -200,6 +200,35 @@ public class MensalidadeService {
         }
     }
 
+    /**
+     * Modelo {@code HORAS_SEMANA}: a mensalidade do mês é um pacote único repartido
+     * pelas turmas do aluno, por isso pagar uma parte é pagar o pacote. Marca como
+     * {@code PAGO} as restantes partes desse aluno/mês (excluindo turmas com
+     * mensalidade própria, que são cobranças à parte). Devolve quantas mudaram.
+     * Noutros modelos não faz nada.
+     */
+    @Transactional
+    public int marcarPacoteDoMesComoPago(Mensalidade paga, pt.studioflow.model.Studio studio) {
+        if (studio == null || !studio.isModeloHorasSemana() || paga.getEstado() != EstadoMensalidade.PAGO) {
+            return 0;
+        }
+        Aluno aluno = paga.getAluno();
+        List<Mensalidade> outras = mensalidadeRepository.findByAlunoAndAnoAndMes(aluno, paga.getAno(), paga.getMes())
+                .stream()
+                .filter(m -> !m.getId().equals(paga.getId()))
+                .filter(m -> m.getEstado() != EstadoMensalidade.PAGO)
+                .filter(m -> config.valorProprioDaTurma(m.getTurma(), aluno.isSocio()) == null)
+                .toList();
+        outras.forEach(m -> {
+            m.setEstado(EstadoMensalidade.PAGO);
+            if (m.getDiaPagamento() == null) {
+                m.setDiaPagamento(paga.getDiaPagamento() != null ? paga.getDiaPagamento() : LocalDate.now());
+            }
+        });
+        mensalidadeRepository.saveAll(outras);
+        return outras.size();
+    }
+
     /** Observação que marca as mensalidades oferecidas na inscrição. */
     public static final String OBS_OFERTA_PRIMEIRA = "1ª mensalidade oferecida na inscrição";
 
