@@ -32,12 +32,18 @@ import pt.studioflow.model.Idioma;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.StudioModulo;
 import pt.studioflow.service.LogoUploadService;
+import pt.studioflow.service.StudioRemocaoService;
 import pt.studioflow.service.StudioService;
 import pt.studioflow.service.TocOnlineApiService;
 import pt.studioflow.view.component.ColorPickerField;
+import com.vaadin.flow.component.html.ListItem;
+import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.UnorderedList;
+import com.vaadin.flow.data.value.ValueChangeMode;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -52,13 +58,15 @@ public class StudioAdminView extends VerticalLayout {
     private final StudioService studioService;
     private final LogoUploadService logoUploadService;
     private final TocOnlineApiService tocOnlineApiService;
+    private final StudioRemocaoService studioRemocaoService;
     private final Grid<Studio> grid = new Grid<>(Studio.class, false);
 
     public StudioAdminView(StudioService studioService, LogoUploadService logoUploadService,
-            TocOnlineApiService tocOnlineApiService) {
+            TocOnlineApiService tocOnlineApiService, StudioRemocaoService studioRemocaoService) {
         this.studioService = studioService;
         this.logoUploadService = logoUploadService;
         this.tocOnlineApiService = tocOnlineApiService;
+        this.studioRemocaoService = studioRemocaoService;
         setSizeFull();
         setPadding(true);
 
@@ -91,8 +99,10 @@ public class StudioAdminView extends VerticalLayout {
                         carregarDados();
                     });
 
-            return new HorizontalLayout(edit, toggle);
-        }).setHeader("Ações").setWidth("120px").setFlexGrow(0);
+            Button eliminar = ViewUtils.botaoEliminar(e -> confirmarRemocao(studio));
+
+            return new HorizontalLayout(edit, toggle, eliminar);
+        }).setHeader("Ações").setWidth("160px").setFlexGrow(0);
 
         grid.addColumn(Studio::getId).setHeader("ID").setWidth("60px").setFlexGrow(0);
 
@@ -137,6 +147,69 @@ public class StudioAdminView extends VerticalLayout {
 
     private void carregarDados() {
         grid.setItems(studioService.findAll());
+    }
+
+    /**
+     * Remoção definitiva: só para estúdios inativos, mostra o que vai ser apagado e
+     * exige escrever o slug para confirmar.
+     */
+    private void confirmarRemocao(Studio studio) {
+        if (studio.isAtivo()) {
+            Notification.show("Desative o estúdio antes de o remover.", 4000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
+        Map<String, Long> contagens;
+        try {
+            contagens = studioRemocaoService.contarDados(studio.getId());
+        } catch (IllegalStateException ex) {
+            Notification.show(ex.getMessage(), 8000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Remover estúdio \"" + studio.getNome() + "\"");
+        dialog.setWidth("520px");
+
+        Paragraph aviso = new Paragraph("Esta ação é definitiva e não pode ser desfeita. Serão apagados "
+                + "o estúdio e todos os seus dados:");
+        aviso.getStyle().set("color", "var(--lumo-error-text-color)").set("font-weight", "600");
+
+        UnorderedList lista = new UnorderedList();
+        contagens.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .forEach(c -> lista.add(new ListItem(c.getKey() + ": " + c.getValue())));
+        lista.getStyle().set("max-height", "240px").set("overflow", "auto").set("font-size", "0.9rem");
+
+        Paragraph nota = new Paragraph("Ficheiros externos (logótipo, vídeos e fotos no R2) não são apagados.");
+        nota.getStyle().set("font-size", "0.85rem").set("color", "var(--lumo-secondary-text-color)");
+
+        TextField confirmacao = new TextField("Escreva \"" + studio.getSlug() + "\" para confirmar");
+        confirmacao.setWidthFull();
+
+        Button remover = new Button("Remover definitivamente", e -> {
+            try {
+                Map<String, Long> apagadas = studioRemocaoService.remover(studio.getId());
+                long total = apagadas.values().stream().mapToLong(Long::longValue).sum();
+                dialog.close();
+                carregarDados();
+                Notification.show("Estúdio removido (" + total + " registos apagados).", 5000,
+                        Notification.Position.BOTTOM_CENTER).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (IllegalStateException ex) {
+                Notification.show(ex.getMessage(), 8000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        remover.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        remover.setEnabled(false);
+        confirmacao.setValueChangeMode(ValueChangeMode.EAGER);
+        confirmacao.addValueChangeListener(e -> remover.setEnabled(studio.getSlug().equals(e.getValue().trim())));
+
+        dialog.add(new VerticalLayout(aviso, lista, nota, confirmacao));
+        dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), remover);
+        dialog.open();
     }
 
     private void atualizarEstadoTocOnline(Span destino, Studio studio) {
