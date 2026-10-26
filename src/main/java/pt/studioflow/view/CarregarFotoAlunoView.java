@@ -17,8 +17,10 @@ import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.RolesAllowed;
+import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Aluno;
+import pt.studioflow.model.Studio;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.service.R2StorageService;
 
@@ -29,7 +31,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Sort;
 
 @Route("carregar-foto")
-@AnonymousAllowed
+@RolesAllowed("ADMIN")
 public class CarregarFotoAlunoView extends VerticalLayout {
 
     private final AlunoRepository alunoRepository;
@@ -68,8 +70,11 @@ public class CarregarFotoAlunoView extends VerticalLayout {
         // --- 1. SELEÇÃO DO ALUNO ---
         comboAluno = new ComboBox<>("Escolha o Aluno");
         comboAluno.setWidthFull();
-        // Carrega todos os alunos da base de dados
-        comboAluno.setItems(alunoRepository.findAll(Sort.by(Sort.Direction.ASC, "nomeCompleto")));
+        // Apenas os alunos do estúdio atual (multi-tenant)
+        Studio studio = TenantContext.getCurrentStudio();
+        comboAluno.setItems(studio != null
+                ? alunoRepository.findAllByStudioOrderByNomeCompletoAsc(studio)
+                : alunoRepository.findAll(Sort.by(Sort.Direction.ASC, "nomeCompleto")));
         // Mostra o Nome e o NIF para os pais não se enganarem se houver nomes repetidos
         comboAluno.setItemLabelGenerator(
                 aluno -> aluno.getNomeCompleto() + " (NIF: " + aluno.getNumeroContribuinte() + ")");
