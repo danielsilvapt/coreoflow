@@ -791,7 +791,10 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         Studio studio = TenantContext.getCurrentStudio();
         turmasCache = studio != null ? turmaRepository.findAllByStudio(studio) : turmaRepository.findAllComplete();
 
-        List<Aluno> lista = repository.findByStatusWithTurmas(List.of(AlunoStatus.PENDENTE, AlunoStatus.EXPERIMENTAL));
+        List<AlunoStatus> statuses = List.of(AlunoStatus.PENDENTE, AlunoStatus.EXPERIMENTAL);
+        List<Aluno> lista = new ArrayList<>(studio != null
+                ? repository.findByStatusWithTurmasByStudio(statuses, studio)
+                : repository.findByStatusWithTurmas(statuses));
         lista.sort(Comparator.comparing(Aluno::getNomeCompleto, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
 
         long renovacoes = lista.stream().filter(Aluno::isPedidoRenovacao).count();
