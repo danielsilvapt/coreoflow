@@ -52,6 +52,13 @@ public class LogCaptureService {
     /** Limite global: nunca mais de um alerta por minuto, mesmo que sejam erros diferentes. */
     private volatile LocalDateTime ultimoAlertaGlobal = LocalDateTime.MIN;
     private static final Duration COOLDOWN_GLOBAL = Duration.ofSeconds(60);
+    /**
+     * Loggers cujos ERROR são ruído conhecido e inofensivo: continuam gravados em BD,
+     * mas não geram alerta. BrowserDetails: o Vaadin regista ERROR quando não consegue
+     * interpretar o user-agent de browsers como o MIUI (ex.: "14.54.0-gn"), mas segue em frente.
+     */
+    private static final java.util.Set<String> LOGGERS_SEM_ALERTA = java.util.Set.of(
+            "com.vaadin.flow.shared.BrowserDetails");
 
     public LogCaptureService(LogEntryRepository repo, SuporteService suporteService) {
         this.repo = repo;
@@ -109,7 +116,7 @@ public class LogCaptureService {
         }
 
         for (LogEntry e : lote) {
-            if ("ERROR".equals(e.getNivel())) {
+            if ("ERROR".equals(e.getNivel()) && !LOGGERS_SEM_ALERTA.contains(e.getLogger())) {
                 avaliarAlerta(e);
             }
         }

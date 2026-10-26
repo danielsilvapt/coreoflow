@@ -28,6 +28,7 @@ import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Professor;
 import pt.studioflow.model.Studio;
 import pt.studioflow.repository.ProfessorRepository;
+import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.service.RemuneracaoService;
 
 @Route(value = "professores", layout = MainLayout.class)
@@ -37,11 +38,14 @@ public class ProfessorView extends VerticalLayout {
 
     private final ProfessorRepository professorRepository;
     private final RemuneracaoService remuneracaoService;
+    private final TurmaRepository turmaRepository;
     private final Grid<Professor> grid = new Grid<>(Professor.class, false);
 
-    public ProfessorView(ProfessorRepository professorRepository, RemuneracaoService remuneracaoService) {
+    public ProfessorView(ProfessorRepository professorRepository, RemuneracaoService remuneracaoService,
+                         TurmaRepository turmaRepository) {
         this.professorRepository = professorRepository;
         this.remuneracaoService = remuneracaoService;
+        this.turmaRepository = turmaRepository;
 
         setSizeFull();
         setPadding(false);
@@ -284,6 +288,21 @@ public class ProfessorView extends VerticalLayout {
 
     // ---------- REMOVER COM CONFIRMAÇÃO ----------
     private void confirmarRemocao(Professor professor) {
+        // Verificar antes de apagar: a FK turma.professor_id faria o delete rebentar
+        java.util.List<pt.studioflow.model.Turma> turmas = turmaRepository.findByProfessorOrCoProfessor(professor);
+        if (!turmas.isEmpty()) {
+            String nomes = turmas.stream().map(pt.studioflow.model.Turma::getCodigo)
+                    .limit(5).collect(java.util.stream.Collectors.joining(", "));
+            if (turmas.size() > 5) {
+                nomes += " e mais " + (turmas.size() - 5);
+            }
+            Notification n = Notification.show("Não é possível remover " + professor.getNome()
+                    + ": está associado a " + turmas.size() + " turma(s) (" + nomes
+                    + "). Atribua outro professor a essas turmas primeiro.", 7000, Notification.Position.MIDDLE);
+            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
         ConfirmDialog confirm = new ConfirmDialog();
         confirm.setHeader("Remover Professor");
         confirm.setText("Tem a certeza que quer remover " + professor.getNome() + "? Esta ação não pode ser desfeita.");
@@ -292,7 +311,15 @@ public class ProfessorView extends VerticalLayout {
         confirm.setConfirmText("Remover");
         confirm.setConfirmButtonTheme("error primary");
         confirm.addConfirmListener(e -> {
-            professorRepository.delete(professor);
+            try {
+                professorRepository.delete(professor);
+            } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+                // ainda referenciado noutro lado (aulas, vídeos, substituições)
+                Notification.show("Não é possível remover " + professor.getNome()
+                        + ": tem aulas ou vídeos associados.", 6000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
             atualizarGrid();
             Notification.show("Professor removido", 2000, Notification.Position.BOTTOM_CENTER)
                     .addThemeVariants(NotificationVariant.LUMO_CONTRAST);
