@@ -86,10 +86,65 @@ public class Turma {
     @Column(name = "mensalidade_nao_socio")
     private Double mensalidadeNaoSocio;
 
+    /**
+     * Mensalidade própria por frequência semanal, no formato {@code "1:35;3:45"}
+     * (1 treino/semana 35€, 3 treinos/semana 45€). Tem prioridade sobre
+     * {@link #mensalidadeSocio}/{@link #mensalidadeNaoSocio}, é um valor final
+     * (sem acréscimo de não-sócio) e define também as frequências que o
+     * formulário público oferece para esta turma.
+     */
+    @Column(name = "precos_frequencia")
+    private String precosFrequencia;
+
     /** true se esta turma tem preço próprio em vez da tabela do estúdio. */
     @Transient
     public boolean temMensalidadePropria() {
-        return mensalidadeSocio != null || mensalidadeNaoSocio != null;
+        return mensalidadeSocio != null || mensalidadeNaoSocio != null || !getTabelaFrequencia().isEmpty();
+    }
+
+    /** {@link #precosFrequencia} interpretado: aulas/semana → valor, por ordem crescente. */
+    @Transient
+    public java.util.SortedMap<Integer, Double> getTabelaFrequencia() {
+        java.util.SortedMap<Integer, Double> tabela = new java.util.TreeMap<>();
+        if (precosFrequencia == null) return tabela;
+        for (String par : precosFrequencia.split(";")) {
+            String[] kv = par.split(":");
+            if (kv.length != 2) continue;
+            try {
+                tabela.put(Integer.parseInt(kv[0].trim()), Double.parseDouble(kv[1].trim().replace(',', '.')));
+            } catch (NumberFormatException ignored) {
+                // par mal formado: ignora-se
+            }
+        }
+        return tabela;
+    }
+
+    /** Frequências (aulas/semana) que um aluno pode escolher nesta turma. */
+    @Transient
+    public java.util.List<Integer> getFrequenciasDisponiveis() {
+        java.util.SortedMap<Integer, Double> tabela = getTabelaFrequencia();
+        return tabela.isEmpty() ? java.util.List.of(1, 2) : java.util.List.copyOf(tabela.keySet());
+    }
+
+    /** Rótulo usado nos formulários e nas notas de interesses, ex.: "3 vezes / semana". */
+    public static String rotuloFrequencia(int aulasPorSemana) {
+        return aulasPorSemana == 1 ? "1 vez / semana" : aulasPorSemana + " vezes / semana";
+    }
+
+    /** Inverso de {@link #rotuloFrequencia}; um rótulo ilegível conta como 2x (omissão antiga). */
+    public static int frequenciaDoRotulo(String rotulo) {
+        if (rotulo != null && !rotulo.isEmpty() && Character.isDigit(rotulo.charAt(0))) {
+            return Character.getNumericValue(rotulo.charAt(0));
+        }
+        return 2;
+    }
+
+    public String getPrecosFrequencia() {
+        return precosFrequencia;
+    }
+
+    public void setPrecosFrequencia(String precosFrequencia) {
+        this.precosFrequencia = precosFrequencia;
     }
 
     public Double getMensalidadeSocio() {
