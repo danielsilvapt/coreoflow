@@ -304,8 +304,10 @@ public class MensalidadeView extends VerticalLayout {
             if (estudioPorPacote()) {
                 // Pacote: o desconto incide sobre o escalão total e é repartido pelas partes.
                 pt.studioflow.model.Studio s = TenantContext.getCurrentStudio();
-                double escalao = mensalidadeConfig.valorTabelaHoras(s, partes.size(),
-                        mensalidadeConfig.isMesMeioMensalidade(m.getMes()));
+                double escalao = s.isModeloModalidades()
+                        ? mensalidadeService.valorPacoteAtual(m.getAluno(), s, m.getMes())
+                        : mensalidadeConfig.valorTabelaHoras(s, partes.size(),
+                                mensalidadeConfig.isMesMeioMensalidade(m.getMes()));
                 partes.forEach(p -> p.setDesconto(novoDesconto));
                 repartir(partes, aplicarDesconto(escalao, novoDesconto));
                 mensalidadeRepository.saveAll(partes);
@@ -338,9 +340,11 @@ public class MensalidadeView extends VerticalLayout {
         // 2b. Turma com mensalidade própria (competição, workshops) — valor fechado,
         // usado tal-qual como base para o cálculo de descontos.
         if (turmaCarregada != null && turmaCarregada.temMensalidadePropria()) {
-            Double proprio = turmaCarregada.getMensalidadeSocio() != null
-                    ? turmaCarregada.getMensalidadeSocio()
-                    : turmaCarregada.getMensalidadeNaoSocio();
+            Double proprio = turmaCarregada.getTabelaFrequencia().isEmpty()
+                    ? (turmaCarregada.getMensalidadeSocio() != null
+                            ? turmaCarregada.getMensalidadeSocio()
+                            : turmaCarregada.getMensalidadeNaoSocio())
+                    : mensalidadeConfig.valorProprioDaTurma(turmaCarregada, true, aulasSemanais);
             if (proprio != null) return proprio;
         }
 
@@ -589,12 +593,12 @@ public class MensalidadeView extends VerticalLayout {
     }
 
     // =====================================================
-    // PACOTES (modelo por aulas/semana)
+    // PACOTES (modelos por aulas/semana e por modalidades)
     // =====================================================
 
     private boolean estudioPorPacote() {
         pt.studioflow.model.Studio s = TenantContext.getCurrentStudio();
-        return s != null && s.isModeloHorasSemana();
+        return s != null && s.isModeloPacote();
     }
 
     /**

@@ -57,9 +57,9 @@ public class MensalidadeService {
      * Gera mensalidades para um aluno de uma turma, considerando o modelo de
      * preçário do estúdio:
      * - Turma com mensalidade própria (competição, workshops) → esse valor, sempre.
-     * - Modelo {@code HORAS_SEMANA} → pacote único por total de horas/semana do
-     *   aluno, repartido proporcionalmente por todas as suas turmas (ver
-     *   {@link #gerarMensalidadesModeloHorasSemana}).
+     * - Modelos por pacote ({@code HORAS_SEMANA}, {@code MODALIDADES}) → pacote
+     *   único do aluno, repartido proporcionalmente por todas as suas turmas (ver
+     *   {@link #gerarMensalidadesModeloPacote}).
      * - Modelo {@code PADRAO} (omissão) → criança/adulto × 1x/2x, com acréscimo
      *   de não-sócio.
      */
@@ -87,15 +87,15 @@ public class MensalidadeService {
         // Turmas com mensalidade própria (competição, workshops) não seguem a tabela
         // do estúdio nem levam o acréscimo de não-sócio — o valor configurado é final,
         // independentemente do modelo de preçário do estúdio.
-        Double valorProprio = config.valorProprioDaTurma(turma, aluno.isSocio());
+        Double valorProprio = config.valorProprioDaTurma(turma, aluno.isSocio(), at.getAulasPorSemana());
         if (valorProprio != null) {
             double valor = valorProprio;
             gerarMensalidadesComValor(aluno, turma, studio, mes -> valor, null);
             return;
         }
 
-        if (studio != null && studio.isModeloHorasSemana()) {
-            gerarMensalidadesModeloHorasSemana(aluno, studio);
+        if (studio != null && studio.isModeloPacote()) {
+            gerarMensalidadesModeloPacote(aluno, studio);
             return;
         }
 
@@ -120,20 +120,18 @@ public class MensalidadeService {
     }
 
     /**
-     * Modelo {@code HORAS_SEMANA}: soma as "aulas por semana" de todas as turmas
-     * do aluno (excluindo as com mensalidade própria e as sem mensalidade),
-     * procura o pacote correspondente na tabela do estúdio (com meio mês
-     * automático em Setembro/Dezembro/Julho) e reparte esse valor por cada turma,
+     * Modelos por pacote: junta as turmas do aluno (excluindo as com mensalidade
+     * própria e as sem mensalidade), procura o pacote correspondente na tabela do
+     * estúdio — por total de aulas/semana ({@code HORAS_SEMANA}) ou por número de
+     * modalidades ({@code MODALIDADES}), com meio mês automático em
+     * Setembro/Dezembro/Julho — e reparte esse valor por cada turma,
      * proporcionalmente ao seu peso semanal — assim a receita/remuneração por
      * turma continua a fazer sentido apesar do valor ser um pacote único.
      * Não recalcula mensalidades já geradas noutras turmas (mesma limitação do
      * modelo PADRAO: a mudança só se reflete nos meses ainda por gerar).
      */
-    private void gerarMensalidadesModeloHorasSemana(Aluno aluno, pt.studioflow.model.Studio studio) {
-        List<AlunoTurma> inscricoes = alunoTurmaRepository.findByAluno(aluno).stream()
-                .filter(a -> !a.isSemMensalidade())
-                .filter(a -> config.valorProprioDaTurma(a.getTurma(), aluno.isSocio()) == null)
-                .toList();
+    private void gerarMensalidadesModeloPacote(Aluno aluno, pt.studioflow.model.Studio studio) {
+        List<AlunoTurma> inscricoes = inscricoesNoPacote(aluno);
         if (inscricoes.isEmpty()) {
             return;
         }
@@ -145,16 +143,41 @@ public class MensalidadeService {
 
         // Desconto de familiares/irmãos: incide sobre o pacote, antes de o repartir.
         boolean familiar = aluno.isDescontoFamiliar();
+        java.util.Map<Turma, Integer> turmasEFrequencia = frequencias(inscricoes);
         for (AlunoTurma insc : inscricoes) {
             double fracao = insc.getAulasPorSemana() / (double) totalHoras;
             gerarMensalidadesComValor(aluno, insc.getTurma(), studio, mes -> {
-                double pacote = config.valorTabelaHoras(studio, totalHoras, config.isMesMeioMensalidade(mes));
+                double pacote = config.valorPacote(studio, turmasEFrequencia, config.isMesMeioMensalidade(mes));
                 if (familiar) {
                     pacote = config.aplicarDescontoFamiliar(studio, pacote);
                 }
                 return Math.round(pacote * fracao * 100.0) / 100.0;
             }, familiar ? TipoDesconto.DESCONTO_FAMILIARES : null);
         }
+    }
+
+    /** Inscrições do aluno que entram no pacote mensal (sem mensalidade própria nem isentas). */
+    private List<AlunoTurma> inscricoesNoPacote(Aluno aluno) {
+        return alunoTurmaRepository.findByAluno(aluno).stream()
+                .filter(a -> !a.isSemMensalidade())
+                .filter(a -> config.valorProprioDaTurma(a.getTurma(), aluno.isSocio(), a.getAulasPorSemana()) == null)
+                .toList();
+    }
+
+    private static java.util.Map<Turma, Integer> frequencias(List<AlunoTurma> inscricoes) {
+        java.util.Map<Turma, Integer> mapa = new java.util.LinkedHashMap<>();
+        inscricoes.forEach(a -> mapa.merge(a.getTurma(), a.getAulasPorSemana(), Integer::sum));
+        return mapa;
+    }
+
+    /**
+     * Valor completo (antes de descontos) do pacote do aluno no mês, segundo as
+     * inscrições atuais. Usado para recalcular um pacote quando muda o desconto.
+     */
+    @Transactional(readOnly = true)
+    public double valorPacoteAtual(Aluno aluno, pt.studioflow.model.Studio studio, Month mes) {
+        java.util.Map<Turma, Integer> turmas = frequencias(inscricoesNoPacote(aluno));
+        return turmas.isEmpty() ? 0.0 : config.valorPacote(studio, turmas, config.isMesMeioMensalidade(mes));
     }
 
     /**
@@ -212,7 +235,7 @@ public class MensalidadeService {
     }
 
     /**
-     * Modelo {@code HORAS_SEMANA}: a mensalidade do mês é um pacote único repartido
+     * Modelos por pacote: a mensalidade do mês é um pacote único repartido
      * pelas turmas do aluno, por isso pagar uma parte é pagar o pacote. Marca como
      * {@code PAGO} as restantes partes desse aluno/mês (excluindo turmas com
      * mensalidade própria, que são cobranças à parte). Devolve quantas mudaram.
@@ -220,7 +243,7 @@ public class MensalidadeService {
      */
     @Transactional
     public int marcarPacoteDoMesComoPago(Mensalidade paga, pt.studioflow.model.Studio studio) {
-        if (studio == null || !studio.isModeloHorasSemana() || paga.getEstado() != EstadoMensalidade.PAGO) {
+        if (studio == null || !studio.isModeloPacote() || paga.getEstado() != EstadoMensalidade.PAGO) {
             return 0;
         }
         Aluno aluno = paga.getAluno();

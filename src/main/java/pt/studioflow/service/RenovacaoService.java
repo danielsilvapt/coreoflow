@@ -53,7 +53,7 @@ public class RenovacaoService {
         String interesses = turmasEFrequencia.entrySet().stream()
                 .map(entry -> {
                     Turma t = entry.getKey();
-                    String freq = entry.getValue() == 1 ? "1 vez / semana" : "2 vezes / semana";
+                    String freq = Turma.rotuloFrequencia(entry.getValue());
                     return t.getModalidade().getDescricao() + " " + t.getDescricao() + " (" + freq + ")";
                 })
                 .collect(Collectors.joining(", "));
