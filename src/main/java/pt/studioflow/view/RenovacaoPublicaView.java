@@ -277,9 +277,10 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
             atuaisSel.forEach(t -> {
                 if (!mapaFrequencias.containsKey(t.getId())) {
                     Select<String> freqSelect = new Select<>();
-                    freqSelect.setItems("1 vez / semana", "2 vezes / semana");
+                    java.util.List<Integer> freqs = t.getFrequenciasDisponiveis();
+                    freqSelect.setItems(freqs.stream().map(Turma::rotuloFrequencia).toList());
                     int freqDefault = frequenciaAtual.getOrDefault(t.getId(), 2);
-                    freqSelect.setValue(freqDefault == 1 ? "1 vez / semana" : "2 vezes / semana");
+                    freqSelect.setValue(Turma.rotuloFrequencia(freqs.contains(freqDefault) ? freqDefault : freqs.get(0)));
                     freqSelect.setLabel("Frequência em " + t.getDescricao());
                     freqSelect.setWidthFull();
                     freqSelect.addValueChangeListener(ev -> atualizarResumo(aluno, turmas.getValue()));
@@ -318,7 +319,7 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
         java.util.Map<Turma, Integer> turmasEFrequencia = new java.util.LinkedHashMap<>();
         for (Turma t : selecionadas) {
             Select<String> freqSelect = mapaFrequencias.get(t.getId());
-            turmasEFrequencia.put(t, (freqSelect != null && "1 vez / semana".equals(freqSelect.getValue())) ? 1 : 2);
+            turmasEFrequencia.put(t, freqSelect != null ? Turma.frequenciaDoRotulo(freqSelect.getValue()) : 2);
         }
         double mensalidadeBaseTotal = mensalidadeConfig
                 .estimarMensalidadesPorTurma(studioAtual, turmasEFrequencia, aluno.isCrianca(), aluno.isSocio())
@@ -363,7 +364,7 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
         Map<Turma, Integer> turmasEFrequencia = new HashMap<>();
         for (Turma t : selecionadas) {
             Select<String> freqSelect = mapaFrequencias.get(t.getId());
-            int freq = (freqSelect != null && "1 vez / semana".equals(freqSelect.getValue())) ? 1 : 2;
+            int freq = freqSelect != null ? Turma.frequenciaDoRotulo(freqSelect.getValue()) : 2;
             turmasEFrequencia.put(t, freq);
         }
 

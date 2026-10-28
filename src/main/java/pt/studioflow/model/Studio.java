@@ -144,9 +144,11 @@ public class Studio {
 
     /**
      * Modelo de preçário usado para calcular as mensalidades: {@code PADRAO}
-     * (criança/adulto × 1x/2x, por omissão) ou {@code HORAS_SEMANA} (tabela única
+     * (criança/adulto × 1x/2x, por omissão), {@code HORAS_SEMANA} (tabela única
      * por total de horas de aula por semana do aluno, somadas entre todas as
-     * turmas — ver {@link pt.studioflow.config.MensalidadeConfig#valorTabelaHoras}).
+     * turmas — ver {@link pt.studioflow.config.MensalidadeConfig#valorTabelaHoras})
+     * ou {@code MODALIDADES} (aula fixa / 1 modalidade / 2 modalidades / livre
+     * trânsito — ver {@link pt.studioflow.config.MensalidadeConfig#valorTabelaModalidades}).
      * Guardado como String (mesmo padrão de {@link #tipoRemuneracaoProf}).
      */
     @Column(name = "modelo_precario")
@@ -176,6 +178,24 @@ public class Studio {
 
     @Column(name = "tabela_horas_6_mais")
     private Double tabelaHoras6Mais = 65.0;
+
+    /**
+     * Tabela do modelo {@code MODALIDADES}: uma só aula por semana numa turma
+     * ("aula fixa"), todas as aulas de uma modalidade, de duas modalidades, ou
+     * livre trânsito (3 ou mais modalidades). Turmas com mensalidade própria
+     * (ex.: pré-ballet, boxe) ficam fora do pacote e são cobradas à parte.
+     */
+    @Column(name = "tabela_mod_aula_fixa")
+    private Double tabelaModAulaFixa = 25.0;
+
+    @Column(name = "tabela_mod_1")
+    private Double tabelaMod1 = 40.0;
+
+    @Column(name = "tabela_mod_2")
+    private Double tabelaMod2 = 50.0;
+
+    @Column(name = "tabela_mod_livre")
+    private Double tabelaModLivre = 65.0;
 
     /**
      * Modelo {@code HORAS_SEMANA}: cobra meia mensalidade automática em Setembro,
@@ -374,6 +394,21 @@ public class Studio {
     public String getModeloPrecario() { return modeloPrecario; }
     public void setModeloPrecario(String modeloPrecario) { this.modeloPrecario = modeloPrecario; }
     public boolean isModeloHorasSemana() { return "HORAS_SEMANA".equals(modeloPrecario); }
+    public boolean isModeloModalidades() { return "MODALIDADES".equals(modeloPrecario); }
+    /** Modelos em que a mensalidade do mês é um pacote único repartido pelas turmas do aluno. */
+    public boolean isModeloPacote() { return isModeloHorasSemana() || isModeloModalidades(); }
+
+    public Double getTabelaModAulaFixa() { return tabelaModAulaFixa; }
+    public void setTabelaModAulaFixa(Double v) { this.tabelaModAulaFixa = v; }
+
+    public Double getTabelaMod1() { return tabelaMod1; }
+    public void setTabelaMod1(Double v) { this.tabelaMod1 = v; }
+
+    public Double getTabelaMod2() { return tabelaMod2; }
+    public void setTabelaMod2(Double v) { this.tabelaMod2 = v; }
+
+    public Double getTabelaModLivre() { return tabelaModLivre; }
+    public void setTabelaModLivre(Double v) { this.tabelaModLivre = v; }
 
     public Double getTabelaHoras1() { return tabelaHoras1; }
     public void setTabelaHoras1(Double v) { this.tabelaHoras1 = v; }

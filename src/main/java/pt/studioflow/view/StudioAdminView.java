@@ -339,9 +339,12 @@ public class StudioAdminView extends VerticalLayout {
         naoSocioAdicional.setValue(studio.getMensalidadeNaoSocioAdicional());
 
         ComboBox<String> modeloPrecario = new ComboBox<>("Modelo de Preçário");
-        modeloPrecario.setItems("PADRAO", "HORAS_SEMANA");
-        modeloPrecario.setItemLabelGenerator(v -> "HORAS_SEMANA".equals(v)
-                ? "Tabela por horas/semana (pacote único)" : "Criança/Adulto × 1x/2x");
+        modeloPrecario.setItems("PADRAO", "HORAS_SEMANA", "MODALIDADES");
+        modeloPrecario.setItemLabelGenerator(v -> switch (v) {
+            case "HORAS_SEMANA" -> "Tabela por horas/semana (pacote único)";
+            case "MODALIDADES" -> "Por modalidades (aula fixa / 1 / 2 / livre trânsito)";
+            default -> "Criança/Adulto × 1x/2x";
+        });
         modeloPrecario.setValue(studio.getModeloPrecario() != null ? studio.getModeloPrecario() : "PADRAO");
         modeloPrecario.setWidthFull();
         modeloPrecario.setHelperText("\"Tabela por horas/semana\": soma as aulas/semana de todas as turmas do "
@@ -381,15 +384,36 @@ public class StudioAdminView extends VerticalLayout {
         grupoPadrao.setWidthFull();
 
         FormLayout grupoHorasSemana = new FormLayout(tabelaHoras1, tabelaHoras2, tabelaHoras3,
-                tabelaHoras4, tabelaHoras5, tabelaHoras6Mais, meiaMensalidade);
-        grupoHorasSemana.setColspan(meiaMensalidade, 3);
+                tabelaHoras4, tabelaHoras5, tabelaHoras6Mais);
         grupoHorasSemana.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
         grupoHorasSemana.setWidthFull();
 
+        NumberField tabelaModAulaFixa = new NumberField("Aula fixa — 1 aula/semana (€)");
+        tabelaModAulaFixa.setValue(studio.getTabelaModAulaFixa() != null ? studio.getTabelaModAulaFixa() : 25.0);
+        tabelaModAulaFixa.setMin(0);
+
+        NumberField tabelaMod1 = new NumberField("1 modalidade (€)");
+        tabelaMod1.setValue(studio.getTabelaMod1() != null ? studio.getTabelaMod1() : 40.0);
+        tabelaMod1.setMin(0);
+
+        NumberField tabelaMod2 = new NumberField("2 modalidades (€)");
+        tabelaMod2.setValue(studio.getTabelaMod2() != null ? studio.getTabelaMod2() : 50.0);
+        tabelaMod2.setMin(0);
+
+        NumberField tabelaModLivre = new NumberField("Livre trânsito — 3+ modalidades (€)");
+        tabelaModLivre.setValue(studio.getTabelaModLivre() != null ? studio.getTabelaModLivre() : 65.0);
+        tabelaModLivre.setMin(0);
+
+        FormLayout grupoModalidades = new FormLayout(tabelaModAulaFixa, tabelaMod1, tabelaMod2, tabelaModLivre);
+        grupoModalidades.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
+        grupoModalidades.setWidthFull();
+
         Runnable ajustarVisibilidadeModelo = () -> {
-            boolean horas = "HORAS_SEMANA".equals(modeloPrecario.getValue());
-            grupoPadrao.setVisible(!horas);
-            grupoHorasSemana.setVisible(horas);
+            String modelo = modeloPrecario.getValue();
+            grupoPadrao.setVisible(!"HORAS_SEMANA".equals(modelo) && !"MODALIDADES".equals(modelo));
+            grupoHorasSemana.setVisible("HORAS_SEMANA".equals(modelo));
+            grupoModalidades.setVisible("MODALIDADES".equals(modelo));
+            meiaMensalidade.setVisible("HORAS_SEMANA".equals(modelo) || "MODALIDADES".equals(modelo));
         };
         modeloPrecario.addValueChangeListener(e -> ajustarVisibilidadeModelo.run());
         ajustarVisibilidadeModelo.run();
@@ -677,7 +701,7 @@ public class StudioAdminView extends VerticalLayout {
 
         VerticalLayout content = new VerticalLayout(
                 logoSection, form,
-                secPrecario, modeloPrecario, grupoPadrao, grupoHorasSemana,
+                secPrecario, modeloPrecario, grupoPadrao, grupoHorasSemana, grupoModalidades, meiaMensalidade,
                 secCampos, camposGroup,
                 secFat, faturacaoAuto, programaFaturacao, tocSecao,
                 secRemun, remunHint, tipoRemun, grupoHora, grupoPerc,
@@ -719,6 +743,10 @@ public class StudioAdminView extends VerticalLayout {
             studio.setTabelaHoras4(tabelaHoras4.getValue());
             studio.setTabelaHoras5(tabelaHoras5.getValue());
             studio.setTabelaHoras6Mais(tabelaHoras6Mais.getValue());
+            studio.setTabelaModAulaFixa(tabelaModAulaFixa.getValue());
+            studio.setTabelaMod1(tabelaMod1.getValue());
+            studio.setTabelaMod2(tabelaMod2.getValue());
+            studio.setTabelaModLivre(tabelaModLivre.getValue());
             studio.setMeiaMensalidadeAutomatica(meiaMensalidade.getValue());
             studio.setDiaLimitePagamento(diaLimitePagamento.getValue() != null
                     ? Math.max(1, Math.min(28, (int) Math.round(diaLimitePagamento.getValue()))) : null);

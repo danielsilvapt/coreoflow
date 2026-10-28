@@ -55,15 +55,19 @@ public class PrecarioView extends VerticalLayout {
     private void construirFormulario(Studio studio) {
         // --- Modelo de preçário ---
         ComboBox<String> modeloPrecario = new ComboBox<>("Modelo de preçário");
-        modeloPrecario.setItems("PADRAO", "HORAS_SEMANA");
-        modeloPrecario.setItemLabelGenerator(v -> "HORAS_SEMANA".equals(v)
-                ? "Por aulas/semana (soma de todas as turmas)" : "Criança/Adulto × 1x/2x por turma");
+        modeloPrecario.setItems("PADRAO", "HORAS_SEMANA", "MODALIDADES");
+        modeloPrecario.setItemLabelGenerator(v -> switch (v) {
+            case "HORAS_SEMANA" -> "Por aulas/semana (soma de todas as turmas)";
+            case "MODALIDADES" -> "Por modalidades (aula fixa / 1 / 2 / livre trânsito)";
+            default -> "Criança/Adulto × 1x/2x por turma";
+        });
         modeloPrecario.setValue(studio.getModeloPrecario() != null ? studio.getModeloPrecario() : "PADRAO");
         modeloPrecario.setWidthFull();
         modeloPrecario.setHelperText("\"Por aulas/semana\": soma as aulas semanais de todas as turmas do aluno, "
                 + "independentemente da modalidade, e cobra um valor único (ex.: um aluno em duas modalidades "
-                + "de 1x/semana paga o escalão de 2 aulas/semana). Desliga os descontos automáticos de "
-                + "família e +modalidades.");
+                + "de 1x/semana paga o escalão de 2 aulas/semana). \"Por modalidades\": uma só aula/semana "
+                + "é a aula fixa; senão conta o nº de modalidades (3 ou mais = livre trânsito). Turmas com "
+                + "mensalidade própria ficam fora do pacote. Ambos desligam o desconto +modalidades.");
 
         NumberField crianca1x = campoEuro("Criança 1x/semana (€)", studio.getMensalidadeCrianca1x());
         NumberField crianca2x = campoEuro("Criança 2x/semana (€)", studio.getMensalidadeCrianca2x());
@@ -80,13 +84,20 @@ public class PrecarioView extends VerticalLayout {
         NumberField horas6 = campoEuro("6+ aulas/semana — passe (€)", valorOu(studio.getTabelaHoras6Mais(), 65.0));
         Checkbox meiaMensalidade = new Checkbox("Meia mensalidade automática em Setembro, Dezembro e Julho");
         meiaMensalidade.setValue(studio.isMeiaMensalidadeAutomatica());
-        FormLayout grupoHoras = grelha(horas1, horas2, horas3, horas4, horas5, horas6, meiaMensalidade);
-        grupoHoras.setColspan(meiaMensalidade, 3);
+        FormLayout grupoHoras = grelha(horas1, horas2, horas3, horas4, horas5, horas6);
+
+        NumberField modAulaFixa = campoEuro("Aula fixa — 1 aula/semana (€)", valorOu(studio.getTabelaModAulaFixa(), 25.0));
+        NumberField mod1 = campoEuro("1 modalidade (€)", valorOu(studio.getTabelaMod1(), 40.0));
+        NumberField mod2 = campoEuro("2 modalidades (€)", valorOu(studio.getTabelaMod2(), 50.0));
+        NumberField modLivre = campoEuro("Livre trânsito — 3+ modalidades (€)", valorOu(studio.getTabelaModLivre(), 65.0));
+        FormLayout grupoModalidades = grelha(modAulaFixa, mod1, mod2, modLivre);
 
         Runnable ajustarVisibilidade = () -> {
-            boolean horas = "HORAS_SEMANA".equals(modeloPrecario.getValue());
-            grupoPadrao.setVisible(!horas);
-            grupoHoras.setVisible(horas);
+            String modelo = modeloPrecario.getValue();
+            grupoPadrao.setVisible(!"HORAS_SEMANA".equals(modelo) && !"MODALIDADES".equals(modelo));
+            grupoHoras.setVisible("HORAS_SEMANA".equals(modelo));
+            grupoModalidades.setVisible("MODALIDADES".equals(modelo));
+            meiaMensalidade.setVisible("HORAS_SEMANA".equals(modelo) || "MODALIDADES".equals(modelo));
         };
         modeloPrecario.addValueChangeListener(e -> ajustarVisibilidade.run());
         ajustarVisibilidade.run();
@@ -137,6 +148,10 @@ public class PrecarioView extends VerticalLayout {
             studio.setTabelaHoras4(horas4.getValue());
             studio.setTabelaHoras5(horas5.getValue());
             studio.setTabelaHoras6Mais(horas6.getValue());
+            studio.setTabelaModAulaFixa(modAulaFixa.getValue());
+            studio.setTabelaMod1(mod1.getValue());
+            studio.setTabelaMod2(mod2.getValue());
+            studio.setTabelaModLivre(modLivre.getValue());
             studio.setMeiaMensalidadeAutomatica(meiaMensalidade.getValue());
             studio.setDiaLimitePagamento(diaLimite.getValue() != null
                     ? Math.max(1, Math.min(28, (int) Math.round(diaLimite.getValue()))) : null);
@@ -156,7 +171,7 @@ public class PrecarioView extends VerticalLayout {
         });
         guardar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        add(seccao("Mensalidades"), modeloPrecario, grupoPadrao, grupoHoras,
+        add(seccao("Mensalidades"), modeloPrecario, grupoPadrao, grupoHoras, grupoModalidades, meiaMensalidade,
                 seccao("Pagamentos e taxas"), grelha(diaLimite, multa, taxaInscricao, taxaRenovacao),
                 primeiraGratis,
                 seccao("Descontos"), grelha(descFamiliares, descFamiliaresPct, descDirecao, descMaisModal, descMais65),

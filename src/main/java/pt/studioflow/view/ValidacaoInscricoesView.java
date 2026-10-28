@@ -244,7 +244,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     private Turma casarInteresseComTurma(String item) {
         return turmasCache.stream()
                 .filter(t -> t.getModalidade() != null
-                        && item.startsWith(t.getModalidade().getDescricao() + " " + t.getDescricao()))
+                        && item.startsWith(t.getModalidade().getDescricao() + " " + t.getDescricao() + " ("))
                 .findFirst().orElse(null);
     }
 
@@ -562,7 +562,8 @@ public class ValidacaoInscricoesView extends VerticalLayout {
             }
             Turma turma = casarInteresseComTurma(itemTrim);
             if (turma != null) {
-                int aulasPorSemana = itemTrim.contains("2 vez") ? 2 : 1;
+                java.util.regex.Matcher freq = java.util.regex.Pattern.compile("\\((\\d) vez").matcher(itemTrim);
+                int aulasPorSemana = freq.find() ? Integer.parseInt(freq.group(1)) : 1;
                 linhas.add(new LinhaMensalidade(turma, aulasPorSemana));
             }
         }
@@ -660,12 +661,16 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         Studio studio = TenantContext.getCurrentStudio();
         List<Turma> todasTurmas = studio != null ? turmaRepository.findAllByStudio(studio) : turmaRepository.findAll();
         for (Turma t : todasTurmas) {
-            if (notas.contains(t.getDescricao())) {
+            // "<turma> (N vez..." — com o parêntese, para "Ballet I" não apanhar "Ballet II".
+            java.util.regex.Matcher interesse = java.util.regex.Pattern
+                    .compile(java.util.regex.Pattern.quote(t.getDescricao()) + " \\((\\d) vez")
+                    .matcher(notas);
+            if (interesse.find()) {
                 if (!alunoTurmaRepository.existsByAlunoAndTurma(aluno, t)) {
                     AlunoTurma at = new AlunoTurma();
                     at.setAluno(aluno);
                     at.setTurma(t);
-                    at.setAulasPorSemana(notas.contains(t.getDescricao() + " (2 vez") ? 2 : 1);
+                    at.setAulasPorSemana(Integer.parseInt(interesse.group(1)));
                     alunoTurmaRepository.save(at);
                     mensalidadeService.gerarMensalidadesParaAluno(aluno, t);
 

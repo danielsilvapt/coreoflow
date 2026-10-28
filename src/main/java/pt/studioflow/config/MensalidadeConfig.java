@@ -102,7 +102,7 @@ public class MensalidadeConfig {
      * Caso contrário aplica-se a tabela normal (criança/adulto x frequência).
      */
     public double calcularMensalidade(Studio studio, Turma turma, String tipo, int aulasPorSemana, boolean socio) {
-        Double proprio = valorProprioDaTurma(turma, socio);
+        Double proprio = valorProprioDaTurma(turma, socio, aulasPorSemana);
         if (proprio != null) {
             return proprio;
         }
@@ -115,8 +115,23 @@ public class MensalidadeConfig {
      * sócio mais o acréscimo de não-sócio do estúdio.
      */
     public Double valorProprioDaTurma(Turma turma, boolean socio) {
+        return valorProprioDaTurma(turma, socio, 1);
+    }
+
+    /**
+     * Como {@link #valorProprioDaTurma(Turma, boolean)}, mas para uma frequência
+     * concreta: se a turma tiver tabela por frequência ({@link Turma#getTabelaFrequencia()}),
+     * usa o valor dessa frequência — ou, sem entrada exata, o da maior frequência
+     * abaixo (a menor de todas, se não houver nenhuma abaixo).
+     */
+    public Double valorProprioDaTurma(Turma turma, boolean socio, int aulasPorSemana) {
         if (turma == null || !turma.temMensalidadePropria()) {
             return null;
+        }
+        java.util.SortedMap<Integer, Double> tabela = turma.getTabelaFrequencia();
+        if (!tabela.isEmpty()) {
+            java.util.SortedMap<Integer, Double> ateFreq = tabela.headMap(aulasPorSemana + 1);
+            return ateFreq.isEmpty() ? tabela.get(tabela.firstKey()) : ateFreq.get(ateFreq.lastKey());
         }
         if (socio) {
             return turma.getMensalidadeSocio() != null
@@ -164,29 +179,66 @@ public class MensalidadeConfig {
     }
 
     /**
+     * Valor da mensalidade no modelo {@code MODALIDADES}: uma só aula por semana
+     * numa só modalidade é a "aula fixa"; senão conta o número de modalidades
+     * distintas (1, 2, ou 3+ = livre trânsito). Meio mês como em {@link #valorTabelaHoras}.
+     */
+    public double valorTabelaModalidades(Studio studio, int numModalidades, int totalAulas, boolean meioMes) {
+        meioMes = meioMes && studio.isMeiaMensalidadeAutomatica();
+        Double cheio;
+        if (numModalidades <= 1) {
+            cheio = totalAulas <= 1 ? studio.getTabelaModAulaFixa() : studio.getTabelaMod1();
+        } else if (numModalidades == 2) {
+            cheio = studio.getTabelaMod2();
+        } else {
+            cheio = studio.getTabelaModLivre();
+        }
+        double valor = cheio != null ? cheio : 0.0;
+        return meioMes ? Math.round(valor * 50.0) / 100.0 : valor;
+    }
+
+    /**
+     * Valor do pacote mensal de um aluno nos modelos por pacote, a partir das
+     * turmas que entram no pacote (sem mensalidade própria) e das respetivas
+     * aulas/semana.
+     */
+    public double valorPacote(Studio studio, java.util.Map<Turma, Integer> turmasEFrequencia, boolean meioMes) {
+        int totalAulas = turmasEFrequencia.values().stream().mapToInt(Integer::intValue).sum();
+        if (studio.isModeloModalidades()) {
+            long numModalidades = turmasEFrequencia.keySet().stream()
+                    .map(t -> t.getModalidade() != null ? "m" + t.getModalidade().getId() : "t" + t.getId())
+                    .distinct().count();
+            return valorTabelaModalidades(studio, (int) numModalidades, totalAulas, meioMes);
+        }
+        return valorTabelaHoras(studio, totalAulas, meioMes);
+    }
+
+    /**
      * Mensalidade estimada (mês completo) de cada turma de um conjunto de
      * inscrições do mesmo aluno, respeitando o modelo de preçário do estúdio.
-     * No modelo {@code HORAS_SEMANA} as aulas/semana de todas as turmas (sem
-     * mensalidade própria) somam-se num único escalão, repartido por turma de
-     * forma proporcional — o mesmo que {@code MensalidadeService} gera. Usado
+     * Nos modelos por pacote ({@code HORAS_SEMANA}, {@code MODALIDADES}) as turmas
+     * sem mensalidade própria formam um único escalão, repartido por turma de
+     * forma proporcional às aulas/semana — o mesmo que {@code MensalidadeService} gera. Usado
      * pelos formulários públicos e pela validação de inscrições.
      */
     public java.util.Map<Turma, Double> estimarMensalidadesPorTurma(Studio studio,
             java.util.Map<Turma, Integer> turmasEFrequencia, boolean crianca, boolean socio) {
         java.util.Map<Turma, Double> resultado = new java.util.LinkedHashMap<>();
         String tipo = crianca ? "crianca" : "adulto";
-        if (!studio.isModeloHorasSemana()) {
+        if (!studio.isModeloPacote()) {
             turmasEFrequencia.forEach((t, freq) ->
                     resultado.put(t, calcularMensalidade(studio, t, tipo, freq, socio)));
             return resultado;
         }
 
-        int totalHoras = turmasEFrequencia.entrySet().stream()
-                .filter(e -> valorProprioDaTurma(e.getKey(), socio) == null)
-                .mapToInt(java.util.Map.Entry::getValue).sum();
-        double pacote = totalHoras > 0 ? valorTabelaHoras(studio, totalHoras, false) : 0.0;
+        java.util.Map<Turma, Integer> noPacote = new java.util.LinkedHashMap<>();
         turmasEFrequencia.forEach((t, freq) -> {
-            Double proprio = valorProprioDaTurma(t, socio);
+            if (valorProprioDaTurma(t, socio, freq) == null) noPacote.put(t, freq);
+        });
+        int totalHoras = noPacote.values().stream().mapToInt(Integer::intValue).sum();
+        double pacote = totalHoras > 0 ? valorPacote(studio, noPacote, false) : 0.0;
+        turmasEFrequencia.forEach((t, freq) -> {
+            Double proprio = valorProprioDaTurma(t, socio, freq);
             resultado.put(t, proprio != null ? proprio
                     : Math.round(pacote * freq / (double) totalHoras * 100.0) / 100.0);
         });
@@ -230,9 +282,9 @@ public class MensalidadeConfig {
     public ResumoInscricao calcularResumo(Studio studio, double mensalidadeBaseTotal, boolean renovacao,
                                            boolean temFamiliarInscrito, int numModalidadesInteresse) {
         double taxa = renovacao ? calcularTaxaRenovacao(studio) : calcularTaxaInscricao(studio);
-        // Modelo HORAS_SEMANA: o escalão já cobre várias modalidades, por isso não há
+        // Modelos por pacote: o escalão já cobre várias modalidades, por isso não há
         // desconto +modalidades; o desconto de familiares/irmãos aplica-se em todos os modelos.
-        boolean semDescontos = studio.isModeloHorasSemana();
+        boolean semDescontos = studio.isModeloPacote();
         double descontoFamiliar = temFamiliarInscrito
                 ? mensalidadeBaseTotal - aplicarDescontoFamiliar(studio, mensalidadeBaseTotal) : 0.0;
         double descontoMultiModalidade = !semDescontos && numModalidadesInteresse > 1

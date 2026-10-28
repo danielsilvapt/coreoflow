@@ -194,9 +194,10 @@ public class TurmaAlunosView extends VerticalLayout {
         gridTurma.setDropMode(GridDropMode.ON_GRID);
         gridTurma.addDropListener(e -> {
             Aluno selecionado = gridDisponiveis.asSingleSelect().getValue();
-            if (selecionado != null) {
-                adicionarAluno(selecionado,
-                        frequenciaPorAluno.getOrDefault(selecionado.getId(), frequenciaTurma));
+            if (selecionado != null && turmaCombo.getValue() != null) {
+                java.util.List<Integer> freqs = turmaCombo.getValue().getFrequenciasDisponiveis();
+                int aulas = frequenciaPorAluno.getOrDefault(selecionado.getId(), frequenciaTurma);
+                adicionarAluno(selecionado, freqs.contains(aulas) ? aulas : freqs.get(0));
             }
         });
     }
@@ -213,10 +214,13 @@ public class TurmaAlunosView extends VerticalLayout {
         info.setPadding(false);
         info.setSpacing(false);
 
-        // Seletor de Frequência (1x ou 2x)
+        // Seletor de Frequência (1x/2x, ou as frequências com preço próprio da turma, ex.: boxe 1x/3x)
         ComboBox<Integer> freq = new ComboBox<>();
-        freq.setItems(1, 2);
-        freq.setValue(frequenciaPorAluno.getOrDefault(aluno.getId(), frequenciaTurma));
+        java.util.List<Integer> freqs = turmaCombo.getValue() != null
+                ? turmaCombo.getValue().getFrequenciasDisponiveis() : java.util.List.of(1, 2);
+        freq.setItems(freqs);
+        int freqInicial = frequenciaPorAluno.getOrDefault(aluno.getId(), frequenciaTurma);
+        freq.setValue(freqs.contains(freqInicial) ? freqInicial : freqs.get(0));
         freq.setWidth("70px");
         freq.addThemeName("small");
         freq.addValueChangeListener(e -> {
