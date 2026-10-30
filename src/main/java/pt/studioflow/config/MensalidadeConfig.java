@@ -272,6 +272,12 @@ public class MensalidadeConfig {
         return studio.getTaxaRenovacao() != null ? studio.getTaxaRenovacao() : 0.0;
     }
 
+    /** Seguro do estúdio (guardado no aluno como "Associação"); quem tem seguro próprio não paga. */
+    public double calcularSeguro(Studio studio, String seguroDesportivo) {
+        if (!"Associação".equalsIgnoreCase(seguroDesportivo)) return 0.0;
+        return studio.getValorSeguro() != null ? studio.getValorSeguro() : 0.0;
+    }
+
     /**
      * Resumo de preço estimado para o formulário público (inscrição ou renovação).
      * Recebe a soma das mensalidades base de todas as turmas selecionadas (cada
@@ -281,6 +287,15 @@ public class MensalidadeConfig {
      */
     public ResumoInscricao calcularResumo(Studio studio, double mensalidadeBaseTotal, boolean renovacao,
                                            boolean temFamiliarInscrito, int numModalidadesInteresse) {
+        return calcularResumo(studio, mensalidadeBaseTotal, renovacao, temFamiliarInscrito,
+                numModalidadesInteresse, null);
+    }
+
+    /** Como o anterior, somando o seguro do estúdio quando {@code seguroDesportivo} é "Associação". */
+    public ResumoInscricao calcularResumo(Studio studio, double mensalidadeBaseTotal, boolean renovacao,
+                                           boolean temFamiliarInscrito, int numModalidadesInteresse,
+                                           String seguroDesportivo) {
+        double seguro = calcularSeguro(studio, seguroDesportivo);
         double taxa = renovacao ? calcularTaxaRenovacao(studio) : calcularTaxaInscricao(studio);
         // Modelos por pacote: o escalão já cobre várias modalidades, por isso não há
         // desconto +modalidades; o desconto de familiares/irmãos aplica-se em todos os modelos.
@@ -293,14 +308,14 @@ public class MensalidadeConfig {
         // Aluno novo num estúdio que oferece a 1ª mensalidade: o 1º pagamento é só a taxa.
         double ofertaPrimeiraMensalidade = !renovacao && studio.isPrimeiraMensalidadeGratis()
                 ? Math.max(0.0, mensalidadeBaseTotal - descontoFamiliar - descontoMultiModalidade) : 0.0;
-        double total = Math.max(0.0, mensalidadeBaseTotal + taxa - descontoFamiliar - descontoMultiModalidade
-                - ofertaPrimeiraMensalidade);
-        return new ResumoInscricao(mensalidadeBaseTotal, taxa, descontoFamiliar, descontoMultiModalidade,
+        double total = Math.max(0.0, mensalidadeBaseTotal + taxa + seguro - descontoFamiliar
+                - descontoMultiModalidade - ofertaPrimeiraMensalidade);
+        return new ResumoInscricao(mensalidadeBaseTotal, taxa, seguro, descontoFamiliar, descontoMultiModalidade,
                 ofertaPrimeiraMensalidade, total);
     }
 
     /** Breakdown do valor estimado mostrado ao candidato no formulário público. */
-    public record ResumoInscricao(double mensalidadeBase, double taxa, double descontoFamiliar,
+    public record ResumoInscricao(double mensalidadeBase, double taxa, double seguro, double descontoFamiliar,
                                    double descontoMultiModalidade, double ofertaPrimeiraMensalidade,
                                    double total) {}
 }

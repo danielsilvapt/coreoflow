@@ -116,6 +116,8 @@ public class PrecarioView extends VerticalLayout {
         multa.setHelperText("Aplicada enquanto a mensalidade estiver \"Em dívida\".");
         NumberField taxaInscricao = campoEuro("Taxa de inscrição (€)", valorOu(studio.getTaxaInscricao(), 0.0));
         NumberField taxaRenovacao = campoEuro("Taxa de renovação (€)", valorOu(studio.getTaxaRenovacao(), 0.0));
+        NumberField valorSeguro = campoEuro("Seguro desportivo (€)", valorOu(studio.getValorSeguro(), 0.0));
+        valorSeguro.setHelperText("Cobrado no 1º pagamento a quem escolhe o seguro do estúdio (não a quem tem seguro próprio).");
         Checkbox primeiraGratis = new Checkbox("Primeira mensalidade gratuita para alunos novos");
         primeiraGratis.setValue(studio.isPrimeiraMensalidadeGratis());
         primeiraGratis.setTooltipText("Ao aceitar a inscrição de um aluno novo, as mensalidades do primeiro mês "
@@ -158,6 +160,7 @@ public class PrecarioView extends VerticalLayout {
             studio.setMultaAtrasoPercentagem(multa.getValue() != null ? Math.max(0, multa.getValue()) : 0.0);
             studio.setTaxaInscricao(taxaInscricao.getValue());
             studio.setTaxaRenovacao(taxaRenovacao.getValue());
+            studio.setValorSeguro(valorSeguro.getValue() != null ? Math.max(0, valorSeguro.getValue()) : 0.0);
             studio.setPrimeiraMensalidadeGratis(primeiraGratis.getValue());
             studio.setDescontoFamiliaresEuros(descFamiliares.getValue());
             studio.setDescontoFamiliaresPercentagem(descFamiliaresPct.getValue());
@@ -172,7 +175,7 @@ public class PrecarioView extends VerticalLayout {
         guardar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         add(seccao("Mensalidades"), modeloPrecario, grupoPadrao, grupoHoras, grupoModalidades, meiaMensalidade,
-                seccao("Pagamentos e taxas"), grelha(diaLimite, multa, taxaInscricao, taxaRenovacao),
+                seccao("Pagamentos e taxas"), grelha(diaLimite, multa, taxaInscricao, taxaRenovacao, valorSeguro),
                 primeiraGratis,
                 seccao("Descontos"), grelha(descFamiliares, descFamiliaresPct, descDirecao, descMaisModal, descMais65),
                 notaAlteracoes, guardar);

@@ -261,6 +261,14 @@ public class Studio {
     @Column(name = "taxa_renovacao")
     private Double taxaRenovacao = 0.0;
 
+    /**
+     * Valor do seguro desportivo do estúdio, cobrado no 1º pagamento da
+     * inscrição/renovação a quem escolhe o seguro do estúdio (guardado no aluno
+     * como "Associação"; não a quem tem seguro próprio). 0 = não cobrado.
+     */
+    @Column(name = "valor_seguro")
+    private Double valorSeguro = 0.0;
+
     // =====================================================
     // IDIOMAS DO FORMULÁRIO PÚBLICO (por estúdio)
     // =====================================================
@@ -460,6 +468,9 @@ public class Studio {
 
     public Double getTaxaRenovacao() { return taxaRenovacao; }
     public void setTaxaRenovacao(Double v) { this.taxaRenovacao = v; }
+
+    public Double getValorSeguro() { return valorSeguro; }
+    public void setValorSeguro(Double v) { this.valorSeguro = v; }
 
     public String getIdiomasDisponiveis() { return idiomasDisponiveis; }
     public void setIdiomasDisponiveis(String idiomasDisponiveis) { this.idiomasDisponiveis = idiomasDisponiveis; }

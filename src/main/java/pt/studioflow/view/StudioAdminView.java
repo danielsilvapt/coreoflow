@@ -461,6 +461,11 @@ public class StudioAdminView extends VerticalLayout {
         taxaRenovacao.setValue(studio.getTaxaRenovacao() != null ? studio.getTaxaRenovacao() : 0.0);
         taxaRenovacao.setMin(0);
 
+        NumberField valorSeguro = new NumberField("Seguro Desportivo (€)");
+        valorSeguro.setValue(studio.getValorSeguro() != null ? studio.getValorSeguro() : 0.0);
+        valorSeguro.setMin(0);
+        valorSeguro.setHelperText("Cobrado no 1º pagamento a quem escolhe o seguro do estúdio (não a quem tem seguro próprio).");
+
         Checkbox primeiraGratis = new Checkbox("1ª mensalidade gratuita para alunos novos");
         primeiraGratis.setValue(studio.isPrimeiraMensalidadeGratis());
 
@@ -479,7 +484,7 @@ public class StudioAdminView extends VerticalLayout {
                 diaLimitePagamento,
                 multaAtraso,
                 descontoFamiliares, descontoFamiliaresPct, descontoDirecao, descontoMaisModal, descontoMais65,
-                taxaInscricao, taxaRenovacao, primeiraGratis,
+                taxaInscricao, taxaRenovacao, valorSeguro, primeiraGratis,
                 ativo, enviarEmails);
 
         // --- Modelo de Preçário ---
@@ -758,6 +763,7 @@ public class StudioAdminView extends VerticalLayout {
             studio.setDescontoMais65Percentagem(descontoMais65.getValue());
             studio.setTaxaInscricao(taxaInscricao.getValue());
             studio.setTaxaRenovacao(taxaRenovacao.getValue());
+            studio.setValorSeguro(valorSeguro.getValue() != null ? Math.max(0, valorSeguro.getValue()) : 0.0);
             studio.setPrimeiraMensalidadeGratis(primeiraGratis.getValue());
             studio.setAtivo(ativo.getValue());
             studio.setEnviarEmails(Boolean.TRUE.equals(enviarEmails.getValue()));

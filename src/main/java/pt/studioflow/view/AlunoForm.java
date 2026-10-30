@@ -388,6 +388,10 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
     private VerticalLayout criarFormQuotas() {
         seguroDesportivo.setLabel("Seguro Desportivo");
         seguroDesportivo.setItems("Associação", "Próprio", "Outro");
+        // O valor guardado continua "Associação" (relatórios e dados existentes); mostra-se o nome do estúdio.
+        Studio studioSeguro = TenantContext.getCurrentStudio();
+        seguroDesportivo.setItemLabelGenerator(v -> "Associação".equals(v) && studioSeguro != null
+                ? studioSeguro.getNome() : v);
         seguroDesportivo.setWidth("250px");
         dataInscricao.setWidth("250px");
         dataInscricaoRenovacao.setWidth("250px");

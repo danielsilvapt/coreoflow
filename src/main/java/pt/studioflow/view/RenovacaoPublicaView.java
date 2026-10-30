@@ -339,8 +339,11 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
                 linhaResumo("Mensalidade estimada", resumo.mensalidadeBase(), false),
                 linhaResumo("Taxa de renovação", resumo.taxa(), false),
                 linhaResumo("Desconto familiar", -resumo.descontoFamiliar(), resumo.descontoFamiliar() > 0),
-                linhaResumo("Desconto +modalidades", -resumo.descontoMultiModalidade(), resumo.descontoMultiModalidade() > 0),
-                linhaResumo("Total estimado (1º pagamento)", resumo.total(), false));
+                linhaResumo("Desconto +modalidades", -resumo.descontoMultiModalidade(), resumo.descontoMultiModalidade() > 0));
+        if (resumo.seguro() > 0) {
+            resumoPagamento.add(linhaResumo("Seguro desportivo", resumo.seguro(), false));
+        }
+        resumoPagamento.add(linhaResumo("Total estimado (1º pagamento)", resumo.total(), false));
         if (studioAtual.isMollieAtivo() && resumo.total() > 0) {
             Span aviso = new Span("Ao submeter, és encaminhado(a) para o pagamento online deste valor.");
             aviso.getStyle().set("color", "#7f8c8d").set("font-size", "0.85em");
@@ -361,7 +364,8 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
         long numModalidades = selecionadas.stream().map(Turma::getModalidade).map(Modalidade::getId).distinct().count();
 
         return mensalidadeConfig.calcularResumo(
-                studioAtual, mensalidadeBaseTotal, true, temFamiliarInscrito, (int) numModalidades);
+                studioAtual, mensalidadeBaseTotal, true, temFamiliarInscrito, (int) numModalidades,
+                aluno.getSeguroDesportivo());
     }
 
     private HorizontalLayout linhaResumo(String label, double valor, boolean destacarDesconto) {
