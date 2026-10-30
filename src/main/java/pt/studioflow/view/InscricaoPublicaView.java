@@ -43,7 +43,9 @@ import pt.studioflow.model.Turma;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.StudioRepository;
 import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.model.PagamentoOnline;
 import pt.studioflow.service.EmailService;
+import pt.studioflow.service.PagamentoOnlineService;
 import pt.studioflow.service.R2StorageService;
 import pt.studioflow.service.TranslationService;
 
@@ -80,6 +82,12 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
     private final BuildProperties buildProperties;
     private final R2StorageService storageService;
 
+    @Autowired
+    private PagamentoOnlineService pagamentoOnlineService;
+
+    @org.springframework.beans.factory.annotation.Value("${app.base-url:https://app.coreoflow.me}")
+    private String baseUrl;
+
     public InscricaoPublicaView(AlunoRepository alunoRepository, TurmaRepository turmaRepository,
             EmailService emailService, StudioRepository studioRepository, BuildProperties buildProperties,
             MensalidadeConfig mensalidadeConfig, TranslationService translationService,
@@ -108,6 +116,15 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
             removeAll();
             add(new com.vaadin.flow.component.html.H2("Estúdio não encontrado."),
                 new Span("O link de inscrição é inválido ou o estúdio já não está ativo."));
+            return;
+        }
+
+        // Regresso do checkout Mollie: a inscrição já foi submetida, só falta mostrar o estado do pagamento.
+        String pagamentoId = event.getLocation().getQueryParameters()
+                .getParameters().getOrDefault("pagamento", java.util.List.of()).stream()
+                .findFirst().orElse(null);
+        if (pagamentoId != null && studioAtual != null) {
+            mostrarSucesso(pagamentoOnlineService.mensagemRegresso(pagamentoId, studioAtual));
             return;
         }
 
@@ -480,6 +497,25 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         resumoPagamento.removeAll();
         if (selecionadas.isEmpty() || studioAtual == null) return;
 
+        MensalidadeConfig.ResumoInscricao resumo = calcularResumo(selecionadas, dataNasc, socioVal);
+
+        resumoPagamento.add(
+                linhaResumo("Mensalidade estimada", resumo.mensalidadeBase(), false),
+                linhaResumo("Taxa de inscrição", resumo.taxa(), false),
+                linhaResumo("Desconto +modalidades", -resumo.descontoMultiModalidade(), resumo.descontoMultiModalidade() > 0));
+        if (resumo.ofertaPrimeiraMensalidade() > 0) {
+            resumoPagamento.add(linhaResumo("1ª mensalidade oferecida", -resumo.ofertaPrimeiraMensalidade(), true));
+        }
+        resumoPagamento.add(linhaResumo("Total estimado (1º pagamento)", resumo.total(), false));
+        if (studioAtual.isMollieAtivo() && resumo.total() > 0) {
+            Span aviso = new Span("Ao finalizar, és encaminhado(a) para o pagamento online deste valor.");
+            aviso.getStyle().set("color", "#7f8c8d").set("font-size", "0.85em");
+            resumoPagamento.add(aviso);
+        }
+    }
+
+    private MensalidadeConfig.ResumoInscricao calcularResumo(Set<Turma> selecionadas, LocalDate dataNasc,
+            boolean socioVal) {
         boolean crianca = dataNasc != null && java.time.Period.between(dataNasc, LocalDate.now()).getYears() < 18;
 
         java.util.Map<Turma, Integer> turmasEFrequencia = new java.util.LinkedHashMap<>();
@@ -493,17 +529,8 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         long numModalidades = selecionadas.stream().map(Turma::getModalidade).map(Modalidade::getId).distinct().count();
 
-        MensalidadeConfig.ResumoInscricao resumo = mensalidadeConfig.calcularResumo(
+        return mensalidadeConfig.calcularResumo(
                 studioAtual, mensalidadeBaseTotal, false, false, (int) numModalidades);
-
-        resumoPagamento.add(
-                linhaResumo("Mensalidade estimada", resumo.mensalidadeBase(), false),
-                linhaResumo("Taxa de inscrição", resumo.taxa(), false),
-                linhaResumo("Desconto +modalidades", -resumo.descontoMultiModalidade(), resumo.descontoMultiModalidade() > 0));
-        if (resumo.ofertaPrimeiraMensalidade() > 0) {
-            resumoPagamento.add(linhaResumo("1ª mensalidade oferecida", -resumo.ofertaPrimeiraMensalidade(), true));
-        }
-        resumoPagamento.add(linhaResumo("Total estimado (1º pagamento)", resumo.total(), false));
     }
 
     private HorizontalLayout linhaResumo(String label, double valor, boolean destacarDesconto) {
@@ -559,20 +586,44 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
             alunoRepository.save(novo);
             emailService.enviarEmailNotificacao(novo);
-            mostrarSucesso();
+
+            // Estúdio com Mollie: encaminha logo para o pagamento do 1º pagamento estimado.
+            if (studioAtual != null && studioAtual.isMollieAtivo()) {
+                double total = calcularResumo(selecionadas, novo.getDataNascimento(), novo.isSocio()).total();
+                if (total > 0) {
+                    try {
+                        PagamentoOnlineService.Checkout checkout = pagamentoOnlineService.criarPagamentoPedido(
+                                novo, studioAtual, PagamentoOnline.Tipo.INSCRICAO, total,
+                                baseUrl + "/inscricao?studio=" + studioAtual.getSlug() + "&pagamento=",
+                                baseUrl + "/api/mollie/webhook");
+                        getUI().ifPresent(ui -> ui.getPage().setLocation(checkout.checkoutUrl()));
+                        return;
+                    } catch (Exception ex) {
+                        mostrarSucesso("Não foi possível abrir o pagamento online — o estúdio indicará como pagar.");
+                        return;
+                    }
+                }
+            }
+            mostrarSucesso(null);
         } else {
             Notification.show("Preencha todos os campos obrigatórios.")
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }
 
-    private void mostrarSucesso() {
+    /** {@code notaPagamento}: estado do pagamento online, quando houve (nulo = sem pagamento online). */
+    private void mostrarSucesso(String notaPagamento) {
         this.removeAll();
         String nome = studioAtual != null ? studioAtual.getNome() : "o estúdio";
         VerticalLayout layout = new VerticalLayout(
                 new com.vaadin.flow.component.icon.Icon(com.vaadin.flow.component.icon.VaadinIcon.CHECK_CIRCLE),
                 new H2(translationService.t("inscricao.sucesso.titulo", idiomaAtual)),
                 new Span(nome + translationService.t("inscricao.sucesso.msg", idiomaAtual)));
+        if (notaPagamento != null) {
+            Span nota = new Span(notaPagamento);
+            nota.getStyle().set("font-weight", "600").set("text-align", "center");
+            layout.add(nota);
+        }
         layout.setAlignItems(Alignment.CENTER);
         add(layout);
     }

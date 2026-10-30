@@ -298,9 +298,9 @@ public class StudioAdminView extends VerticalLayout {
         TextField vendusApiKey = new TextField("Chave API Vendus");
         vendusApiKey.setValue(studio.getVendusApiKey() != null ? studio.getVendusApiKey() : "");
 
-        TextField mollieApiKey = new TextField("Chave API Mollie (aulas avulso)");
+        TextField mollieApiKey = new TextField("Chave API Mollie (pagamentos online)");
         mollieApiKey.setValue(studio.getMollieApiKey() != null ? studio.getMollieApiKey() : "");
-        mollieApiKey.setHelperText("Vazio = pagamento de aulas avulso fica sempre como \"pagar no estúdio\".");
+        mollieApiKey.setHelperText("Inscrições, renovações, mensalidades no portal e aulas avulso. Vazio = sem pagamento online (\"pagar no estúdio\").");
 
         NumberField checkinJanelaAntes = new NumberField("Checkin: minutos antes da aula");
         checkinJanelaAntes.setValue(studio.getCheckinJanelaAntesMin() != null
