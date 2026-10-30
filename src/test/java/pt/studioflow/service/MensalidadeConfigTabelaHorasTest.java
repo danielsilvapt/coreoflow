@@ -148,6 +148,21 @@ class MensalidadeConfigTabelaHorasTest {
     }
 
     @Test
+    void segurosPermitidos_porOmissaoEstudioOuProprio_eRespeitaAOrdem() {
+        Studio s = new Studio();
+        s.setNome("Studyo Nazaré");
+        assertThat(s.getListaSegurosPermitidos()).containsExactly(Studio.SEGURO_ESTUDIO, "Próprio");
+
+        s.setListaSegurosPermitidos(java.util.Set.of("Outro", Studio.SEGURO_ESTUDIO));
+        assertThat(s.getListaSegurosPermitidos()).containsExactly(Studio.SEGURO_ESTUDIO, "Outro");
+
+        s.setListaSegurosPermitidos(java.util.Set.of(Studio.SEGURO_ESTUDIO));
+        assertThat(s.getListaSegurosPermitidos()).containsExactly(Studio.SEGURO_ESTUDIO);
+        assertThat(s.rotuloSeguro(Studio.SEGURO_ESTUDIO)).isEqualTo("Studyo Nazaré");
+        assertThat(s.rotuloSeguro("Próprio")).isEqualTo("Próprio");
+    }
+
+    @Test
     void valorTabelaHoras_semTabelaConfigurada_devolveZero() {
         Studio s = new Studio();
         s.setTabelaHoras1(null);
