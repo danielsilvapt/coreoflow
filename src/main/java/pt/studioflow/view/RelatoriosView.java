@@ -139,7 +139,9 @@ public class RelatoriosView extends VerticalLayout {
                                 VaadinIcon.CHART_LINE, "#FF8C00", e -> abrirRelatorioRentabilidade()));
                 gridLayout.add(criarCardRelatorio("Listas por Turma", "Alunos ativos, idades e presenças semanais.",
                                 VaadinIcon.USERS, "#FF8C00", e -> abrirRelatorioAlunosPorTurma()));
-                gridLayout.add(criarCardRelatorio("Seguros Associação", "Lista para envio mensal à seguradora.",
+                pt.studioflow.model.Studio studioRel = pt.studioflow.config.TenantContext.getCurrentStudio();
+                gridLayout.add(criarCardRelatorio("Seguros " + (studioRel != null ? studioRel.getNome() : "do Estúdio"),
+                                "Lista para envio mensal à seguradora.",
                                 VaadinIcon.SHIELD, "#FF8C00", e -> abrirRelatorioSeguros()));
 
                 body.add(gridLayout);
@@ -1243,7 +1245,7 @@ public class RelatoriosView extends VerticalLayout {
                                 a.getDataNascimento().format(fmt), a.getNumeroContribuinte(),
                                 String.valueOf(a.getNumeroSocio()) })
                                 .collect(Collectors.toList());
-                configurarDialogComGrid("Seguros Associação", grid, rows,
+                configurarDialogComGrid("Seguros " + (_sSeg != null ? _sSeg.getNome() : "do Estúdio"), grid, rows,
                                 new String[] { "Nome", "Data Nasc.", "NIF", "Nº Sócio" });
         }
 

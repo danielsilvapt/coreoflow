@@ -133,6 +133,21 @@ class MensalidadeConfigTabelaHorasTest {
     }
 
     @Test
+    void calcularResumo_seguroDoEstudio_soQuemOEscolhePaga() {
+        Studio s = studioComTabelaPadrao();
+        s.setTaxaInscricao(25.0);
+        s.setValorSeguro(12.0);
+
+        MensalidadeConfig.ResumoInscricao comSeguro = config.calcularResumo(s, 43.0, false, false, 1, "Associação");
+        MensalidadeConfig.ResumoInscricao proprio = config.calcularResumo(s, 43.0, false, false, 1, "Próprio");
+
+        assertThat(comSeguro.seguro()).isEqualTo(12.0);
+        assertThat(comSeguro.total()).isEqualTo(43.0 + 25.0 + 12.0);
+        assertThat(proprio.seguro()).isZero();
+        assertThat(proprio.total()).isEqualTo(43.0 + 25.0);
+    }
+
+    @Test
     void valorTabelaHoras_semTabelaConfigurada_devolveZero() {
         Studio s = new Studio();
         s.setTabelaHoras1(null);
