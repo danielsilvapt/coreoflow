@@ -270,6 +270,9 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         Select<String> seguroDesportivo = new Select<>();
         seguroDesportivo.setLabel("Seguro Desportivo");
         seguroDesportivo.setItems("Associação", "Próprio");
+        // O valor guardado continua "Associação" (relatórios e dados existentes); mostra-se o nome do estúdio.
+        seguroDesportivo.setItemLabelGenerator(v -> "Associação".equals(v) && studioAtual != null
+                ? studioAtual.getNome() : v);
 
         Checkbox socio = new Checkbox("Desejo tornar-me sócio");
 
@@ -315,7 +318,8 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
                 .set("margin-top", "8px");
 
         Runnable atualizarResumo = () -> atualizarResumoInscricao(
-                turmasInteresse.getValue(), dataNascimento.getValue(), socio.getValue());
+                turmasInteresse.getValue(), dataNascimento.getValue(), socio.getValue(),
+                seguroDesportivo.getValue());
 
         turmasInteresse.addValueChangeListener(event -> {
             Set<Turma> atuais = event.getValue();
@@ -373,6 +377,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
             }
         });
         socio.addValueChangeListener(ev -> atualizarResumo.run());
+        seguroDesportivo.addValueChangeListener(ev -> atualizarResumo.run());
 
         // --- 4. BINDER ---
         binder.forField(nomeCompleto).asRequired("Obrigatório").bind(Aluno::getNomeCompleto, Aluno::setNomeCompleto);
@@ -493,16 +498,20 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
                 .collect(Collectors.toList());
     }
 
-    private void atualizarResumoInscricao(Set<Turma> selecionadas, LocalDate dataNasc, boolean socioVal) {
+    private void atualizarResumoInscricao(Set<Turma> selecionadas, LocalDate dataNasc, boolean socioVal,
+            String seguro) {
         resumoPagamento.removeAll();
         if (selecionadas.isEmpty() || studioAtual == null) return;
 
-        MensalidadeConfig.ResumoInscricao resumo = calcularResumo(selecionadas, dataNasc, socioVal);
+        MensalidadeConfig.ResumoInscricao resumo = calcularResumo(selecionadas, dataNasc, socioVal, seguro);
 
         resumoPagamento.add(
                 linhaResumo("Mensalidade estimada", resumo.mensalidadeBase(), false),
                 linhaResumo("Taxa de inscrição", resumo.taxa(), false),
                 linhaResumo("Desconto +modalidades", -resumo.descontoMultiModalidade(), resumo.descontoMultiModalidade() > 0));
+        if (resumo.seguro() > 0) {
+            resumoPagamento.add(linhaResumo("Seguro desportivo", resumo.seguro(), false));
+        }
         if (resumo.ofertaPrimeiraMensalidade() > 0) {
             resumoPagamento.add(linhaResumo("1ª mensalidade oferecida", -resumo.ofertaPrimeiraMensalidade(), true));
         }
@@ -515,7 +524,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
     }
 
     private MensalidadeConfig.ResumoInscricao calcularResumo(Set<Turma> selecionadas, LocalDate dataNasc,
-            boolean socioVal) {
+            boolean socioVal, String seguro) {
         boolean crianca = dataNasc != null && java.time.Period.between(dataNasc, LocalDate.now()).getYears() < 18;
 
         java.util.Map<Turma, Integer> turmasEFrequencia = new java.util.LinkedHashMap<>();
@@ -530,7 +539,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         long numModalidades = selecionadas.stream().map(Turma::getModalidade).map(Modalidade::getId).distinct().count();
 
         return mensalidadeConfig.calcularResumo(
-                studioAtual, mensalidadeBaseTotal, false, false, (int) numModalidades);
+                studioAtual, mensalidadeBaseTotal, false, false, (int) numModalidades, seguro);
     }
 
     private HorizontalLayout linhaResumo(String label, double valor, boolean destacarDesconto) {
@@ -589,7 +598,8 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
             // Estúdio com Mollie: encaminha logo para o pagamento do 1º pagamento estimado.
             if (studioAtual != null && studioAtual.isMollieAtivo()) {
-                double total = calcularResumo(selecionadas, novo.getDataNascimento(), novo.isSocio()).total();
+                double total = calcularResumo(selecionadas, novo.getDataNascimento(), novo.isSocio(),
+                        novo.getSeguroDesportivo()).total();
                 if (total > 0) {
                     try {
                         PagamentoOnlineService.Checkout checkout = pagamentoOnlineService.criarPagamentoPedido(

@@ -514,7 +514,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                 .distinct().count();
 
         MensalidadeConfig.ResumoInscricao resumo = mensalidadeConfig.calcularResumo(
-                studio, base, renovacao, false, (int) numModalidades);
+                studio, base, renovacao, false, (int) numModalidades, aluno.getSeguroDesportivo());
 
         Span subtitulo = new Span("Mensalidades estimadas:");
         subtitulo.getStyle().set("font-weight", "600").set("display", "block").set("margin-top", "6px");
@@ -522,6 +522,9 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         linhasMensalidades.forEach(box::add);
 
         box.add(criarLinhaValor(renovacao ? "Taxa de renovação" : "Taxa de inscrição", resumo.taxa(), false));
+        if (resumo.seguro() > 0) {
+            box.add(criarLinhaValor("Seguro desportivo", resumo.seguro(), false));
+        }
         if (resumo.descontoMultiModalidade() > 0) {
             box.add(criarLinhaValor("Desconto +modalidades", -resumo.descontoMultiModalidade(), true));
         }
