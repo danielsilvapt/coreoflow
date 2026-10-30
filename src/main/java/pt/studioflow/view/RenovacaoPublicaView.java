@@ -27,11 +27,13 @@ import pt.studioflow.model.Aluno;
 import pt.studioflow.model.AlunoTurma;
 import pt.studioflow.model.Idioma;
 import pt.studioflow.model.Modalidade;
+import pt.studioflow.model.PagamentoOnline;
 import pt.studioflow.model.PublicoTurma;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
 import pt.studioflow.repository.StudioRepository;
 import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.service.PagamentoOnlineService;
 import pt.studioflow.service.RenovacaoService;
 import pt.studioflow.service.TranslationService;
 
@@ -57,6 +59,10 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
     private final StudioRepository studioRepository;
     private final MensalidadeConfig mensalidadeConfig;
     private final TranslationService translationService;
+    private final PagamentoOnlineService pagamentoOnlineService;
+
+    @org.springframework.beans.factory.annotation.Value("${app.base-url:https://app.coreoflow.me}")
+    private String baseUrl;
 
     private final VerticalLayout card = new VerticalLayout();
 
@@ -71,8 +77,9 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
 
     public RenovacaoPublicaView(RenovacaoService renovacaoService, TurmaRepository turmaRepository,
             StudioRepository studioRepository, MensalidadeConfig mensalidadeConfig,
-            TranslationService translationService) {
+            TranslationService translationService, PagamentoOnlineService pagamentoOnlineService) {
         this.renovacaoService = renovacaoService;
+        this.pagamentoOnlineService = pagamentoOnlineService;
         this.turmaRepository = turmaRepository;
         this.studioRepository = studioRepository;
         this.mensalidadeConfig = mensalidadeConfig;
@@ -97,6 +104,16 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
         }
 
         construirLayoutBase();
+
+        // Regresso do checkout Mollie: o pedido já foi submetido, só falta mostrar o estado do pagamento.
+        String pagamentoId = event.getLocation().getQueryParameters()
+                .getParameters().getOrDefault("pagamento", List.of()).stream()
+                .findFirst().orElse(null);
+        if (pagamentoId != null) {
+            mostrarSucesso(pagamentoOnlineService.mensagemRegresso(pagamentoId, studioAtual));
+            return;
+        }
+
         mostrarPassoEmail();
     }
 
@@ -316,6 +333,22 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
         resumoPagamento.removeAll();
         if (selecionadas.isEmpty()) return;
 
+        MensalidadeConfig.ResumoInscricao resumo = calcularResumo(aluno, selecionadas);
+
+        resumoPagamento.add(
+                linhaResumo("Mensalidade estimada", resumo.mensalidadeBase(), false),
+                linhaResumo("Taxa de renovação", resumo.taxa(), false),
+                linhaResumo("Desconto familiar", -resumo.descontoFamiliar(), resumo.descontoFamiliar() > 0),
+                linhaResumo("Desconto +modalidades", -resumo.descontoMultiModalidade(), resumo.descontoMultiModalidade() > 0),
+                linhaResumo("Total estimado (1º pagamento)", resumo.total(), false));
+        if (studioAtual.isMollieAtivo() && resumo.total() > 0) {
+            Span aviso = new Span("Ao submeter, és encaminhado(a) para o pagamento online deste valor.");
+            aviso.getStyle().set("color", "#7f8c8d").set("font-size", "0.85em");
+            resumoPagamento.add(aviso);
+        }
+    }
+
+    private MensalidadeConfig.ResumoInscricao calcularResumo(Aluno aluno, Set<Turma> selecionadas) {
         java.util.Map<Turma, Integer> turmasEFrequencia = new java.util.LinkedHashMap<>();
         for (Turma t : selecionadas) {
             Select<String> freqSelect = mapaFrequencias.get(t.getId());
@@ -327,15 +360,8 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         long numModalidades = selecionadas.stream().map(Turma::getModalidade).map(Modalidade::getId).distinct().count();
 
-        MensalidadeConfig.ResumoInscricao resumo = mensalidadeConfig.calcularResumo(
+        return mensalidadeConfig.calcularResumo(
                 studioAtual, mensalidadeBaseTotal, true, temFamiliarInscrito, (int) numModalidades);
-
-        resumoPagamento.add(
-                linhaResumo("Mensalidade estimada", resumo.mensalidadeBase(), false),
-                linhaResumo("Taxa de renovação", resumo.taxa(), false),
-                linhaResumo("Desconto familiar", -resumo.descontoFamiliar(), resumo.descontoFamiliar() > 0),
-                linhaResumo("Desconto +modalidades", -resumo.descontoMultiModalidade(), resumo.descontoMultiModalidade() > 0),
-                linhaResumo("Total estimado (1º pagamento)", resumo.total(), false));
     }
 
     private HorizontalLayout linhaResumo(String label, double valor, boolean destacarDesconto) {
@@ -375,15 +401,39 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
             return;
         }
 
-        mostrarSucesso();
+        // Estúdio com Mollie: encaminha logo para o pagamento do 1º pagamento estimado.
+        if (studioAtual.isMollieAtivo()) {
+            double total = calcularResumo(aluno, selecionadas).total();
+            if (total > 0) {
+                try {
+                    PagamentoOnlineService.Checkout checkout = pagamentoOnlineService.criarPagamentoPedido(
+                            aluno, studioAtual, PagamentoOnline.Tipo.RENOVACAO, total,
+                            baseUrl + "/renovacao?studio=" + studioAtual.getSlug() + "&pagamento=",
+                            baseUrl + "/api/mollie/webhook");
+                    getUI().ifPresent(ui -> ui.getPage().setLocation(checkout.checkoutUrl()));
+                    return;
+                } catch (Exception ex) {
+                    mostrarSucesso("Não foi possível abrir o pagamento online — o estúdio indicará como pagar.");
+                    return;
+                }
+            }
+        }
+
+        mostrarSucesso(null);
     }
 
-    private void mostrarSucesso() {
+    /** {@code notaPagamento}: estado do pagamento online, quando houve (nulo = sem pagamento online). */
+    private void mostrarSucesso(String notaPagamento) {
         removerConteudoAposHeader();
         VerticalLayout layout = new VerticalLayout(
                 new Icon(VaadinIcon.CHECK_CIRCLE),
                 new H2(translationService.t("renovacao.sucesso.titulo", idiomaAtual)),
                 new Span(studioAtual.getNome() + translationService.t("renovacao.sucesso.msg", idiomaAtual)));
+        if (notaPagamento != null) {
+            Span nota = new Span(notaPagamento);
+            nota.getStyle().set("font-weight", "600").set("text-align", "center");
+            layout.add(nota);
+        }
         layout.setAlignItems(Alignment.CENTER);
         card.add(layout);
     }

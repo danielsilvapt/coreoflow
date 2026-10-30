@@ -16,6 +16,8 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
@@ -25,6 +27,7 @@ import pt.studioflow.repository.*;
 import pt.studioflow.service.AuthService;
 import pt.studioflow.service.CheckinService;
 import pt.studioflow.service.CompraCreditoService;
+import pt.studioflow.service.PagamentoOnlineService;
 import pt.studioflow.service.R2StorageService;
 import pt.studioflow.view.component.ListaEventos;
 
@@ -48,9 +51,24 @@ import java.util.stream.Collectors;
 @Route(value = "portal", layout = MainLayout.class)
 @PageTitle("Portal | CoreoFlow")
 @RolesAllowed("ALUNO")
-public class PortalAlunoView extends VerticalLayout {
+public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserver {
 
     private final MensalidadeConfig mensalidadeConfig;
+    private final AuthService authService;
+    private final MensalidadeRepository mensalidadeRepo;
+    private final PresencaRepository presencaRepo;
+    private final AvaliacaoAlunoRepository avaliacaoRepo;
+    private final ContratoDigitalRepository contratoRepo;
+    private final VideoAulaRepository videoAulaRepo;
+    private final R2StorageService storageService;
+    private final ConviteRepository conviteRepo;
+    private final InscricaoEventoRepository inscricaoRepo;
+    private final CompraCreditoService compraCreditoService;
+    private final CheckinService checkinService;
+    private final PagamentoOnlineService pagamentoOnlineService;
+
+    @org.springframework.beans.factory.annotation.Value("${app.base-url:https://app.coreoflow.me}")
+    private String baseUrl;
 
     public PortalAlunoView(AuthService authService,
                             AlunoRepository alunoRepo,
@@ -64,14 +82,53 @@ public class PortalAlunoView extends VerticalLayout {
                             ConviteRepository conviteRepo,
                             InscricaoEventoRepository inscricaoRepo,
                             CompraCreditoService compraCreditoService,
-                            CheckinService checkinService) {
+                            CheckinService checkinService,
+                            PagamentoOnlineService pagamentoOnlineService) {
 
         this.mensalidadeConfig = mensalidadeConfig;
+        this.authService = authService;
+        this.mensalidadeRepo = mensalidadeRepo;
+        this.presencaRepo = presencaRepo;
+        this.avaliacaoRepo = avaliacaoRepo;
+        this.contratoRepo = contratoRepo;
+        this.videoAulaRepo = videoAulaRepo;
+        this.storageService = storageService;
+        this.conviteRepo = conviteRepo;
+        this.inscricaoRepo = inscricaoRepo;
+        this.compraCreditoService = compraCreditoService;
+        this.checkinService = checkinService;
+        this.pagamentoOnlineService = pagamentoOnlineService;
 
         setSizeFull();
         setPadding(false);
         setSpacing(false);
+    }
 
+    /**
+     * O conteúdo é montado aqui (e não no construtor) para que, no regresso do
+     * checkout Mollie ({@code ?pagamento=<id>}), o estado do pagamento seja
+     * confirmado antes de se listarem as mensalidades.
+     */
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
+        String pagamentoId = event.getLocation().getQueryParameters()
+                .getParameters().getOrDefault("pagamento", List.of()).stream()
+                .findFirst().orElse(null);
+        String notaPagamento = pagamentoId != null && studio != null
+                ? pagamentoOnlineService.mensagemRegresso(pagamentoId, studio) : null;
+
+        removeAll();
+        construir();
+
+        if (notaPagamento != null) {
+            Notification.show(notaPagamento, 5000, Notification.Position.TOP_CENTER)
+                    .addThemeVariants(notaPagamento.startsWith("Pagamento recebido")
+                            ? NotificationVariant.LUMO_SUCCESS : NotificationVariant.LUMO_CONTRAST);
+        }
+    }
+
+    private void construir() {
         Aluno aluno = authService.getAlunoLogado();
         Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
 
@@ -95,6 +152,13 @@ public class PortalAlunoView extends VerticalLayout {
         // Destaque: próxima mensalidade a pagar + prazo do estúdio
         add(criarCardProximaMensalidade(mensalidades, studio));
 
+        // Estúdio com Mollie: pagar online as mensalidades em aberto até ao mês corrente
+        List<Mensalidade> pagaveis = studio != null && studio.isMollieAtivo()
+                ? pagamentoOnlineService.mensalidadesPagaveis(mensalidades) : List.of();
+        if (!pagaveis.isEmpty()) {
+            add(criarCardPagamentoOnline(aluno, studio, pagaveis));
+        }
+
         List<Presenca> presencas = presencaRepo.findByAlunoId(aluno.getId());
         long presencasMes = presencas.stream()
                 .filter(p -> p.getData() != null
@@ -113,7 +177,7 @@ public class PortalAlunoView extends VerticalLayout {
         tabs.getStyle().set("padding", "0 16px");
 
         tabs.add("📅 Presenças", criarTabPresencas(presencas, videoAulaRepo, storageService));
-        tabs.add("💳 Mensalidades", criarTabMensalidades(mensalidades, studio));
+        tabs.add("💳 Mensalidades", criarTabMensalidades(aluno, mensalidades, pagaveis, studio));
         if (studio == null || studio.hasModulo(StudioModulo.EVENTOS)) {
             tabs.add("🎭 Eventos", criarTabEventos(aluno, studio, conviteRepo, inscricaoRepo));
         }
@@ -347,6 +411,47 @@ public class PortalAlunoView extends VerticalLayout {
         return card;
     }
 
+    private Component criarCardPagamentoOnline(Aluno aluno, Studio studio, List<Mensalidade> pagaveis) {
+        double total = pagaveis.stream().mapToDouble(m -> mensalidadeConfig.valorComMulta(m, studio)).sum();
+        String periodos = pagaveis.stream()
+                .map(m -> capitalizar(m.getMes().getDisplayName(TextStyle.SHORT, new Locale("pt"))) + " " + m.getAno())
+                .distinct().collect(Collectors.joining(", "));
+
+        Span label = new Span("PAGAMENTO ONLINE");
+        label.getStyle().set("font-size", "11px").set("color", "#888")
+                .set("font-weight", "700").set("letter-spacing", "0.05em");
+        Span titulo = new Span("Em aberto: " + String.format("%.2f €", total));
+        titulo.getStyle().set("font-size", "20px").set("font-weight", "700").set("color", "#2D3436");
+        Span detalhe = new Span(periodos);
+        detalhe.getStyle().set("color", "#555").set("font-size", "13px");
+
+        Button pagar = new Button("Pagar " + String.format("%.2f €", total) + " online", new Icon(VaadinIcon.CREDIT_CARD),
+                e -> pagarMensalidades(aluno, studio, pagaveis));
+        pagar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        pagar.getStyle().set("margin-top", "8px");
+
+        VerticalLayout card = new VerticalLayout(label, titulo, detalhe, pagar);
+        card.setSpacing(false);
+        card.setPadding(true);
+        card.getStyle()
+                .set("background", "white").set("border-radius", "12px")
+                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.08)")
+                .set("border-left", "5px solid #1976D2")
+                .set("margin", "16px 16px 0");
+        return card;
+    }
+
+    private void pagarMensalidades(Aluno aluno, Studio studio, List<Mensalidade> mensalidades) {
+        try {
+            PagamentoOnlineService.Checkout checkout = pagamentoOnlineService.criarPagamentoMensalidades(
+                    aluno, studio, mensalidades, baseUrl + "/portal?pagamento=", baseUrl + "/api/mollie/webhook");
+            UI.getCurrent().getPage().setLocation(checkout.checkoutUrl());
+        } catch (Exception ex) {
+            Notification.show("Não foi possível abrir o pagamento online: " + ex.getMessage())
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
     private static String capitalizar(String s) {
         return s == null || s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
@@ -403,7 +508,8 @@ public class PortalAlunoView extends VerticalLayout {
         return layout;
     }
 
-    private VerticalLayout criarTabMensalidades(List<Mensalidade> mensalidades, Studio studio) {
+    private VerticalLayout criarTabMensalidades(Aluno aluno, List<Mensalidade> mensalidades,
+            List<Mensalidade> pagaveis, Studio studio) {
         VerticalLayout layout = new VerticalLayout();
         layout.setPadding(true);
         layout.setSizeFull();
@@ -429,6 +535,18 @@ public class PortalAlunoView extends VerticalLayout {
                     .set("font-size","11px").set("font-weight","600");
             return b;
         }).setHeader("Estado").setAutoWidth(true);
+        if (!pagaveis.isEmpty()) {
+            // Paga o mês inteiro: nos modelos por pacote a mensalidade está repartida pelas turmas.
+            Set<Long> idsPagaveis = pagaveis.stream().map(Mensalidade::getId).collect(Collectors.toSet());
+            grid.addComponentColumn(m -> {
+                if (!idsPagaveis.contains(m.getId())) return new Span();
+                List<Mensalidade> doMes = pagaveis.stream()
+                        .filter(p -> p.getAno() == m.getAno() && p.getMes() == m.getMes()).toList();
+                Button pagar = new Button("Pagar", e -> pagarMensalidades(aluno, studio, doMes));
+                pagar.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
+                return pagar;
+            }).setAutoWidth(true);
+        }
 
         List<Mensalidade> ordenadas = mensalidades.stream()
                 .sorted((a, b) -> {

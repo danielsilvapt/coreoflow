@@ -191,16 +191,11 @@ public class MensalidadeService {
         LocalDate hoje = LocalDate.now();
         int mesAtual = hoje.getMonthValue();
 
-        java.time.YearMonth inicio;
+        java.time.YearMonth inicio = inicioPeriodoLetivo(hoje);
         java.time.YearMonth fim;
-        if (mesAtual >= 9) { // setembro–dezembro: ano letivo em curso termina em junho do ano seguinte
-            inicio = java.time.YearMonth.of(hoje.getYear(), mesAtual);
-            fim = java.time.YearMonth.of(hoje.getYear() + 1, 6);
-        } else if (mesAtual >= 7) { // julho–agosto: arranca já o próximo ano letivo
-            inicio = java.time.YearMonth.of(hoje.getYear(), 9);
+        if (mesAtual >= 7) { // julho–dezembro: o ano letivo termina em junho do ano seguinte
             fim = java.time.YearMonth.of(hoje.getYear() + 1, 6);
         } else { // janeiro–junho: ano letivo em curso termina em junho deste ano
-            inicio = java.time.YearMonth.of(hoje.getYear(), mesAtual);
             fim = java.time.YearMonth.of(hoje.getYear(), 6);
         }
 
@@ -292,6 +287,18 @@ public class MensalidadeService {
             m.setObservacoes(OBS_OFERTA_PRIMEIRA);
         });
         mensalidadeRepository.saveAll(doPrimeiroMes);
+    }
+
+    /**
+     * Primeiro mês para o qual se geram mensalidades numa inscrição feita em
+     * {@code data}: o próprio mês, exceto em julho–agosto, em que já arranca o
+     * próximo ano letivo (setembro).
+     */
+    public static java.time.YearMonth inicioPeriodoLetivo(LocalDate data) {
+        int mes = data.getMonthValue();
+        return mes == 7 || mes == 8
+                ? java.time.YearMonth.of(data.getYear(), 9)
+                : java.time.YearMonth.of(data.getYear(), mes);
     }
 
     /**

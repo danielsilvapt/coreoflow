@@ -298,7 +298,7 @@ public class Studio {
     @Column(name = "vendus_api_key")
     private String vendusApiKey;
 
-    /** Chave API Mollie para cobrar aulas avulso/packs online. Nulo = Mollie desligado, cai em "pagar no estúdio". */
+    /** Chave API Mollie para pagamentos online (inscrições, renovações, mensalidades, aulas avulso). Nulo = Mollie desligado, cai em "pagar no estúdio". */
     @Column(name = "mollie_api_key")
     private String mollieApiKey;
 

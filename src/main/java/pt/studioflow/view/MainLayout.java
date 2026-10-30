@@ -468,6 +468,7 @@ public class MainLayout extends AppLayout {
                         long pedidosPorResolver = suporteService.porResolver();
                         tabs.add(criarTab("Suporte", VaadinIcon.HEADSET, "#16A085", SuporteView.class,
                                         pedidosPorResolver > 0 ? String.valueOf(pedidosPorResolver) : null));
+                        tabs.add(criarTab("Acessos", VaadinIcon.EYE, "#8E44AD", AcessosView.class, null));
                         tabs.add(criarTab("Logs & Erros", VaadinIcon.FILE_TEXT_O, "#E74C3C", LogsView.class, null));
                         tabs.add(criarTab("Configurações", VaadinIcon.COG, "#607D8B", ConfiguracoesPlataformaView.class, null));
                         tabs.add(criarHeaderMenu("Comercial"));
