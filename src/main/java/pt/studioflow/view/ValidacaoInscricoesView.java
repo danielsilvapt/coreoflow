@@ -55,6 +55,7 @@ import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.repository.MensalidadeRepository;
 import pt.studioflow.repository.PresencaRepository;
 import pt.studioflow.service.MensalidadeService;
+import pt.studioflow.service.PagamentoOnlineService;
 import pt.studioflow.service.EmailService;
 import pt.studioflow.util.DataUtil;
 
@@ -71,6 +72,8 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     private final PresencaRepository presencaRepository;
     private final CompraCreditoRepository compraCreditoRepository;
     private final MensalidadeService mensalidadeService;
+    private final PagamentoOnlineService pagamentoOnlineService;
+    private final pt.studioflow.repository.PagamentoOnlineRepository pagamentoOnlineRepository;
     private final MensalidadeConfig mensalidadeConfig;
     private final EmailService emailService;
 
@@ -95,7 +98,9 @@ public class ValidacaoInscricoesView extends VerticalLayout {
             CompraCreditoRepository compraCreditoRepository,
             MensalidadeService mensalidadeService,
             MensalidadeConfig mensalidadeConfig,
-            EmailService emailService) {
+            EmailService emailService,
+            PagamentoOnlineService pagamentoOnlineService,
+            pt.studioflow.repository.PagamentoOnlineRepository pagamentoOnlineRepository) {
         this.repository = repository;
         this.turmaRepository = turmaRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
@@ -106,6 +111,8 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         this.mensalidadeService = mensalidadeService;
         this.mensalidadeConfig = mensalidadeConfig;
         this.emailService = emailService;
+        this.pagamentoOnlineService = pagamentoOnlineService;
+        this.pagamentoOnlineRepository = pagamentoOnlineRepository;
 
         setSizeFull();
         setPadding(true);
@@ -446,6 +453,22 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         titulo.getStyle().set("margin", "0 0 8px 0");
         box.add(titulo);
 
+        pagamentoOnlineService.ultimoPagamentoDoPedido(aluno).ifPresent(p -> {
+            String[] cfg = switch (p.getEstado()) {
+                case PAGO -> new String[]{"#e8f5e9", "#27AE60", "💳 Pago online: " + formatarEuro(p.getValor().doubleValue())
+                        + " — ao ativar, o 1º mês fica marcado como pago"};
+                case PENDENTE -> new String[]{"#fff3e0", "#E67E22", "💳 Pagamento online por concluir ("
+                        + formatarEuro(p.getValor().doubleValue()) + ")"};
+                default -> new String[]{"#fce4ec", "#C62828", "💳 Pagamento online não concluído ("
+                        + formatarEuro(p.getValor().doubleValue()) + ")"};
+            };
+            Span badge = new Span(cfg[2]);
+            badge.getStyle().set("background", cfg[0]).set("color", cfg[1]).set("font-weight", "600")
+                    .set("padding", "4px 10px").set("border-radius", "10px").set("font-size", "0.85em")
+                    .set("display", "block").set("margin-bottom", "8px");
+            box.add(badge);
+        });
+
         Studio studio = TenantContext.getCurrentStudio();
         List<LinhaMensalidade> linhas = obterLinhasParaResumoMensalidade(aluno);
 
@@ -618,6 +641,8 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         if (!isRenovacao && studioAtual != null && studioAtual.isPrimeiraMensalidadeGratis()) {
             mensalidadeService.oferecerPrimeiraMensalidade(aluno);
         }
+        // 1º pagamento já feito online (Mollie) no formulário → marca o 1º mês como pago.
+        pagamentoOnlineService.aplicarPagamentosDoPedido(aluno);
 
         if (isRenovacao) {
             try {
@@ -783,6 +808,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         presencaRepository.deleteByAluno(alunoSimplificado);
         mensalidadeRepository.deleteByAluno(alunoSimplificado);
         compraCreditoRepository.deleteByAluno(alunoSimplificado);
+        pagamentoOnlineRepository.deleteByAluno(alunoSimplificado);
         alunoTurmaRepository.deleteByAlunoId(id);
 
         repository.findById(id).ifPresent(managedAluno -> {
