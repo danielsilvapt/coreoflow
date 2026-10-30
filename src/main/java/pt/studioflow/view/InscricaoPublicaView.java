@@ -269,10 +269,18 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         Select<String> seguroDesportivo = new Select<>();
         seguroDesportivo.setLabel("Seguro Desportivo");
-        seguroDesportivo.setItems("Associação", "Próprio");
-        // O valor guardado continua "Associação" (relatórios e dados existentes); mostra-se o nome do estúdio.
-        seguroDesportivo.setItemLabelGenerator(v -> "Associação".equals(v) && studioAtual != null
-                ? studioAtual.getNome() : v);
+        // Só as opções que o estúdio aceita; o seguro do estúdio aparece com o nome do estúdio.
+        if (studioAtual != null) {
+            java.util.List<String> seguros = studioAtual.getListaSegurosPermitidos();
+            seguroDesportivo.setItems(seguros);
+            seguroDesportivo.setItemLabelGenerator(studioAtual::rotuloSeguro);
+            if (seguros.size() == 1) {
+                seguroDesportivo.setValue(seguros.get(0));
+                seguroDesportivo.setReadOnly(true);
+            }
+        } else {
+            seguroDesportivo.setItems(Studio.SEGUROS);
+        }
 
         Checkbox socio = new Checkbox("Desejo tornar-me sócio");
 

@@ -3,6 +3,7 @@ package pt.studioflow.view;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.checkbox.CheckboxGroup;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H2;
@@ -118,6 +119,11 @@ public class PrecarioView extends VerticalLayout {
         NumberField taxaRenovacao = campoEuro("Taxa de renovação (€)", valorOu(studio.getTaxaRenovacao(), 0.0));
         NumberField valorSeguro = campoEuro("Seguro desportivo (€)", valorOu(studio.getValorSeguro(), 0.0));
         valorSeguro.setHelperText("Cobrado no 1º pagamento a quem escolhe o seguro do estúdio (não a quem tem seguro próprio).");
+        CheckboxGroup<String> segurosPermitidos = new CheckboxGroup<>("Seguros aceites na inscrição");
+        segurosPermitidos.setItems(Studio.SEGUROS);
+        segurosPermitidos.setItemLabelGenerator(studio::rotuloSeguro);
+        segurosPermitidos.setValue(new java.util.HashSet<>(studio.getListaSegurosPermitidos()));
+        segurosPermitidos.setHelperText("Com uma só opção, fica escolhida automaticamente na inscrição.");
         Checkbox primeiraGratis = new Checkbox("Primeira mensalidade gratuita para alunos novos");
         primeiraGratis.setValue(studio.isPrimeiraMensalidadeGratis());
         primeiraGratis.setTooltipText("Ao aceitar a inscrição de um aluno novo, as mensalidades do primeiro mês "
@@ -160,7 +166,13 @@ public class PrecarioView extends VerticalLayout {
             studio.setMultaAtrasoPercentagem(multa.getValue() != null ? Math.max(0, multa.getValue()) : 0.0);
             studio.setTaxaInscricao(taxaInscricao.getValue());
             studio.setTaxaRenovacao(taxaRenovacao.getValue());
+            if (segurosPermitidos.getValue().isEmpty()) {
+                Notification.show("Escolhe pelo menos um seguro aceite.")
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
             studio.setValorSeguro(valorSeguro.getValue() != null ? Math.max(0, valorSeguro.getValue()) : 0.0);
+            studio.setListaSegurosPermitidos(segurosPermitidos.getValue());
             studio.setPrimeiraMensalidadeGratis(primeiraGratis.getValue());
             studio.setDescontoFamiliaresEuros(descFamiliares.getValue());
             studio.setDescontoFamiliaresPercentagem(descFamiliaresPct.getValue());
@@ -176,7 +188,7 @@ public class PrecarioView extends VerticalLayout {
 
         add(seccao("Mensalidades"), modeloPrecario, grupoPadrao, grupoHoras, grupoModalidades, meiaMensalidade,
                 seccao("Pagamentos e taxas"), grelha(diaLimite, multa, taxaInscricao, taxaRenovacao, valorSeguro),
-                primeiraGratis,
+                segurosPermitidos, primeiraGratis,
                 seccao("Descontos"), grelha(descFamiliares, descFamiliaresPct, descDirecao, descMaisModal, descMais65),
                 notaAlteracoes, guardar);
     }

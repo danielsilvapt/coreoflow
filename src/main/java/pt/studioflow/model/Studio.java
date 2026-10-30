@@ -269,6 +269,18 @@ public class Studio {
     @Column(name = "valor_seguro")
     private Double valorSeguro = 0.0;
 
+    /** Valor guardado no aluno para o seguro do próprio estúdio (mostrado com o nome do estúdio). */
+    public static final String SEGURO_ESTUDIO = "Associação";
+    /** Todas as opções de seguro desportivo, pela ordem em que são mostradas. */
+    public static final java.util.List<String> SEGUROS = java.util.List.of(SEGURO_ESTUDIO, "Próprio", "Outro");
+
+    /**
+     * Opções de seguro que o estúdio aceita (CSV de {@link #SEGUROS}). Vazio =
+     * seguro do estúdio ou próprio. Com uma só opção, fica escolhida à partida.
+     */
+    @Column(name = "seguros_permitidos")
+    private String segurosPermitidos;
+
     // =====================================================
     // IDIOMAS DO FORMULÁRIO PÚBLICO (por estúdio)
     // =====================================================
@@ -471,6 +483,26 @@ public class Studio {
 
     public Double getValorSeguro() { return valorSeguro; }
     public void setValorSeguro(Double v) { this.valorSeguro = v; }
+
+    public String getSegurosPermitidos() { return segurosPermitidos; }
+    public void setSegurosPermitidos(String v) { this.segurosPermitidos = v; }
+
+    public java.util.List<String> getListaSegurosPermitidos() {
+        java.util.List<String> escolhidos = segurosPermitidos == null ? java.util.List.of()
+                : java.util.Arrays.stream(segurosPermitidos.split(",")).map(String::trim).toList();
+        java.util.List<String> lista = SEGUROS.stream().filter(escolhidos::contains).toList();
+        return lista.isEmpty() ? java.util.List.of(SEGURO_ESTUDIO, "Próprio") : lista;
+    }
+
+    public void setListaSegurosPermitidos(java.util.Collection<String> seguros) {
+        this.segurosPermitidos = SEGUROS.stream().filter(seguros::contains)
+                .collect(java.util.stream.Collectors.joining(","));
+    }
+
+    /** Rótulo de uma opção de seguro: o seguro do estúdio aparece com o nome do estúdio. */
+    public String rotuloSeguro(String seguro) {
+        return SEGURO_ESTUDIO.equals(seguro) && nome != null ? nome : seguro;
+    }
 
     public String getIdiomasDisponiveis() { return idiomasDisponiveis; }
     public void setIdiomasDisponiveis(String idiomasDisponiveis) { this.idiomasDisponiveis = idiomasDisponiveis; }

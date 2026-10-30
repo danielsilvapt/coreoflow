@@ -387,11 +387,7 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
 
     private VerticalLayout criarFormQuotas() {
         seguroDesportivo.setLabel("Seguro Desportivo");
-        seguroDesportivo.setItems("Associação", "Próprio", "Outro");
-        // O valor guardado continua "Associação" (relatórios e dados existentes); mostra-se o nome do estúdio.
-        Studio studioSeguro = TenantContext.getCurrentStudio();
-        seguroDesportivo.setItemLabelGenerator(v -> "Associação".equals(v) && studioSeguro != null
-                ? studioSeguro.getNome() : v);
+        atualizarOpcoesSeguro(null);
         seguroDesportivo.setWidth("250px");
         dataInscricao.setWidth("250px");
         dataInscricaoRenovacao.setWidth("250px");
@@ -488,6 +484,7 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         }
 
         // 2. Binder e Foto
+        atualizarOpcoesSeguro(alunoAtual);
         binder.setBean(alunoAtual);
         atualizarVisibilidadeTabEncarregado();
 
@@ -579,9 +576,24 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         alunoRepository.delete(aluno);
     }
 
+    /**
+     * Opções de seguro aceites pelo estúdio, mais a que o aluno já tenha (dados
+     * antigos), para não se perder ao abrir a ficha.
+     */
+    private void atualizarOpcoesSeguro(Aluno aluno) {
+        Studio studio = TenantContext.getCurrentStudio();
+        List<String> opcoes = new java.util.ArrayList<>(studio != null
+                ? studio.getListaSegurosPermitidos() : Studio.SEGUROS);
+        String atual = aluno != null ? aluno.getSeguroDesportivo() : null;
+        if (atual != null && !atual.isBlank() && !opcoes.contains(atual)) opcoes.add(atual);
+        seguroDesportivo.setItems(opcoes);
+        seguroDesportivo.setItemLabelGenerator(v -> studio != null ? studio.rotuloSeguro(v) : v);
+    }
+
     public void setAluno(Aluno aluno) {
         if (aluno == null)
             return;
+        atualizarOpcoesSeguro(aluno);
         this.binder.setBean(aluno);
         System.out.println("A editar Aluno ID: " + aluno.getId());
         this.abrirFormulario(aluno);
