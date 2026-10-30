@@ -466,6 +466,12 @@ public class StudioAdminView extends VerticalLayout {
         valorSeguro.setMin(0);
         valorSeguro.setHelperText("Cobrado no 1º pagamento a quem escolhe o seguro do estúdio (não a quem tem seguro próprio).");
 
+        CheckboxGroup<String> segurosPermitidos = new CheckboxGroup<>("Seguros aceites na inscrição");
+        segurosPermitidos.setItems(Studio.SEGUROS);
+        segurosPermitidos.setItemLabelGenerator(studio::rotuloSeguro);
+        segurosPermitidos.setValue(new java.util.HashSet<>(studio.getListaSegurosPermitidos()));
+        segurosPermitidos.setHelperText("Com uma só opção, fica escolhida automaticamente na inscrição.");
+
         Checkbox primeiraGratis = new Checkbox("1ª mensalidade gratuita para alunos novos");
         primeiraGratis.setValue(studio.isPrimeiraMensalidadeGratis());
 
@@ -484,7 +490,7 @@ public class StudioAdminView extends VerticalLayout {
                 diaLimitePagamento,
                 multaAtraso,
                 descontoFamiliares, descontoFamiliaresPct, descontoDirecao, descontoMaisModal, descontoMais65,
-                taxaInscricao, taxaRenovacao, valorSeguro, primeiraGratis,
+                taxaInscricao, taxaRenovacao, valorSeguro, segurosPermitidos, primeiraGratis,
                 ativo, enviarEmails);
 
         // --- Modelo de Preçário ---
@@ -764,6 +770,9 @@ public class StudioAdminView extends VerticalLayout {
             studio.setTaxaInscricao(taxaInscricao.getValue());
             studio.setTaxaRenovacao(taxaRenovacao.getValue());
             studio.setValorSeguro(valorSeguro.getValue() != null ? Math.max(0, valorSeguro.getValue()) : 0.0);
+            if (!segurosPermitidos.getValue().isEmpty()) {
+                studio.setListaSegurosPermitidos(segurosPermitidos.getValue());
+            }
             studio.setPrimeiraMensalidadeGratis(primeiraGratis.getValue());
             studio.setAtivo(ativo.getValue());
             studio.setEnviarEmails(Boolean.TRUE.equals(enviarEmails.getValue()));
