@@ -10,8 +10,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import pt.studioflow.service.AuditoriaService;
 import pt.studioflow.service.CustomUserDetailsService;
 
 @Configuration
@@ -20,11 +22,14 @@ public class SecurityConfig extends VaadinWebSecurity {
 
     private final CustomUserDetailsService userDetailsService;
     private final DaoAuthenticationProvider authenticationProvider;
+    private final AuditoriaService auditoriaService;
 
     public SecurityConfig(CustomUserDetailsService userDetailsService,
-                          DaoAuthenticationProvider authenticationProvider) {
+                          DaoAuthenticationProvider authenticationProvider,
+                          AuditoriaService auditoriaService) {
         this.userDetailsService = userDetailsService;
         this.authenticationProvider = authenticationProvider;
+        this.auditoriaService = auditoriaService;
     }
 
     @Override
@@ -65,6 +70,16 @@ public class SecurityConfig extends VaadinWebSecurity {
         SavedRequestAwareAuthenticationSuccessHandler successHandler =
                 new SavedRequestAwareAuthenticationSuccessHandler() {
                     @Override
+                    public void onAuthenticationSuccess(
+                            jakarta.servlet.http.HttpServletRequest request,
+                            jakarta.servlet.http.HttpServletResponse response,
+                            org.springframework.security.core.Authentication authentication)
+                            throws jakarta.servlet.ServletException, java.io.IOException {
+                        auditoriaService.registarLogin(authentication);
+                        super.onAuthenticationSuccess(request, response, authentication);
+                    }
+
+                    @Override
                     protected String determineTargetUrl(
                             jakarta.servlet.http.HttpServletRequest request,
                             jakarta.servlet.http.HttpServletResponse response) {
@@ -87,11 +102,30 @@ public class SecurityConfig extends VaadinWebSecurity {
                     }
                 };
         successHandler.setDefaultTargetUrl("/");
-        http.formLogin(form -> form.successHandler(successHandler));
+        // Mesmo destino que o VaadinWebSecurity define (/login?error), mas regista a tentativa na auditoria.
+        SimpleUrlAuthenticationFailureHandler failureHandler =
+                new SimpleUrlAuthenticationFailureHandler("/login?error") {
+                    @Override
+                    public void onAuthenticationFailure(
+                            jakarta.servlet.http.HttpServletRequest request,
+                            jakarta.servlet.http.HttpServletResponse response,
+                            org.springframework.security.core.AuthenticationException exception)
+                            throws java.io.IOException, jakarta.servlet.ServletException {
+                        auditoriaService.registarLoginFalhado(request.getParameter("username"),
+                                exception.getMessage());
+                        super.onAuthenticationFailure(request, response, exception);
+                    }
+                };
+        http.formLogin(form -> form.successHandler(successHandler).failureHandler(failureHandler));
 
 
         http.logout(logout -> logout
                 .logoutUrl("/logout")
+                .addLogoutHandler((request, response, authentication) -> {
+                    if (authentication != null) {
+                        auditoriaService.registarLogout(authentication);
+                    }
+                })
                 .logoutSuccessUrl("/login")
                 .invalidateHttpSession(true)
                 .clearAuthentication(true)
