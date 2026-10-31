@@ -103,7 +103,6 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
         injectStyles();
 
         H2 titulo = new H2("Gestão de Alunos");
-        titulo.getStyle().set("margin-top", "0");
 
         Button btnNovo = new Button("+ Novo Aluno", e -> {
             alunoForm.abrir(null);
@@ -115,7 +114,7 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
         header.setWidthFull();
         header.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
         header.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
-        header.getStyle().set("padding", "15px 20px 0 20px");
+        header.addClassNames("cf-page-header", "cf-page-header-padded");
 
         add(header, criarStatsCards(), grid);
 
@@ -124,43 +123,22 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
     }
 
     private void injectStyles() {
-        String styles = ".stat-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; min-width: 200px; flex-grow: 1; }"
-                +
-                ".stat-title { color: #7f8c8d; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }"
-                +
-                ".stat-value { font-size: 1.6rem; font-weight: 800; display: block; margin-top: 5px; }";
-
-        UI.getCurrent().getElement().executeJs(
-                "const style = document.createElement('style'); style.textContent = $0; document.head.appendChild(style);",
-                styles);
+        // Estilos (cartões, botões de ação) vêm do tema coreoflow.
         ViewUtils.injetarEstiloBotoesAcao();
     }
 
     private Component criarStatsCards() {
-        HorizontalLayout layout = new HorizontalLayout();
-        layout.setWidthFull();
-        layout.setSpacing(true);
-        layout.getStyle().set("margin", "15px 0");
-
-        layout.add(
+        Div layout = ViewUtils.statsRow(
                 criarCard("Registados", totalAlunosLabel, "#2D3436", VaadinIcon.USERS),
                 criarCard("Ativos", ativosLabel, "#1E8E3E", VaadinIcon.USER_CHECK),
                 criarCard("Em Dívida", dividasLabel, "#D93025", VaadinIcon.WARNING));
+        layout.addClassName("cf-page-padded-x");
+        layout.getStyle().set("margin", "var(--lumo-space-m) 0");
         return layout;
     }
 
     private Div criarCard(String titulo, Span val, String color, VaadinIcon icon) {
-        Div card = new Div();
-        card.addClassName("stat-card");
-        Icon i = icon.create();
-        i.setColor(color);
-        i.getStyle().set("float", "right");
-        Span t = new Span(titulo);
-        t.addClassName("stat-title");
-        val.addClassName("stat-value");
-        val.getStyle().set("color", color);
-        card.add(i, t, val);
-        return card;
+        return ViewUtils.statCard(titulo, val, color, icon);
     }
 
     private void configureGrid() {
@@ -188,9 +166,9 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
             }
             image.setWidth("40px");
             image.setHeight("40px");
-            image.getStyle().set("border-radius", "50%").set("object-fit", "cover");
+            image.addClassName("cf-avatar");
             Span nome = new Span(aluno.getNomeCompleto());
-            nome.getStyle().set("font-size", "1.05rem").set("font-weight", "600").set("white-space", "nowrap");
+            nome.addClassName("cf-cell-title");
             VerticalLayout info = new VerticalLayout(nome);
             info.setPadding(false);
             info.setSpacing(false);
@@ -238,7 +216,7 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
                 // o ícone da coluna ESTADO, mantendo o "DÍVIDA" como o único aviso textual.
                 Icon visto = VaadinIcon.CHECK_CIRCLE.create();
                 visto.setSize("18px");
-                visto.setColor("#1E8E3E");
+                visto.addClassName("cf-tone-success");
                 celula = new Span(visto);
                 celula.getElement().setAttribute("title", "Regular");
             }
@@ -250,7 +228,8 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
 
         grid.addComponentColumn(aluno -> {
             Icon icon = aluno.isAtivo() ? VaadinIcon.CHECK_CIRCLE.create() : VaadinIcon.CLOSE_CIRCLE.create();
-            icon.setColor(aluno.isAtivo() ? "#1E8E3E" : "#D93025");
+            icon.addClassName(aluno.isAtivo() ? "cf-tone-success" : "cf-tone-error");
+            icon.setSize("18px");
             return icon;
         }).setHeader("ESTADO").setWidth("100px").setTextAlign(ColumnTextAlign.CENTER);
 
@@ -305,11 +284,11 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
     private Span criarBadgeTurma(Turma turma, boolean pendente) {
         String cor = (turma.getCor() != null && !turma.getCor().isBlank()) ? turma.getCor() : "#9e9e9e";
         Span badge = new Span(codigoOuDescricao(turma) + (pendente ? " (pendente)" : ""));
-        badge.getStyle().set("background", cor).set("color", corTexto(cor))
-                .set("padding", "2px 9px").set("border-radius", "12px")
-                .set("font-size", "0.72rem").set("font-weight", "600").set("white-space", "nowrap");
+        badge.addClassName("cf-turma-badge");
+        // cor da própria turma (dado), resto do visual em .cf-turma-badge
+        badge.getStyle().set("background", cor).set("color", corTexto(cor));
         if (pendente) {
-            badge.getStyle().set("opacity", "0.75").set("border", "1px dashed rgba(0,0,0,0.4)");
+            badge.addClassName("cf-turma-badge--pendente");
         }
         return badge;
     }

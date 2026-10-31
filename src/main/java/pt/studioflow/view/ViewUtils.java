@@ -93,6 +93,54 @@ public final class ViewUtils {
         return botaoAcao(VaadinIcon.TRASH, "btn-del", "Eliminar", onClick);
     }
 
+    // =========================
+    // CARTÕES DE ESTATÍSTICA
+    // =========================
+
+    /**
+     * Converte as cores "históricas" usadas nas vistas no tom semântico do tema
+     * (sucesso / erro / info / violeta / aviso / neutro).
+     */
+    public static String tomDaCor(String cor) {
+        if (cor == null) return "neutral";
+        return switch (cor.trim().toLowerCase()) {
+            case "#1e8e3e", "#2e7d32", "#27ae60", "#2ecc71", "#16a085" -> "success";
+            case "#d93025", "#c62828", "#d32f2f", "#e74c3c", "#c0392b" -> "error";
+            case "#1967d2", "#1976d2", "#4a90e2", "#2980b9" -> "info";
+            case "#8e24aa", "#8430ce", "#6d1b7b", "#8e44ad" -> "violet";
+            case "#ff5d13", "#e65100", "#e67e22", "#f39c12", "#ffa000" -> "warning";
+            default -> "neutral";
+        };
+    }
+
+    /**
+     * Cartão de estatística padrão (título em versalete, valor grande, ícone num quadrado
+     * com o tom semântico). O {@code valor} é mantido pela view para atualizações.
+     */
+    public static com.vaadin.flow.component.html.Div statCard(String titulo,
+            com.vaadin.flow.component.html.Span valor, String cor, VaadinIcon icone) {
+        String tom = tomDaCor(cor);
+        com.vaadin.flow.component.html.Div card = new com.vaadin.flow.component.html.Div();
+        card.addClassName("stat-card");
+        Icon i = icone.create();
+        i.addClassNames("cf-stat-icon", "cf-tone-" + tom);
+        com.vaadin.flow.component.html.Span t = new com.vaadin.flow.component.html.Span(titulo);
+        t.addClassName("stat-title");
+        valor.addClassName("stat-value");
+        if (!"neutral".equals(tom)) {
+            valor.addClassName("cf-tone-" + tom);
+        }
+        card.add(i, t, valor);
+        return card;
+    }
+
+    /** Linha de cartões de estatística, responsiva (grelha auto-fit). */
+    public static com.vaadin.flow.component.html.Div statsRow(Component... cards) {
+        com.vaadin.flow.component.html.Div row = new com.vaadin.flow.component.html.Div(cards);
+        row.addClassName("cf-stats");
+        return row;
+    }
+
     /** Botão de ação "Ver" — cinzento neutro, ícone de olho. */
     public static Button botaoVer(String titulo, ComponentEventListener<ClickEvent<Button>> onClick) {
         return botaoAcao(VaadinIcon.EYE, "btn-neutral", titulo != null ? titulo : "Ver", onClick);

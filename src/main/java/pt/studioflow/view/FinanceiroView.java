@@ -58,55 +58,32 @@ public class FinanceiroView extends VerticalLayout {
         setSizeFull();
         setSpacing(false);
         setPadding(false);
+        addClassName("cf-page");
 
         injectStyles();
 
         H2 titulo = new H2("Fluxo de Caixa");
-        titulo.getStyle().set("margin-top", "0");
+        titulo.addClassName("cf-page-title");
         add(titulo, criarStatsCards(), criarAbasNavegacao());
         atualizar();
     }
 
     private void injectStyles() {
-        String styles = ".fin-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; min-width: 250px; flex-grow: 1; }"
-                +
-                ".fin-title { color: #7f8c8d; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }"
-                +
-                ".fin-value { font-size: 1.6rem; font-weight: 800; display: block; margin-top: 5px; }";
-
-        UI.getCurrent().getElement().executeJs(
-                "const style = document.createElement('style'); style.textContent = $0; document.head.appendChild(style);",
-                styles);
+        // Cartões e botões de ação vêm do tema coreoflow.
         ViewUtils.injetarEstiloBotoesAcao();
     }
 
     private Component criarStatsCards() {
-        HorizontalLayout layout = new HorizontalLayout();
-        layout.setWidthFull();
-        layout.setSpacing(true);
-        layout.getStyle().set("margin", "20px 0");
-
-        layout.add(
+        Div layout = ViewUtils.statsRow(
                 criarCard("Receitas", labelReceitas, "#1E8E3E", VaadinIcon.ARROW_UP),
                 criarCard("Despesas", labelDespesas, "#D93025", VaadinIcon.ARROW_DOWN),
                 criarCard("Saldo Mensal", labelSaldo, "#1967D2", VaadinIcon.CALC_BOOK));
+        layout.getStyle().set("margin", "var(--lumo-space-m) 0");
         return layout;
     }
 
     private Div criarCard(String titulo, Span val, String color, VaadinIcon icon) {
-        Div card = new Div();
-        card.addClassName("fin-card");
-
-        Icon i = icon.create();
-        i.setColor(color);
-        i.getStyle().set("float", "right");
-        Span t = new Span(titulo);
-        t.addClassName("fin-title");
-        val.addClassName("fin-value");
-        val.getStyle().set("color", color);
-
-        card.add(i, t, val);
-        return card;
+        return ViewUtils.statCard(titulo, val, color, icon);
     }
 
     private Component criarAbasNavegacao() {
@@ -229,7 +206,8 @@ public class FinanceiroView extends VerticalLayout {
         labelReceitas.setText(String.format("%.2f€", totalRec));
         labelDespesas.setText(String.format("%.2f€", totalDes));
         labelSaldo.setText(String.format("%.2f€", saldo));
-        labelSaldo.getStyle().set("color", saldo >= 0 ? "#1E8E3E" : "#D93025");
+        labelSaldo.removeClassNames("cf-tone-info", "cf-tone-success", "cf-tone-error");
+        labelSaldo.addClassName(saldo >= 0 ? "cf-tone-success" : "cf-tone-error");
     }
 
     private void deletar(Transacao t) {

@@ -713,7 +713,6 @@ html[theme~='dark'] .v-loading-indicator.third::after { color: #aab4c6; }
 .cf-page {
   box-sizing: border-box;
   padding: var(--lumo-space-l);
-  gap: var(--lumo-space-m);
 }
 .cf-page-header {
   display: flex;
@@ -980,6 +979,41 @@ html .status-pago { background: var(--cf-success-bg); color: var(--cf-success-te
 html .status-faturado { background: var(--cf-info-bg); color: var(--cf-info-text); }
 html .status-divida { background: var(--cf-error-bg); color: var(--cf-error-text); }
 html .status-pendente { background: var(--cf-neutral-bg); color: var(--cf-neutral-text); }
+
+/* Células de grelha */
+.cf-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--cf-radius-pill);
+  object-fit: cover;
+  flex: none;
+  box-shadow: 0 0 0 2px var(--cf-surface), 0 0 0 3px var(--cf-border);
+}
+.cf-avatar-initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--cf-radius-pill);
+  background: var(--lumo-primary-color-10pct);
+  color: var(--lumo-primary-text-color);
+  font-weight: var(--cf-weight-bold);
+  font-size: var(--lumo-font-size-s);
+}
+.cf-cell-title { font-weight: var(--cf-weight-semibold); color: var(--cf-text-strong); white-space: nowrap; }
+.cf-cell-sub { font-size: var(--lumo-font-size-xxs); color: var(--cf-text-tertiary); line-height: 1.3; }
+.cf-turma-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: var(--cf-radius-pill);
+  font-size: var(--lumo-font-size-xxs);
+  font-weight: var(--cf-weight-semibold);
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.cf-turma-badge--pendente { opacity: 0.75; outline: 1px dashed var(--lumo-contrast-50pct); outline-offset: -1px; }
 
 /* ---------- 7. Vistas específicas ---------- */
 
