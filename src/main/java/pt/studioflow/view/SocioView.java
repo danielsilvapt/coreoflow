@@ -149,10 +149,10 @@ public class SocioView extends VerticalLayout {
         layout.getStyle().set("margin", "15px 0");
 
         layout.add(
-                criarCard("Nº Sócios", totalSociosLabel, "#2D3436", VaadinIcon.USERS),
+                criarCard("Nº Sócios", totalSociosLabel, "var(--lumo-header-text-color)", VaadinIcon.USERS),
                 criarCard("Receita Quotas (Anual)", receitaAnualLabel, "#1E8E3E", VaadinIcon.MONEY),
                 criarCard("Quotas Expiradas", quotasPendentesLabel, "#D93025", VaadinIcon.CALENDAR_CLOCK),
-                criarCard("Sócios (Alunos Off)", alunosInativosMasSociosLabel, "#7f8c8d", VaadinIcon.USER_CLOCK));
+                criarCard("Sócios (Alunos Off)", alunosInativosMasSociosLabel, "var(--cf-text-secondary)", VaadinIcon.USER_CLOCK));
         return layout;
     }
 
