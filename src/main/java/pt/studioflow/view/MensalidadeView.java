@@ -320,38 +320,25 @@ public class MensalidadeView extends VerticalLayout {
         }
     }
 
-    // Método auxiliar atualizado que força o estilo diretamente no elemento HTML
+    // Cor do seletor de desconto por tipo — tons do tema (.cf-desconto--*), funcionam em claro e escuro
+    private static final String[] TONS_DESCONTO = {
+            "cf-desconto--nenhum", "cf-desconto--info", "cf-desconto--warning",
+            "cf-desconto--success", "cf-desconto--violet" };
+
     private void atualizarCorSelectDesconto(Select<TipoDesconto> select, TipoDesconto tipo) {
-        var style = select.getElement().getStyle();
+        select.addClassName("cf-desconto");
+        select.removeClassNames(TONS_DESCONTO);
 
         if (tipo == null) {
-            style.set("background-color", "#f3f4f6");
-            style.set("color", "#6b7280");
-            style.set("font-weight", "normal");
-            style.set("border-radius", "var(--lumo-size-s)");
+            select.addClassName("cf-desconto--nenhum");
             return;
         }
 
-        style.set("font-weight", "600");
-        style.set("border-radius", "var(--lumo-size-s)");
-
         switch (tipo) {
-            case DESCONTO_FAMILIARES -> {
-                style.set("background-color", "#e0f2fe"); // Azul suave
-                style.set("color", "#0369a1");
-            }
-            case DESCONTO_MAIS_DE_UMA_MODALIDADE -> {
-                style.set("background-color", "#fef3c7"); // Amarelo suave
-                style.set("color", "#b45309");
-            }
-            case DESCONTO_ELEMENTO_DIRECAO -> {
-                style.set("background-color", "#dcfce7"); // Verde suave
-                style.set("color", "#15803d");
-            }
-            case DESCONTO_MAIS_65 -> {
-                style.set("background-color", "#f3e8ff"); // Roxo suave
-                style.set("color", "#6b21a8");
-            }
+            case DESCONTO_FAMILIARES -> select.addClassName("cf-desconto--info");
+            case DESCONTO_MAIS_DE_UMA_MODALIDADE -> select.addClassName("cf-desconto--warning");
+            case DESCONTO_ELEMENTO_DIRECAO -> select.addClassName("cf-desconto--success");
+            case DESCONTO_MAIS_65 -> select.addClassName("cf-desconto--violet");
         }
     }
 
