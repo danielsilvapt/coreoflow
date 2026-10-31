@@ -1,6 +1,7 @@
 package pt.studioflow.config;
 
 import org.springframework.stereotype.Component;
+import pt.studioflow.model.Aluno;
 import pt.studioflow.model.EstadoMensalidade;
 import pt.studioflow.model.Mensalidade;
 import pt.studioflow.model.Studio;
@@ -268,6 +269,12 @@ public class MensalidadeConfig {
         return Math.max(0.0, valor - euros);
     }
 
+    /** Aluno que respondeu "Já é aluno" num estúdio que isenta esses alunos da taxa de inscrição. */
+    public boolean isentoTaxaInscricao(Studio studio, Aluno aluno) {
+        return studio != null && studio.isIsentarTaxaAlunosExistentes()
+                && aluno != null && Boolean.TRUE.equals(aluno.getJaEraAluno());
+    }
+
     public double calcularTaxaRenovacao(Studio studio) {
         return studio.getTaxaRenovacao() != null ? studio.getTaxaRenovacao() : 0.0;
     }
@@ -295,8 +302,21 @@ public class MensalidadeConfig {
     public ResumoInscricao calcularResumo(Studio studio, double mensalidadeBaseTotal, boolean renovacao,
                                            boolean temFamiliarInscrito, int numModalidadesInteresse,
                                            String seguroDesportivo) {
+        return calcularResumo(studio, mensalidadeBaseTotal, renovacao, temFamiliarInscrito,
+                numModalidadesInteresse, seguroDesportivo, false);
+    }
+
+    /**
+     * Como o anterior; {@code isentoTaxaInscricao} anula a taxa de inscrição (aluno que já
+     * frequentava o estúdio e só se está a registar na app — ver
+     * {@link Studio#isIsentarTaxaAlunosExistentes()}). Não afeta a taxa de renovação.
+     */
+    public ResumoInscricao calcularResumo(Studio studio, double mensalidadeBaseTotal, boolean renovacao,
+                                           boolean temFamiliarInscrito, int numModalidadesInteresse,
+                                           String seguroDesportivo, boolean isentoTaxaInscricao) {
         double seguro = calcularSeguro(studio, seguroDesportivo);
-        double taxa = renovacao ? calcularTaxaRenovacao(studio) : calcularTaxaInscricao(studio);
+        double taxa = renovacao ? calcularTaxaRenovacao(studio)
+                : isentoTaxaInscricao ? 0.0 : calcularTaxaInscricao(studio);
         // Modelos por pacote: o escalão já cobre várias modalidades, por isso não há
         // desconto +modalidades; o desconto de familiares/irmãos aplica-se em todos os modelos.
         boolean semDescontos = studio.isModeloPacote();

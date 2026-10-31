@@ -170,6 +170,14 @@ public class Aluno {
     private Boolean descontoFamiliar = false;
 
     /**
+     * Resposta a "Já é aluno do estúdio?" na ficha pública (só perguntada nos estúdios com
+     * {@link Studio#isIsentarTaxaAlunosExistentes()}). Sim = já frequenta a escola e está só
+     * a registar-se na app, por isso fica isento da taxa de inscrição. NULL = não perguntado.
+     */
+    @Column(name = "ja_era_aluno")
+    private Boolean jaEraAluno;
+
+    /**
      * Resposta a "O aluno tem algum problema de saúde?" no formulário público. Boolean para
      * distinguir "não respondido" (NULL, fichas anteriores a este campo) de "Não".
      */
@@ -434,6 +442,9 @@ public class Aluno {
 
     public boolean isPedeDescontoFamiliar() { return pedeDescontoFamiliar != null && pedeDescontoFamiliar; }
     public void setPedeDescontoFamiliar(boolean pedeDescontoFamiliar) { this.pedeDescontoFamiliar = pedeDescontoFamiliar; }
+
+    public Boolean getJaEraAluno() { return jaEraAluno; }
+    public void setJaEraAluno(Boolean jaEraAluno) { this.jaEraAluno = jaEraAluno; }
 
     public boolean isDescontoFamiliar() { return Boolean.TRUE.equals(descontoFamiliar); }
     public void setDescontoFamiliar(boolean descontoFamiliar) { this.descontoFamiliar = descontoFamiliar; }

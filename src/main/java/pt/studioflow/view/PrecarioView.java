@@ -129,6 +129,11 @@ public class PrecarioView extends VerticalLayout {
         primeiraGratis.setTooltipText("Ao aceitar a inscrição de um aluno novo, as mensalidades do primeiro mês "
                 + "ficam a 0€ e pagas. Não se aplica a renovações.");
 
+        Checkbox isentarJaAlunos = new Checkbox("Isentar da taxa de inscrição quem já é aluno do estúdio");
+        isentarJaAlunos.setValue(studio.isIsentarTaxaAlunosExistentes());
+        isentarJaAlunos.setTooltipText("A ficha de inscrição pergunta \"Já é aluno do " + studio.getNome()
+                + "?\" (obrigatório). Quem responde Sim só se está a registar na app e não paga a taxa de inscrição.");
+
         // --- Descontos ---
         NumberField descFamiliares = campoEuro("Desconto familiares (€)", studio.getDescontoFamiliaresEuros());
         NumberField descFamiliaresPct = campoEuro("Desconto familiares/irmãos (%)",
@@ -174,6 +179,7 @@ public class PrecarioView extends VerticalLayout {
             studio.setValorSeguro(valorSeguro.getValue() != null ? Math.max(0, valorSeguro.getValue()) : 0.0);
             studio.setListaSegurosPermitidos(segurosPermitidos.getValue());
             studio.setPrimeiraMensalidadeGratis(primeiraGratis.getValue());
+            studio.setIsentarTaxaAlunosExistentes(isentarJaAlunos.getValue());
             studio.setDescontoFamiliaresEuros(descFamiliares.getValue());
             studio.setDescontoFamiliaresPercentagem(descFamiliaresPct.getValue());
             studio.setDescontoDirecaoPercentagem(descDirecao.getValue());
@@ -188,7 +194,7 @@ public class PrecarioView extends VerticalLayout {
 
         add(seccao("Mensalidades"), modeloPrecario, grupoPadrao, grupoHoras, grupoModalidades, meiaMensalidade,
                 seccao("Pagamentos e taxas"), grelha(diaLimite, multa, taxaInscricao, taxaRenovacao, valorSeguro),
-                segurosPermitidos, primeiraGratis,
+                segurosPermitidos, primeiraGratis, isentarJaAlunos,
                 seccao("Descontos"), grelha(descFamiliares, descFamiliaresPct, descDirecao, descMaisModal, descMais65),
                 notaAlteracoes, guardar);
     }

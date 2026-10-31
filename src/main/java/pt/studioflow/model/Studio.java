@@ -257,6 +257,14 @@ public class Studio {
     @Column(name = "taxa_inscricao")
     private Double taxaInscricao = 0.0;
 
+    /**
+     * A ficha de inscrição pergunta "Já é aluno do estúdio?" (obrigatória). Quem responde
+     * Sim já frequenta a escola e só se está a registar na app: fica isento da taxa de
+     * inscrição. Desligado por omissão.
+     */
+    @Column(name = "isentar_taxa_alunos_existentes")
+    private Boolean isentarTaxaAlunosExistentes = false;
+
     /** Taxa cobrada ao renovar a matrícula num novo ano letivo. */
     @Column(name = "taxa_renovacao")
     private Double taxaRenovacao = 0.0;
@@ -477,6 +485,8 @@ public class Studio {
 
     public Double getTaxaInscricao() { return taxaInscricao; }
     public void setTaxaInscricao(Double v) { this.taxaInscricao = v; }
+    public boolean isIsentarTaxaAlunosExistentes() { return Boolean.TRUE.equals(isentarTaxaAlunosExistentes); }
+    public void setIsentarTaxaAlunosExistentes(Boolean v) { this.isentarTaxaAlunosExistentes = v; }
 
     public Double getTaxaRenovacao() { return taxaRenovacao; }
     public void setTaxaRenovacao(Double v) { this.taxaRenovacao = v; }
