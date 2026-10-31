@@ -1276,15 +1276,106 @@ html .count-badge {
   margin-top: 2px;
 }
 
+.cf-cal-legenda { display: inline-block; margin-left: 6px; }
+.cf-grid-inset { margin: var(--lumo-space-m) var(--lumo-space-l); width: auto !important; }
+.cf-whatsapp { color: #128c4a; }
+html[theme~='dark'] .cf-whatsapp { color: #4ade80; }
+
+/* Presenças */
+.cf-pres-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: var(--lumo-space-l);
+  width: 100%;
+  margin-top: var(--lumo-space-s);
+}
+.cf-pres-dia-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
+  gap: var(--lumo-space-m);
+  width: 100%;
+}
+.cf-pres-contador { align-self: flex-start; margin: var(--lumo-space-xs) 0 var(--lumo-space-s); font-size: var(--lumo-font-size-s); }
+.cf-pres-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lumo-space-s);
+  padding: var(--lumo-space-m);
+  border-radius: var(--lumo-border-radius-l);
+  background: var(--cf-surface);
+  border: 1px solid var(--cf-border);
+  box-shadow: var(--cf-shadow-xs);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--cf-transition), border-color var(--cf-transition), box-shadow var(--cf-transition);
+}
+.cf-pres-card:hover { box-shadow: var(--cf-shadow-md); }
+.cf-pres-card--presente {
+  background: var(--cf-success-bg);
+  border-color: var(--cf-success);
+  box-shadow: inset 0 0 0 1px var(--cf-success);
+}
+.cf-pres-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--cf-radius-pill);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cf-surface-sunken);
+  color: var(--cf-text-tertiary);
+}
+.cf-pres-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.cf-pres-avatar vaadin-icon { width: 34px; height: 34px; }
+.cf-pres-card--presente .cf-pres-avatar { box-shadow: 0 0 0 3px var(--cf-success); }
+.cf-pres-nome { font-size: var(--lumo-font-size-s); font-weight: var(--cf-weight-semibold); text-align: center; color: var(--cf-text-strong); }
+.cf-pres-estado { font-size: var(--lumo-font-size-xs); font-weight: var(--cf-weight-bold); color: var(--cf-error-text); }
+.cf-pres-card--presente .cf-pres-estado { color: var(--cf-success-text); }
+.cf-chart-title { display: block; margin-bottom: var(--lumo-space-s); font-weight: var(--cf-weight-bold); color: var(--cf-text-strong); }
+
 /* Horário */
-.cf-horario-bloco {
-  border-radius: var(--lumo-border-radius-m);
+.cf-horario-board { gap: var(--lumo-space-m); align-items: flex-start; }
+.cf-horario-coluna {
+  flex: 1 1 230px;
+  min-width: min(100%, 230px);
+  max-width: 340px;
+  box-sizing: border-box;
   padding: var(--lumo-space-s);
+  background: var(--cf-surface-subtle);
+  border: 1px solid var(--cf-border);
+  border-radius: var(--lumo-border-radius-l);
+}
+.cf-horario-dia {
+  display: block;
+  margin: 2px 4px var(--lumo-space-s);
+  font-size: 11px;
+  font-weight: var(--cf-weight-bold);
+  letter-spacing: var(--cf-tracking-caps);
+  text-transform: uppercase;
+  color: var(--cf-text-secondary);
+}
+.cf-horario-bloco {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: var(--lumo-space-s);
+  border-radius: var(--lumo-border-radius-m);
+  padding: var(--lumo-space-s) var(--lumo-space-s) var(--lumo-space-s) 12px;
   background: var(--cf-surface);
   border: 1px solid var(--cf-border);
   border-left: 4px solid var(--cf-accent, var(--lumo-primary-color));
   box-shadow: var(--cf-shadow-xs);
+  cursor: pointer;
+  transition: box-shadow var(--cf-transition), transform var(--cf-transition);
 }
+.cf-horario-bloco:hover { box-shadow: var(--cf-shadow-md); transform: translateY(-1px); }
+.cf-horario-hora { font-weight: var(--cf-weight-bold); font-size: var(--lumo-font-size-s); color: var(--cf-text-strong); font-variant-numeric: tabular-nums; }
+.cf-horario-turma { display: block; font-size: var(--lumo-font-size-s); color: var(--cf-text); }
+.cf-horario-sub { display: block; font-size: var(--lumo-font-size-xs); color: var(--cf-text-secondary); }
+.cf-horario-sala { font-size: var(--lumo-font-size-xxs); color: var(--cf-text-tertiary); }
+.cf-detalhe-linha { display: block; padding: 4px 0; font-size: var(--lumo-font-size-s); border-bottom: 1px solid var(--cf-border); }
+.cf-detalhe-linha:last-child { border-bottom: 0; }
 
 /* ---------- 8. Responsivo ---------- */
 @media (max-width: 800px) {

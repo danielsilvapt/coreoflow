@@ -141,30 +141,19 @@ public class PresencasView extends VerticalLayout {
     }
 
     private void injectStyles() {
-        String styles = "vaadin-grid::part(dia-aula) { background-color: #d1f7f1 !important; color: #006d75 !important; font-weight: bold; } "
-                + "vaadin-grid::part(fim-de-semana) { background-color: #f5f5f5 !important; color: #bfbfbf; } "
-                + ".chart-card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; margin-top: 20px; } "
-                + ".count-badge { background: #16a085; color: white; border-radius: 50%; padding: 2px 6px; font-size: 0.7rem; font-weight: bold; margin-top: 2px; } "
-                // CSS para esconder o gráfico em mobile e ajustar o scroll
-                + "@media (max-width: 800px) { "
-                + "  #chart-container { display: none !important; } "
-                + "  .toolbar-responsiva { flex-direction: column; align-items: stretch !important; } "
-                + "}";
-
-        UI.getCurrent().getElement().executeJs(
-                "const style = document.createElement('style'); style.textContent = $0; document.head.appendChild(style);",
-                styles);
+        // Partes da grelha (dia-aula, fim-de-semana), .chart-card, .count-badge e as
+        // regras responsivas (#chart-container, .toolbar-responsiva) estão no tema coreoflow.
     }
 
     private void configurarUI() {
         H2 title = new H2("Folha de Presenças");
-        title.getStyle().set("margin-top", "0");
+        title.addClassName("cf-page-title");
 
         HorizontalLayout toolbar = new HorizontalLayout();
         toolbar.setWidthFull();
         toolbar.setAlignItems(Alignment.END);
-        toolbar.getStyle().set("margin-bottom", "20px");
-        toolbar.addClassName("toolbar-responsiva");
+        toolbar.getStyle().set("margin", "var(--lumo-space-m) 0 var(--lumo-space-l)");
+        toolbar.addClassNames("toolbar-responsiva", "cf-wrap");
 
         turmaCombo = new ComboBox<>("Turma");
         turmaCombo.setPlaceholder("Escolha a turma...");
@@ -208,33 +197,20 @@ public class PresencasView extends VerticalLayout {
 
         statsContainer = new Div();
         statsContainer.setId("stats-container");
-        statsContainer.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "repeat(auto-fit, minmax(180px, 1fr))")
-                .set("gap", "16px")
-                .set("width", "100%")
-                .set("margin", "6px 0 4px");
+        statsContainer.addClassName("cf-stats");
+        statsContainer.getStyle().set("margin", "var(--lumo-space-m) 0 var(--lumo-space-xs)");
 
         cardsContainer = new Div();
         cardsContainer.setId("cards-container");
-        cardsContainer.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "repeat(auto-fill, minmax(320px, 1fr))")
-                .set("gap", "20px")
-                .set("width", "100%")
-                .set("margin-top", "10px");
+        cardsContainer.addClassName("cf-pres-cards");
 
         contadorDia = new Span();
-        contadorDia.getStyle().set("font-weight", "700").set("color", "#16a085").set("margin", "4px 0 10px");
+        contadorDia.addClassNames("cf-pill", "cf-pill--success", "cf-pres-contador");
         contadorDia.setVisible(false);
 
         cardsDiaContainer = new Div();
         cardsDiaContainer.setId("cards-dia-container");
-        cardsDiaContainer.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "repeat(auto-fill, minmax(180px, 1fr))")
-                .set("gap", "20px")
-                .set("width", "100%");
+        cardsDiaContainer.addClassName("cf-pres-dia-grid");
         cardsDiaContainer.setVisible(false);
 
         add(title, toolbar, grid, chartContainer, statsContainer, cardsContainer, contadorDia, cardsDiaContainer);
@@ -299,9 +275,9 @@ public class PresencasView extends VerticalLayout {
 
         grid.addColumn(new ComponentRenderer<>(ap -> {
             Span s = new Span(formatarNomeCurto(ap.getAluno().getNomeCompleto()));
-            s.getStyle().set("font-weight", "600");
+            s.addClassName("cf-semibold");
             if (ap.getAluno().getStatus() == AlunoStatus.EXPERIMENTAL) {
-                s.getStyle().set("color", "#FF8C00");
+                s.addClassName("cf-tone-warning");
                 s.setText(s.getText() + " (Exp.)");
             }
             return s;
@@ -460,7 +436,7 @@ public class PresencasView extends VerticalLayout {
 
         if (alunos.isEmpty()) {
             Span vazio = new Span("Esta turma não tem alunos.");
-            vazio.getStyle().set("color", "#888");
+            vazio.addClassName("cf-empty");
             cardsDiaContainer.add(vazio);
         }
 
@@ -474,48 +450,37 @@ public class PresencasView extends VerticalLayout {
 
     private Div criarCardAlunoDia(Aluno aluno) {
         Div card = new Div();
-        card.getStyle()
-                .set("display", "flex").set("flex-direction", "column").set("align-items", "center")
-                .set("gap", "8px").set("padding", "14px").set("border-radius", "12px")
-                .set("box-shadow", "0 2px 5px rgba(0,0,0,0.1)").set("cursor", "pointer").set("user-select", "none");
+        card.addClassName("cf-pres-card");
 
         Div avatar = new Div();
-        avatar.getStyle()
-                .set("width", "80px").set("height", "80px").set("border-radius", "50%").set("overflow", "hidden")
-                .set("display", "flex").set("align-items", "center").set("justify-content", "center")
-                .set("background", "#eee");
+        avatar.addClassName("cf-pres-avatar");
         if (aluno.getFotoChave() != null && !aluno.getFotoChave().isBlank()) {
             Image image = new Image(storageService.gerarUrlTemporario(aluno.getFotoChave(), Duration.ofHours(2)),
                     "Foto de " + aluno.getNomeCompleto());
-            image.getStyle().set("width", "80px").set("height", "80px").set("object-fit", "cover")
-                    .set("border-radius", "50%");
             avatar.add(image);
         } else {
             Icon defaultIcon = new Icon(VaadinIcon.USER);
-            defaultIcon.getStyle().set("font-size", "40px").set("color", "#666");
             avatar.add(defaultIcon);
         }
 
         Span nome = new Span(formatarNomeCurto(aluno.getNomeCompleto()));
-        nome.getStyle().set("font-size", "0.9em").set("text-align", "center");
+        nome.addClassName("cf-pres-nome");
         if (aluno.getStatus() == AlunoStatus.EXPERIMENTAL) {
-            nome.getStyle().set("color", "#FF8C00");
+            nome.addClassName("cf-tone-warning");
             nome.setText(nome.getText() + " (Exp.)");
         }
 
         Span estado = new Span();
-        estado.getStyle().set("font-size", "0.8em").set("font-weight", "700");
+        estado.addClassName("cf-pres-estado");
 
+        // Presente/ausente: muda a classe do cartão (cor + borda) e o texto (não depende só da cor)
         Runnable aplicar = () -> {
             boolean presente = estadoDia.getOrDefault(aluno.getId(), false);
+            card.getElement().getClassList().set("cf-pres-card--presente", presente);
             if (presente) {
-                card.getStyle().set("border", "2px solid #2ecc71").set("background", "#ebfaf0");
                 estado.setText("✓ Presente");
-                estado.getStyle().set("color", "#27ae60");
             } else {
-                card.getStyle().set("border", "1px solid #e0e0e0").set("background", "#f9f9f9");
                 estado.setText("Ausente");
-                estado.getStyle().set("color", "#c0392b");
             }
         };
         aplicar.run();
@@ -560,14 +525,14 @@ public class PresencasView extends VerticalLayout {
 
     private Div criarStatCard(String label, String valor, String cor) {
         Div card = new Div();
-        card.addClassName("chart-card");
-        card.getStyle().set("margin-top", "0").set("padding", "14px 18px");
+        card.addClassName("stat-card");
         Span v = new Span(valor);
-        v.getStyle().set("font-size", "1.6rem").set("font-weight", "800").set("display", "block")
-                .set("color", cor != null ? cor : "#1e293b");
+        v.addClassName("stat-value");
+        v.getStyle().set("margin-top", "0");
+        String tom = ViewUtils.tomDaCor(cor);
+        if (!"neutral".equals(tom)) v.addClassName("cf-tone-" + tom);
         Span l = new Span(label);
-        l.getStyle().set("font-size", "0.75rem").set("color", "#64748b").set("text-transform", "uppercase")
-                .set("letter-spacing", "0.04em");
+        l.addClassName("stat-title");
         card.add(v, l);
         return card;
     }
@@ -598,7 +563,7 @@ public class PresencasView extends VerticalLayout {
         List<Turma> turmas = turmasParaCards();
         if (turmas.isEmpty()) {
             Span vazio = new Span("Sem turmas para mostrar.");
-            vazio.getStyle().set("color", "#888");
+            vazio.addClassName("cf-empty");
             cardsContainer.add(vazio);
             return;
         }
@@ -628,7 +593,7 @@ public class PresencasView extends VerticalLayout {
             card.getStyle().set("margin-top", "0");
 
             Span header = new Span(turma.getDescricao());
-            header.getStyle().set("font-weight", "700").set("display", "block").set("margin-bottom", "6px");
+            header.addClassName("cf-chart-title");
 
             Div canvasWrap = new Div();
             canvasWrap.setId(wrapId);
@@ -636,7 +601,7 @@ public class PresencasView extends VerticalLayout {
 
             Span sub = new Span("Real " + total + " / Esperado " + esperada
                     + (esperada > 0 ? "  (" + Math.round(total * 100.0 / esperada) + "%)" : ""));
-            sub.getStyle().set("font-size", "0.8rem").set("color", "#888");
+            sub.addClassNames("cf-text-xs", "cf-muted");
 
             card.add(header, canvasWrap, sub);
             cardsContainer.add(card);
@@ -660,9 +625,9 @@ public class PresencasView extends VerticalLayout {
         long taxa = esperadaTotal > 0 ? Math.round(realTotal * 100.0 / esperadaTotal) : 0;
         statsContainer.add(
                 criarStatCard("Turmas", String.valueOf(turmas.size()), "#1e293b"),
-                criarStatCard("Presença esperada", String.valueOf(esperadaTotal), "#0e7490"),
+                criarStatCard("Presença esperada", String.valueOf(esperadaTotal), "#1976d2"),
                 criarStatCard("Presença real", String.valueOf(realTotal), "#16a085"),
-                criarStatCard("Taxa de presença", taxa + "%", taxa >= 75 ? "#16a085" : "#d97706"));
+                criarStatCard("Taxa de presença", taxa + "%", taxa >= 75 ? "#16a085" : "#e65100"));
 
         if (!desenhos.isEmpty()) {
             String script = "(function go(){if(typeof Chart==='undefined'){setTimeout(go,120);return;}"
