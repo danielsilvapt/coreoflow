@@ -191,8 +191,12 @@ public class PagamentoOnlineService {
      */
     @Transactional
     public void aplicarPagamentosDoPedido(Aluno aluno) {
-        pagamentoOnlineRepository.findByAlunoAndTipoInOrderByDataCriacaoDesc(aluno,
-                        List.of(PagamentoOnline.Tipo.INSCRICAO, PagamentoOnline.Tipo.RENOVACAO)).stream()
+        List<PagamentoOnline> doPedido = pagamentoOnlineRepository.findByAlunoAndTipoInOrderByDataCriacaoDesc(aluno,
+                List.of(PagamentoOnline.Tipo.INSCRICAO, PagamentoOnline.Tipo.RENOVACAO));
+        // Webhook pode não ter chegado (e o candidato pode não ter voltado do checkout):
+        // confirma junto do Mollie os que ainda estão pendentes antes de aplicar.
+        doPedido.forEach(this::reverificarSePendente);
+        doPedido.stream()
                 .filter(p -> p.getEstado() == EstadoPagamentoCredito.PAGO && !p.isAplicado())
                 .forEach(p -> {
                     aplicarAoPrimeiroMes(p);
@@ -248,11 +252,34 @@ public class PagamentoOnlineService {
      * para mostrar na validação: ainda não aplicado e criado nos últimos 90 dias
      * (exclui tentativas de pedidos de anos anteriores).
      */
+    @Transactional
     public Optional<PagamentoOnline> ultimoPagamentoDoPedido(Aluno aluno) {
         LocalDateTime desde = LocalDateTime.now().minusDays(90);
-        return pagamentoOnlineRepository.findByAlunoAndTipoInOrderByDataCriacaoDesc(aluno,
+        Optional<PagamentoOnline> ultimo = pagamentoOnlineRepository.findByAlunoAndTipoInOrderByDataCriacaoDesc(aluno,
                         List.of(PagamentoOnline.Tipo.INSCRICAO, PagamentoOnline.Tipo.RENOVACAO)).stream()
                 .filter(p -> !p.isAplicado() && p.getDataCriacao().isAfter(desde))
                 .findFirst();
+        ultimo.ifPresent(this::reverificarSePendente);
+        return ultimo;
+    }
+
+    /** Pagamentos ainda pendentes criados desde {@code desde} — re-verificados por {@link ReverificacaoPagamentosTask}. */
+    public List<String> molliePaymentIdsPendentes(LocalDateTime desde) {
+        return pagamentoOnlineRepository
+                .findByEstadoAndMolliePaymentIdIsNotNullAndDataCriacaoAfter(EstadoPagamentoCredito.PENDENTE, desde)
+                .stream().map(PagamentoOnline::getMolliePaymentId).toList();
+    }
+
+    /** Consulta o Mollie só se ainda estiver pendente; uma falha da API deixa o estado como está. */
+    private void reverificarSePendente(PagamentoOnline pagamento) {
+        if (pagamento.getEstado() != EstadoPagamentoCredito.PENDENTE || pagamento.getMolliePaymentId() == null) {
+            return;
+        }
+        try {
+            atualizarEstado(pagamento);
+        } catch (Exception e) {
+            System.err.println("Não foi possível confirmar o pagamento Mollie " + pagamento.getMolliePaymentId()
+                    + ": " + e.getMessage());
+        }
     }
 }
