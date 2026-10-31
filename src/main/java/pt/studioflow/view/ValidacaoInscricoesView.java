@@ -342,6 +342,12 @@ public class ValidacaoInscricoesView extends VerticalLayout {
             content.add(criarAviso(VaadinIcon.REFRESH, " Pedido de Renovação de Matrícula",
                     "#F3E8FF", "#4A148C"));
         }
+        if (!isRenovacao && Boolean.TRUE.equals(aluno.getJaEraAluno())) {
+            content.add(criarAviso(VaadinIcon.ACADEMY_CAP, " Já é aluno do estúdio — só se está a registar na app"
+                    + (mensalidadeConfig.isentoTaxaInscricao(TenantContext.getCurrentStudio(), aluno)
+                            ? " (isento da taxa de inscrição)" : ""),
+                    "#E3F2FD", "#0D47A1"));
+        }
 
         FormLayout form = new FormLayout();
         form.add(createField("E-mail", aluno.getEmail()), 2);
@@ -514,14 +520,17 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                 .distinct().count();
 
         MensalidadeConfig.ResumoInscricao resumo = mensalidadeConfig.calcularResumo(
-                studio, base, renovacao, false, (int) numModalidades, aluno.getSeguroDesportivo());
+                studio, base, renovacao, false, (int) numModalidades, aluno.getSeguroDesportivo(),
+                mensalidadeConfig.isentoTaxaInscricao(studio, aluno));
 
         Span subtitulo = new Span("Mensalidades estimadas:");
         subtitulo.getStyle().set("font-weight", "600").set("display", "block").set("margin-top", "6px");
         box.add(subtitulo);
         linhasMensalidades.forEach(box::add);
 
-        box.add(criarLinhaValor(renovacao ? "Taxa de renovação" : "Taxa de inscrição", resumo.taxa(), false));
+        box.add(criarLinhaValor(renovacao ? "Taxa de renovação"
+                : mensalidadeConfig.isentoTaxaInscricao(studio, aluno) ? "Taxa de inscrição (isento — já é aluno)"
+                : "Taxa de inscrição", resumo.taxa(), false));
         if (resumo.seguro() > 0) {
             box.add(criarLinhaValor("Seguro desportivo", resumo.seguro(), false));
         }

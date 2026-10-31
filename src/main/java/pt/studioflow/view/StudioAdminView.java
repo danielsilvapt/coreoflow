@@ -475,6 +475,9 @@ public class StudioAdminView extends VerticalLayout {
         Checkbox primeiraGratis = new Checkbox("1ª mensalidade gratuita para alunos novos");
         primeiraGratis.setValue(studio.isPrimeiraMensalidadeGratis());
 
+        Checkbox isentarJaAlunos = new Checkbox("Isentar taxa de inscrição a quem já é aluno");
+        isentarJaAlunos.setValue(studio.isIsentarTaxaAlunosExistentes());
+
         Checkbox ativo = new Checkbox("Estúdio ativo");
         ativo.setValue(studio.isAtivo());
 
@@ -491,7 +494,7 @@ public class StudioAdminView extends VerticalLayout {
                 multaAtraso,
                 descontoFamiliares, descontoFamiliaresPct, descontoDirecao, descontoMaisModal, descontoMais65,
                 taxaInscricao, taxaRenovacao, valorSeguro, segurosPermitidos, primeiraGratis,
-                ativo, enviarEmails);
+                isentarJaAlunos, ativo, enviarEmails);
 
         // --- Modelo de Preçário ---
         H4 secPrecario = new H4("Modelo de Preçário");
@@ -774,6 +777,7 @@ public class StudioAdminView extends VerticalLayout {
                 studio.setListaSegurosPermitidos(segurosPermitidos.getValue());
             }
             studio.setPrimeiraMensalidadeGratis(primeiraGratis.getValue());
+            studio.setIsentarTaxaAlunosExistentes(isentarJaAlunos.getValue());
             studio.setAtivo(ativo.getValue());
             studio.setEnviarEmails(Boolean.TRUE.equals(enviarEmails.getValue()));
 

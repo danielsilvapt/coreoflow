@@ -43,6 +43,13 @@ public class TranslationService {
         add("inscricao.sucesso.msg", " entrará em contacto muito em breve.",
                 " will contact you very soon.", " vous contactera très bientôt.");
 
+        add("inscricao.jaAluno", "Já é aluno do ", "Are you already a student at ", "Êtes-vous déjà élève de ");
+        add("inscricao.jaAlunoObrigatorio", "Indica se já é aluno do estúdio.",
+                "Please indicate whether you are already a student.", "Indiquez si vous êtes déjà élève.");
+        add("inscricao.jaAlunoAjuda", "Já frequenta as aulas e só se está a registar na app: fica isento da taxa de inscrição.",
+                "Already attending classes and just registering in the app: no registration fee.",
+                "Vous suivez déjà les cours et vous vous inscrivez seulement sur l'app : pas de frais d'inscription.");
+
         // Saúde (inscrição e renovação)
         add("saude.pergunta", "O aluno tem algum problema de saúde?", "Does the student have any health condition?",
                 "L'élève a-t-il un problème de santé ?");
