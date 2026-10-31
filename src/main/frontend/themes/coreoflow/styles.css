@@ -300,6 +300,7 @@ vaadin-date-time-picker {
   background-color: var(--vaadin-input-field-background);
   box-shadow: inset 0 0 0 1px var(--vaadin-input-field-border-color);
   border-radius: var(--lumo-border-radius-m);
+  padding-inline: 0.625em;
   transition: box-shadow var(--cf-transition);
 }
 :is(vaadin-text-field, vaadin-password-field, vaadin-email-field, vaadin-number-field,
@@ -319,11 +320,54 @@ vaadin-date-time-picker {
   background-color: var(--cf-surface-subtle);
   box-shadow: inset 0 0 0 1px var(--cf-border);
 }
+/* O Lumo desenha uma borda tracejada nos campos só de leitura; com a borda do tema ficava duplicada */
+:is(vaadin-text-field, vaadin-password-field, vaadin-email-field, vaadin-number-field,
+    vaadin-integer-field, vaadin-big-decimal-field, vaadin-text-area, vaadin-combo-box,
+    vaadin-multi-select-combo-box, vaadin-date-picker, vaadin-time-picker, vaadin-select)[readonly]::part(input-field)::after {
+  border-color: transparent;
+}
 :is(vaadin-text-field, vaadin-password-field, vaadin-email-field, vaadin-number-field,
     vaadin-integer-field, vaadin-big-decimal-field, vaadin-text-area, vaadin-combo-box,
     vaadin-multi-select-combo-box, vaadin-date-picker, vaadin-time-picker, vaadin-select)::part(label) {
   font-weight: var(--cf-weight-semibold);
   color: var(--cf-text-secondary);
+}
+
+/* Sócios: badges de quota (CSS antigo injetado pela vista) passam a usar os tons do tema */
+html .quota-paid { background: var(--cf-success-bg); color: var(--cf-success-text); border: 1px solid var(--cf-success-border); }
+html .quota-expired { background: var(--cf-error-bg); color: var(--cf-error-text); border: 1px solid var(--cf-error-border); }
+html .status-ok { background: var(--cf-success-bg); color: var(--cf-success-text); border: 1px solid var(--cf-success-border); }
+
+/* Seletor de desconto nas Mensalidades: o tom pinta o próprio campo (não o anfitrião) */
+vaadin-select.cf-desconto::part(input-field) { font-weight: var(--cf-weight-semibold); }
+vaadin-select.cf-desconto--nenhum::part(input-field) { font-weight: normal; color: var(--cf-text-secondary); }
+vaadin-select.cf-desconto--info::part(input-field) { background-color: var(--cf-info-bg); color: var(--cf-info-text); box-shadow: inset 0 0 0 1px var(--cf-info-border); }
+vaadin-select.cf-desconto--warning::part(input-field) { background-color: var(--cf-warning-bg); color: var(--cf-warning-text); box-shadow: inset 0 0 0 1px var(--cf-warning-border); }
+vaadin-select.cf-desconto--success::part(input-field) { background-color: var(--cf-success-bg); color: var(--cf-success-text); box-shadow: inset 0 0 0 1px var(--cf-success-border); }
+vaadin-select.cf-desconto--violet::part(input-field) { background-color: var(--cf-violet-bg); color: var(--cf-violet-text); box-shadow: inset 0 0 0 1px var(--cf-violet-border); }
+vaadin-select.cf-desconto--nenhum { color: var(--cf-text-secondary); }
+vaadin-select.cf-desconto--info { color: var(--cf-info-text); }
+vaadin-select.cf-desconto--warning { color: var(--cf-warning-text); }
+vaadin-select.cf-desconto--success { color: var(--cf-success-text); }
+vaadin-select.cf-desconto--violet { color: var(--cf-violet-text); }
+vaadin-select.cf-desconto vaadin-select-value-button { color: inherit; font-weight: inherit; }
+vaadin-select.cf-desconto:not(.cf-desconto--nenhum) vaadin-select-value-button { font-weight: var(--cf-weight-semibold); }
+
+/* Vários formulários definem width:100% + padding inline; com content-box transbordavam
+   (ex.: barra de scroll horizontal nas abas do formulário de aluno). */
+vaadin-form-layout { box-sizing: border-box; }
+
+/* Preenchimento automático do browser: o Chrome pinta só o <input> (sem os cantos do campo),
+   o que cria uma "caixa dentro da caixa". O campo inteiro passa a ter um tom suave e o <input> fica transparente. */
+:is(vaadin-text-field, vaadin-password-field, vaadin-email-field) > input:is(:autofill, :-webkit-autofill) {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset;
+  box-shadow: 0 0 0 1000px transparent inset;
+  -webkit-text-fill-color: var(--lumo-body-text-color);
+  caret-color: var(--lumo-body-text-color);
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
+:is(vaadin-text-field, vaadin-password-field, vaadin-email-field):has(> input:is(:autofill, :-webkit-autofill))::part(input-field) {
+  background-color: var(--lumo-primary-color-10pct);
 }
 
 vaadin-checkbox::part(checkbox), vaadin-radio-button::part(radio) {
@@ -466,7 +510,7 @@ vaadin-button.cf-icon-btn {
   cursor: pointer;
 }
 vaadin-button.cf-icon-btn:hover { background: var(--cf-surface-subtle); color: var(--lumo-primary-text-color); }
-vaadin-button.cf-icon-btn vaadin-icon { width: 18px; height: 18px; }
+vaadin-button.cf-icon-btn vaadin-icon { width: 20px; height: 20px; padding: 0; }
 
 /* Menu de utilizador */
 .user-badge {
@@ -947,7 +991,7 @@ html vaadin-button.action-btn {
   transition: background-color var(--cf-transition), border-color var(--cf-transition), transform var(--cf-transition);
   cursor: pointer;
 }
-html vaadin-button.action-btn vaadin-icon { width: 16px; height: 16px; }
+html vaadin-button.action-btn vaadin-icon { width: 18px; height: 18px; padding: 0; }
 html vaadin-button.action-btn:hover { transform: none; box-shadow: none; filter: none; border-color: currentColor; }
 html .btn-edit { background: var(--cf-info-bg); color: var(--cf-info-text); }
 html .btn-del { background: var(--cf-error-bg); color: var(--cf-error-text); }

@@ -113,13 +113,15 @@ public class RelatoriosView extends VerticalLayout {
                 setSizeFull();
                 setPadding(false);
                 setSpacing(false);
+                addClassName("cf-page");
 
                 H2 titulo = new H2("Centro de Relatórios");
                 titulo.getStyle().set("margin-top", "0");
                 add(titulo);
 
                 Div body = new Div();
-                body.getStyle().set("padding", "24px").set("width", "100%");
+                body.setWidthFull();
+                body.getStyle().set("padding-top", "var(--lumo-space-m)");
                 add(body);
 
                 Div gridLayout = new Div();
@@ -151,9 +153,8 @@ public class RelatoriosView extends VerticalLayout {
         private Div criarCardRelatorio(String titulo, String desc, VaadinIcon icone, String cor,
                         ComponentEventListener<ClickEvent<Button>> listener) {
                 Div card = new Div();
-                card.getStyle().set("background", "white").set("padding", "20px").set("border-radius", "12px").set(
-                                "box-shadow",
-                                "0 4px 10px rgba(0,0,0,0.05)");
+                card.addClassName("cf-card");
+                card.getStyle().set("padding", "20px");
                 Icon icon = icone.create();
                 icon.setColor(cor);
                 icon.setSize("40px");
