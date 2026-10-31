@@ -174,7 +174,7 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
         // Tabs com detalhes
         TabSheet tabs = new TabSheet();
         tabs.setSizeFull();
-        tabs.getStyle().set("padding", "0 16px");
+        tabs.addClassName("cf-portal-tabs");
 
         tabs.add("📅 Presenças", criarTabPresencas(presencas, videoAulaRepo, storageService));
         tabs.add("💳 Mensalidades", criarTabMensalidades(aluno, mensalidades, pagaveis, studio));
@@ -193,21 +193,18 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
 
     private VerticalLayout criarHeader(Aluno aluno, Studio studio) {
         VerticalLayout header = new VerticalLayout();
-        header.getStyle()
-                .set("background", ViewUtils.corPrimaria())
-                .set("padding", "20px 24px 16px");
+        header.addClassName("cf-portal-hero");
         header.setSpacing(false);
 
         String primeiroNome = aluno.getNomeCompleto() != null
                 ? aluno.getNomeCompleto().split(" ")[0] : "Aluno";
 
         H2 saudacao = new H2("Olá, " + primeiroNome + "! 👋");
-        saudacao.getStyle().set("color", "white").set("margin", "0");
 
         Span sub = new Span((studio != null ? studio.getNome() : "CoreoFlow")
                 + " · " + LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM yyyy",
                 new Locale("pt"))));
-        sub.getStyle().set("color", "rgba(255,255,255,0.8)").set("font-size", "13px");
+        sub.addClassName("cf-portal-hero-sub");
 
         header.add(saudacao, sub);
         return header;
@@ -221,25 +218,25 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
                         dividas > 0 ? "#E74C3C" : "#27AE60")
         );
         cards.setWidthFull();
-        cards.getStyle().set("padding", "16px 16px 0");
+        cards.setSpacing(false);
+        cards.addClassName("cf-portal-cards");
         return cards;
     }
 
     private VerticalLayout card(String label, String valor, VaadinIcon icone, String cor) {
+        String tom = "cf-tone-" + ViewUtils.tomDaCor(cor);
         Icon icon = icone.create();
-        icon.setSize("24px");
-        icon.setColor(cor);
+        icon.addClassNames("cf-stat-icon", tom);
+        icon.getStyle().set("position", "static");
         Span v = new Span(valor);
-        v.getStyle().set("font-size", "28px").set("font-weight", "700").set("color", cor);
+        v.addClassNames("cf-kpi-value", tom);
         Span l = new Span(label);
-        l.getStyle().set("font-size", "11px").set("color", "#888").set("text-transform", "uppercase");
+        l.addClassName("cf-kpi-label");
         VerticalLayout c = new VerticalLayout(icon, v, l);
         c.setAlignItems(FlexComponent.Alignment.CENTER);
         c.setSpacing(false);
-        c.setPadding(true);
-        c.getStyle()
-                .set("background", "white").set("border-radius", "12px")
-                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.08)").set("flex", "1");
+        c.setPadding(false);
+        c.addClassNames("cf-card", "cf-portal-stat");
         return c;
     }
 
@@ -277,7 +274,7 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
         grid.addComponentColumn(p -> {
             boolean presente = Boolean.TRUE.equals(p.isPresente());
             Span s = new Span(presente ? "✅ Presente" : "❌ Falta");
-            s.getStyle().set("color", presente ? "#27AE60" : "#E74C3C").set("font-weight", "600");
+            s.addClassNames("cf-semibold", presente ? "cf-tone-success" : "cf-tone-error");
             return s;
         }).setHeader("Estado").setAutoWidth(true);
         grid.addComponentColumn(p -> {
@@ -287,7 +284,6 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
             Button verVideo = new Button("Vídeo", VaadinIcon.PLAY_CIRCLE.create(),
                     e -> mostrarVideosDaAula(p.getTurma(), p.getData(), videos, storageService));
             verVideo.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            verVideo.getStyle().set("color", "#D32F2F");
             return verVideo;
         }).setHeader("Vídeo").setAutoWidth(true);
 
@@ -347,22 +343,20 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
 
         VerticalLayout card = new VerticalLayout();
         card.setSpacing(false);
-        card.setPadding(true);
-        card.getStyle()
-                .set("background", "white").set("border-radius", "12px")
-                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.08)")
-                .set("margin", "16px 16px 0");
+        card.setPadding(false);
+        card.addClassNames("cf-card", "cf-accent-card", "cf-portal-block");
 
         Integer diaLimite = mensalidadeConfig.diaLimitePagamento(studio);
 
         if (proxima == null) {
-            card.getStyle().set("border-left", "5px solid #27AE60");
+            card.addClassName("cf-accent-success");
             H3 t = new H3("Sem mensalidades por pagar 🎉");
-            t.getStyle().set("margin", "0").set("font-size", "16px");
+            t.addClassName("cf-card-title");
+            t.getStyle().set("font-size", "var(--lumo-font-size-l)");
             Span nota = new Span(diaLimite != null
                     ? "As mensalidades vencem no dia " + diaLimite + " de cada mês."
                     : "Este estúdio não tem vencimento automático definido.");
-            nota.getStyle().set("color", "#888").set("font-size", "13px");
+            nota.addClassName("cf-card-meta");
             card.add(t, nota);
             return card;
         }
@@ -371,22 +365,21 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
         long dias = limite != null ? ChronoUnit.DAYS.between(LocalDate.now(), limite) : Long.MAX_VALUE;
         boolean divida = mensalidadeConfig.estadoEfetivo(proxima, studio) == EstadoMensalidade.EM_DIVIDA;
         double valorEfetivo = mensalidadeConfig.valorComMulta(proxima, studio);
-        String cor = divida ? "#E74C3C" : (limite != null && dias <= 7 ? "#E67E22" : "#27AE60");
-        card.getStyle().set("border-left", "5px solid " + cor);
+        String tom = divida ? "error" : (limite != null && dias <= 7 ? "warning" : "success");
+        card.addClassName("cf-accent-" + tom);
 
         Span label = new Span("PRÓXIMA MENSALIDADE");
-        label.getStyle().set("font-size", "11px").set("color", "#888")
-                .set("font-weight", "700").set("letter-spacing", "0.05em");
+        label.addClassName("cf-card-eyebrow");
 
         String periodo = capitalizar(proxima.getMes().getDisplayName(TextStyle.FULL, new Locale("pt")))
                 + " " + proxima.getAno();
         Span titulo = new Span(periodo + " · " + String.format("%.2f €", valorEfetivo));
-        titulo.getStyle().set("font-size", "20px").set("font-weight", "700").set("color", "#2D3436");
+        titulo.addClassName("cf-card-title");
 
         Span venc = new Span(limite != null
                 ? "Vence a " + limite.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                 : "Sem data de vencimento automática definida");
-        venc.getStyle().set("color", "#555").set("font-size", "13px");
+        venc.addClassName("cf-card-meta");
 
         String estadoTxt;
         if (divida) {
@@ -402,10 +395,8 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
             estadoTxt = "Em dia";
         }
         Span badge = new Span(estadoTxt);
-        badge.getStyle().set("background", cor).set("color", "white")
-                .set("padding", "3px 10px").set("border-radius", "12px")
-                .set("font-size", "12px").set("font-weight", "700")
-                .set("margin-top", "6px").set("width", "fit-content");
+        badge.addClassNames("cf-pill", "cf-pill--" + tom);
+        badge.getStyle().set("margin-top", "var(--lumo-space-s)");
 
         card.add(label, titulo, venc, badge);
         return card;
@@ -418,26 +409,21 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
                 .distinct().collect(Collectors.joining(", "));
 
         Span label = new Span("PAGAMENTO ONLINE");
-        label.getStyle().set("font-size", "11px").set("color", "#888")
-                .set("font-weight", "700").set("letter-spacing", "0.05em");
+        label.addClassName("cf-card-eyebrow");
         Span titulo = new Span("Em aberto: " + String.format("%.2f €", total));
-        titulo.getStyle().set("font-size", "20px").set("font-weight", "700").set("color", "#2D3436");
+        titulo.addClassName("cf-card-title");
         Span detalhe = new Span(periodos);
-        detalhe.getStyle().set("color", "#555").set("font-size", "13px");
+        detalhe.addClassName("cf-card-meta");
 
         Button pagar = new Button("Pagar " + String.format("%.2f €", total) + " online", new Icon(VaadinIcon.CREDIT_CARD),
                 e -> pagarMensalidades(aluno, studio, pagaveis));
         pagar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        pagar.getStyle().set("margin-top", "8px");
+        pagar.getStyle().set("margin-top", "var(--lumo-space-s)");
 
         VerticalLayout card = new VerticalLayout(label, titulo, detalhe, pagar);
         card.setSpacing(false);
-        card.setPadding(true);
-        card.getStyle()
-                .set("background", "white").set("border-radius", "12px")
-                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.08)")
-                .set("border-left", "5px solid #1976D2")
-                .set("margin", "16px 16px 0");
+        card.setPadding(false);
+        card.addClassNames("cf-card", "cf-accent-card", "cf-accent-info", "cf-portal-block");
         return card;
     }
 
@@ -524,15 +510,13 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
                 .setHeader("Valor").setAutoWidth(true);
         grid.addComponentColumn(m -> {
             String[] cfg = switch (mensalidadeConfig.estadoEfetivo(m, studio)) {
-                case PAGO -> new String[]{"#e8f5e9","#27AE60","Pago"};
-                case FATURADO -> new String[]{"#e3f2fd","#1976D2","Faturado"};
-                case POR_EMITIR -> new String[]{"#fff3e0","#E67E22","Por Emitir"};
-                case EM_DIVIDA -> new String[]{"#fce4ec","#C62828","Em Dívida"};
+                case PAGO -> new String[]{"success","Pago"};
+                case FATURADO -> new String[]{"info","Faturado"};
+                case POR_EMITIR -> new String[]{"warning","Por Emitir"};
+                case EM_DIVIDA -> new String[]{"error","Em Dívida"};
             };
-            Span b = new Span(cfg[2]);
-            b.getStyle().set("background",cfg[0]).set("color",cfg[1])
-                    .set("padding","2px 8px").set("border-radius","10px")
-                    .set("font-size","11px").set("font-weight","600");
+            Span b = new Span(cfg[1]);
+            b.addClassNames("cf-pill", "cf-pill--" + cfg[0]);
             return b;
         }).setHeader("Estado").setAutoWidth(true);
         if (!pagaveis.isEmpty()) {
@@ -567,7 +551,7 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
 
         if (avaliacoes.isEmpty()) {
             Span vazio = new Span("Ainda não há avaliações registadas.");
-            vazio.getStyle().set("color", "#888");
+            vazio.addClassName("cf-empty");
             layout.add(new H3("Avaliações"), vazio);
             return layout;
         }
@@ -581,14 +565,12 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
 
     private VerticalLayout criarCardAvaliacao(AvaliacaoAluno av) {
         VerticalLayout card = new VerticalLayout();
-        card.getStyle()
-                .set("background", "white").set("border-radius", "12px")
-                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.07)")
-                .set("padding", "16px").set("margin-bottom", "8px");
+        card.addClassName("cf-card");
+        card.getStyle().set("margin-bottom", "var(--lumo-space-s)");
         card.setSpacing(false);
 
         Span periodo = new Span(av.getPeriodo() + " · " + av.getTurma().getDescricao());
-        periodo.getStyle().set("font-weight", "700").set("font-size", "14px");
+        periodo.addClassNames("cf-strong", "cf-text-s");
 
         String nivelCor = switch (av.getNivel()) {
             case INICIANTE -> "#E67E22"; case INTERMEDIO -> "#1976D2";
@@ -596,8 +578,8 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
         };
         Span nivel = new Span(av.getNivel().name());
         nivel.getStyle().set("background", nivelCor).set("color", "white")
-                .set("padding", "2px 8px").set("border-radius", "10px")
-                .set("font-size", "11px").set("font-weight", "700").set("margin-left", "8px");
+                .set("margin-left", "8px");
+        nivel.addClassName("cf-pill");
 
         HorizontalLayout cabecalho = new HorizontalLayout(periodo, nivel);
         cabecalho.setAlignItems(FlexComponent.Alignment.CENTER);
@@ -609,8 +591,7 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
             comps.getStyle().set("flex-wrap", "wrap").set("margin-top", "8px");
             AvaliacoesView.parseCompetencias(av.getCompetencias()).forEach((k, v) -> {
                 Span s = new Span(k + ": " + "★".repeat(v) + "☆".repeat(5 - v));
-                s.getStyle().set("font-size", "12px").set("background", "#f5f5f5")
-                        .set("padding", "3px 8px").set("border-radius", "8px");
+                s.addClassName("cf-chip");
                 comps.add(s);
             });
             card.add(cabecalho, comps);
@@ -620,8 +601,8 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
 
         if (av.getObservacoes() != null && !av.getObservacoes().isBlank()) {
             Span obs = new Span("\"" + av.getObservacoes() + "\"");
-            obs.getStyle().set("font-style", "italic").set("color", "#666")
-                    .set("font-size", "13px").set("margin-top", "6px");
+            obs.addClassNames("cf-card-meta");
+            obs.getStyle().set("font-style", "italic").set("margin-top", "6px");
             card.add(obs);
         }
 
@@ -644,8 +625,8 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
         } else {
             for (CompraCredito c : compras) {
                 Div card = new Div();
-                card.getStyle().set("padding", "12px").set("border-radius", "10px")
-                        .set("background", "#f8f9fa").set("margin-bottom", "8px");
+                card.addClassName("cf-card");
+                card.getStyle().set("margin-bottom", "var(--lumo-space-s)");
                 String validade = c.getValidadeAte() != null ? " · válido até " + c.getValidadeAte() : "";
                 String estado = c.getMetodoPagamento() == MetodoPagamentoCredito.MANUAL
                         && c.getEstadoPagamento() == EstadoPagamentoCredito.PENDENTE
@@ -679,7 +660,7 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
                 linha.add(nome);
                 if (tc.jaFezCheckin) {
                     Span feito = new Span("✓ Presença registada");
-                    feito.getStyle().set("color", "#27ae60").set("font-weight", "700");
+                    feito.addClassNames("cf-tone-success", "cf-strong");
                     linha.add(feito);
                 } else {
                     Button botaoCheckin = new Button("Fazer Checkin", ev -> {
@@ -709,7 +690,7 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
 
         if (contratos.isEmpty()) {
             Span vazio = new Span("Não existem contratos pendentes.");
-            vazio.getStyle().set("color", "#888");
+            vazio.addClassName("cf-empty");
             layout.add(new H3("Contratos"), vazio);
             return layout;
         }
@@ -724,7 +705,7 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
         grid.addComponentColumn(c -> {
             boolean assinado = "ASSINADO".equals(c.getEstado());
             Span b = new Span(assinado ? "✅ Assinado" : "⏳ Pendente");
-            b.getStyle().set("color", assinado ? "#27AE60" : "#E67E22").set("font-weight", "600");
+            b.addClassNames("cf-semibold", assinado ? "cf-tone-success" : "cf-tone-warning");
             return b;
         }).setHeader("Estado").setAutoWidth(true);
 
@@ -733,7 +714,6 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
                 Button assinar = new Button("Assinar", VaadinIcon.PENCIL.create(),
                         e -> UI.getCurrent().navigate("contrato/" + c.getId()));
                 assinar.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
-                assinar.getStyle().set("background-color", ViewUtils.corPrimaria());
                 return assinar;
             }
             return new Span(c.getDataAssinatura() != null

@@ -64,15 +64,13 @@ public class TurmaView extends VerticalLayout {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        getStyle().set("background", "#f5f7fa");
 
         ViewUtils.injetarEstiloBotoesAcao();
         configurarGrid();
 
         Div tituloWrapper = new Div();
-        tituloWrapper.getStyle().set("padding", "20px 20px 0 20px");
+        tituloWrapper.addClassNames("cf-page-header", "cf-page-header-padded");
         H2 titulo = new H2("Configurar Turmas");
-        titulo.getStyle().set("margin-top", "0");
         tituloWrapper.add(titulo);
 
         add(tituloWrapper, criarToolbar(), grid);
@@ -82,9 +80,7 @@ public class TurmaView extends VerticalLayout {
     private Component criarToolbar() {
         HorizontalLayout toolbar = new HorizontalLayout();
         toolbar.setWidthFull();
-        toolbar.setPadding(true);
-        toolbar.getStyle().set("background", "white").set("border-bottom", "1px solid #e0e0e0").set("padding",
-                "12px 20px");
+        toolbar.addClassName("cf-toolbar");
         toolbar.setAlignItems(FlexComponent.Alignment.CENTER);
         toolbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
 
@@ -105,6 +101,7 @@ public class TurmaView extends VerticalLayout {
 
         HorizontalLayout right = new HorizontalLayout();
         right.setSpacing(true);
+        right.addClassName("cf-wrap");
 
         Button addButton = ViewUtils.botaoNovo("Nova Turma", e -> turmaForm.abrirNovoFormulario(null));
 
@@ -117,7 +114,8 @@ public class TurmaView extends VerticalLayout {
     private void configurarGrid() {
         grid.setSizeFull();
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_NO_BORDER);
-        grid.getStyle().set("flex-grow", "1").set("margin", "12px 16px");
+        grid.getStyle().set("flex-grow", "1");
+        grid.addClassName("cf-grid-inset");
 
         grid.addComponentColumn(turma -> {
             Button edit = ViewUtils.botaoEditar(e -> {
@@ -142,9 +140,9 @@ public class TurmaView extends VerticalLayout {
             vl.setPadding(false);
             vl.setSpacing(false);
             Span desc = new Span(t.getDescricao());
-            desc.getStyle().set("font-weight", "600");
+            desc.addClassName("cf-cell-title");
             Span modal = new Span(t.getModalidade() != null ? t.getModalidade().getDescricao() : "");
-            modal.getStyle().set("font-size", "0.78rem").set("color", "#888");
+            modal.addClassName("cf-cell-sub");
             vl.add(desc, modal);
             return vl;
         }).setHeader("Turma").setFlexGrow(2).setSortable(true).setComparator(Turma::getDescricao);
@@ -158,8 +156,7 @@ public class TurmaView extends VerticalLayout {
             vl.setSpacing(false);
             if (t.getProfessor() != null) {
                 Span s = new Span(t.getProfessor().getNome());
-                s.getStyle().set("background", "#ede7f6").set("color", "#6d1b7b")
-                        .set("padding", "3px 10px").set("border-radius", "12px").set("font-size", "0.85rem");
+                s.addClassNames("cf-pill", "cf-pill--violet");
                 vl.add(s);
             }
             if (!t.getCoProfessores().isEmpty()) {
@@ -167,7 +164,8 @@ public class TurmaView extends VerticalLayout {
                         .map(pt.studioflow.model.Professor::getNome)
                         .collect(java.util.stream.Collectors.joining(", "));
                 Span co = new Span("+ " + extra);
-                co.getStyle().set("font-size", "0.75rem").set("color", "#888").set("margin-top", "2px");
+                co.addClassName("cf-cell-sub");
+                co.getStyle().set("margin-top", "2px");
                 vl.add(co);
             }
             return vl;
@@ -176,8 +174,8 @@ public class TurmaView extends VerticalLayout {
         grid.addComponentColumn(t -> {
             int n = alunoTurmaRepository.findByTurma(t).size();
             Span badge = new Span(n + " alunos");
-            String cor = n == 0 ? "#9e9e9e" : n < 5 ? "#e65100" : "#1976d2";
-            badge.getStyle().set("color", cor).set("font-weight", "600").set("font-size", "0.85rem");
+            String tom = n == 0 ? "cf-tone-muted" : n < 5 ? "cf-tone-warning" : "cf-tone-info";
+            badge.addClassNames(tom, "cf-semibold", "cf-text-s");
             return badge;
         }).setHeader("Alunos").setWidth("90px").setFlexGrow(0);
 
@@ -185,7 +183,8 @@ public class TurmaView extends VerticalLayout {
             if (turma.getWhatsappGroupLink() != null && !turma.getWhatsappGroupLink().isEmpty()) {
                 Anchor anchor = new Anchor(turma.getWhatsappGroupLink(), "");
                 Icon icon = VaadinIcon.CHAT.create();
-                icon.getStyle().set("color", "#25D366");
+                icon.addClassName("cf-whatsapp");
+                anchor.getElement().setAttribute("aria-label", "Grupo de WhatsApp");
                 anchor.add(icon);
                 anchor.setTarget("_blank");
                 return (Component) anchor;
@@ -195,17 +194,16 @@ public class TurmaView extends VerticalLayout {
 
         grid.addComponentColumn(turma -> {
             Span badge = turma.isAtivo()
-                    ? criarBadge("Ativa", "#e8f5e9", "#2e7d32")
-                    : criarBadge("Inativa", "#ffebee", "#c62828");
+                    ? criarBadge("Ativa", "success")
+                    : criarBadge("Inativa", "error");
             return badge;
         }).setHeader("Estado").setWidth("90px").setFlexGrow(0);
     }
 
-    private Span criarBadge(String texto, String bg, String cor) {
+    /** Pastilha de estado; "tom" = success | error | warning | info | neutral. */
+    private Span criarBadge(String texto, String tom) {
         Span s = new Span(texto);
-        s.getStyle().set("background", bg).set("color", cor)
-                .set("padding", "3px 10px").set("border-radius", "12px")
-                .set("font-size", "0.8rem").set("font-weight", "600");
+        s.addClassNames("cf-pill", "cf-pill--" + tom);
         return s;
     }
 
