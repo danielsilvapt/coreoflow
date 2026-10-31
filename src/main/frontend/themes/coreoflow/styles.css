@@ -1188,6 +1188,8 @@ vaadin-progress-bar.cf-progress-error { --lumo-primary-color: var(--cf-error); }
 }
 .cf-portal-stat .cf-kpi-value { font-size: 1.75rem; }
 .cf-portal-tabs { padding: 0 var(--lumo-space-m); }
+html .cf-portal-block { margin: var(--lumo-space-m) var(--lumo-space-m) 0; width: auto; padding: var(--lumo-space-m) var(--lumo-space-l); }
+.cf-portal-stat .cf-stat-icon { margin-bottom: var(--lumo-space-xs); }
 .cf-accent-card { border-left: 4px solid var(--cf-accent, var(--lumo-primary-color)) !important; }
 .cf-accent-success { --cf-accent: var(--cf-success); }
 .cf-accent-warning { --cf-accent: var(--cf-warning); }
