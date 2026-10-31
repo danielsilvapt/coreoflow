@@ -87,15 +87,14 @@ public class DashboardView extends Div {
                                 .anyMatch(a -> a.getAuthority().equals("ROLE_ALUNO"));
 
                 setSizeFull();
-                getStyle().set("padding", "25px").set("background-color", "#f0f2f5");
+                addClassName("cf-dashboard");
                 getStyle().set("display", "flex").set("flex-direction", "column");
 
                 FlexLayout gridLayout = new FlexLayout();
                 gridLayout.setWidthFull();
+                gridLayout.addClassName("cf-dashboard-grid");
+                // FlexLayout põe display:flex inline; a grelha responsiva vem de .cf-dashboard-grid
                 gridLayout.getStyle().set("display", "grid");
-                gridLayout.getStyle().set("grid-template-columns", "repeat(auto-fill, minmax(350px, 1fr))");
-                gridLayout.getStyle().set("grid-auto-rows", "auto");
-                gridLayout.getStyle().set("gap", "30px");
 
                 YearMonth mesAtual = YearMonth.now();
                 LocalDate hoje = LocalDate.now();
@@ -146,7 +145,7 @@ public class DashboardView extends Div {
                                                                 && normalizar(a.getTurma().getProfessor().getNome())
                                                                                 .contains(busca))
                                                 .forEach(a -> agenda.add(a.getHoraInicio() + "|"
-                                                                + a.getTurma().getDescricao() + "|#2e7d32"));
+                                                                + a.getTurma().getDescricao() + "|var(--cf-success)"));
 
                                 todasAsPrivadasDeHoje.stream()
                                                 .filter(ms -> ms.getProfessor() != null
@@ -155,7 +154,7 @@ public class DashboardView extends Div {
                                                         String nomesAlunos = extrairNomesCurtos(ms.getAlunos());
                                                         agenda.add(ms.getHoraInicio() + "|Aula "
                                                                         + ms.getTipo().toLowerCase() + " ("
-                                                                        + nomesAlunos + ")|#6d1b7b");
+                                                                        + nomesAlunos + ")|var(--cf-violet-text)");
                                                 });
                         }
 
@@ -169,7 +168,7 @@ public class DashboardView extends Div {
                         }
 
                         Div cardPessoal = criarCard("Agenda do dia", VaadinIcon.CALENDAR_USER, vPerso);
-                        cardPessoal.getStyle().set("grid-column", "1 / -1").set("background-color", "#e3f2fd");
+                        cardPessoal.addClassNames("cf-card--span-all", "cf-card--info");
                         gridLayout.add(cardPessoal);
 
                         if (isProf) {
@@ -220,29 +219,23 @@ public class DashboardView extends Div {
                                                 .mapToDouble(m -> pt.studioflow.util.HorasUtil.faturaveis(m.getHoraInicio(), m.getHoraFim()))
                                                 .sum();
 
-                                vA.add(criarLinhaTextoDestaque("Regulares", String.format("%.1f h", hReg), "#2e7d32"));
-                                vA.add(criarLinhaTextoDestaque("Ensaios", String.format("%.1f h", hEns), "#1976d2"));
-                                vA.add(criarLinhaTextoDestaque("Privadas", String.format("%.1f h", hPriv), "#6d1b7b"));
+                                vA.add(criarLinhaTextoDestaque("Regulares", String.format("%.1f h", hReg), "cf-tone-success"));
+                                vA.add(criarLinhaTextoDestaque("Ensaios", String.format("%.1f h", hEns), "cf-tone-info"));
+                                vA.add(criarLinhaTextoDestaque("Privadas", String.format("%.1f h", hPriv), "cf-tone-violet"));
 
                                 // Valor total acumulado com maior destaque
                                 double totalGeral = hReg + hEns + hPriv;
                                 Span totalSpan = new Span(String.format("%.1f", totalGeral));
-                                totalSpan.getStyle()
-                                                .set("font-size", "36px")
-                                                .set("font-weight", "800")
-                                                .set("color", "#2D3436")
-                                                .set("margin-top", "15px")
-                                                .set("display", "block");
+                                totalSpan.addClassNames("cf-kpi-value", "cf-kpi-value--hero");
 
                                 Span labelTotal = new Span("HORAS TOTAIS NO MÊS");
-                                labelTotal.getStyle().set("font-size", "10px").set("color", "#95a5a6")
-                                                .set("font-weight", "bold");
+                                labelTotal.addClassName("cf-kpi-label");
 
                                 VerticalLayout vTotal = new VerticalLayout(totalSpan, labelTotal);
                                 vTotal.setAlignItems(FlexComponent.Alignment.CENTER);
                                 vTotal.setPadding(false);
                                 vTotal.setSpacing(false);
-                                vTotal.getStyle().set("border-top", "1px solid #f0f0f0").set("margin-top", "10px");
+                                vTotal.addClassName("cf-kpi-block");
 
                                 vA.add(vTotal);
 
@@ -266,12 +259,9 @@ public class DashboardView extends Div {
                                                         .mapToDouble(pt.studioflow.service.RemuneracaoService.LinhaPagamento::total)
                                                         .sum();
                                         Span valorSpan = new Span(String.format("%.2f €", aReceber));
-                                        valorSpan.getStyle().set("font-size", "26px").set("font-weight", "800")
-                                                        .set("color", "#2e7d32").set("display", "block")
-                                                        .set("margin-top", "10px");
+                                        valorSpan.addClassNames("cf-kpi-value", "cf-tone-success");
                                         Span labelValor = new Span("VALOR ESTIMADO A RECEBER");
-                                        labelValor.getStyle().set("font-size", "10px").set("color", "#95a5a6")
-                                                        .set("font-weight", "bold");
+                                        labelValor.addClassName("cf-kpi-label");
                                         VerticalLayout vValor = new VerticalLayout(valorSpan, labelValor);
                                         vValor.setAlignItems(FlexComponent.Alignment.CENTER);
                                         vValor.setPadding(false);
@@ -312,11 +302,11 @@ public class DashboardView extends Div {
                                 vBI.add(new Span("Meta " + META_BONUS_ALUNOS + " alunos"), pbBI);
                                 if (tAlunos >= META_BONUS_ALUNOS) {
                                         Span s = new Span("Elegível para Bónus!");
-                                        s.getStyle().set("color", "#2e7d32").set("font-weight", "bold");
+                                        s.addClassNames("cf-tone-success", "cf-strong");
                                         vBI.add(s);
                                 }
                                 Div cBI = criarCard("Metas do Professor", VaadinIcon.LIGHTBULB, vBI);
-                                cBI.getStyle().set("background-color", "#f3e5f5");
+                                cBI.addClassName("cf-card--violet");
                                 gridLayout.add(cBI);
                         }
                 }
@@ -329,7 +319,8 @@ public class DashboardView extends Div {
                         if (cardAtivo.test(DashboardCard.ALUNOS_ATIVOS)) {
                                 Div cAtivos = criarCard("Alunos Ativos", VaadinIcon.USERS,
                                                 valorGrande(String.valueOf(todosAlunos.stream().filter(Aluno::isAtivo).count()),
-                                                                "#1976d2"));
+                                                                "cf-tone-info"));
+                                cAtivos.addClassName("cf-card-clickable");
                                 cAtivos.addClickListener(e -> abrirModalAlocacaoPorTurma(turmas));
                                 gridLayout.add(cAtivos);
                         }
@@ -368,7 +359,8 @@ public class DashboardView extends Div {
                                                 && !alunosComPresencaAntesDoMes.contains(a.getId())).toList();
                                 Div cNovosMes = criarCard(
                                                 "Novos Alunos (" + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")) + ")",
-                                                VaadinIcon.STAR, valorGrande(String.valueOf(novosMes.size()), "#FFD700"));
+                                                VaadinIcon.STAR, valorGrande(String.valueOf(novosMes.size()), "cf-tone-warning"));
+                                cNovosMes.addClassName("cf-card-clickable");
                                 cNovosMes.addClickListener(e -> abrirModalNovosAlunos(novosMes,
                                                 "Novos Alunos — " + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt"))));
                                 gridLayout.add(cNovosMes);
@@ -377,7 +369,8 @@ public class DashboardView extends Div {
                                                 && !a.getDataInscricaoRenovacao().isBefore(inicioContagemNovosAlunos)
                                                 && !alunosComPresencaAntesDaContagemAnoLetivo.contains(a.getId())).toList();
                                 Div cNovosAno = criarCard("Novos Alunos (Ano Letivo)", VaadinIcon.CALENDAR,
-                                                valorGrande(String.valueOf(novosAnoLetivo.size()), "#FFA000"));
+                                                valorGrande(String.valueOf(novosAnoLetivo.size()), "cf-tone-warning"));
+                                cNovosAno.addClassName("cf-card-clickable");
                                 cNovosAno.addClickListener(e -> abrirModalNovosAlunos(novosAnoLetivo, "Novos Alunos — Ano Letivo"));
                                 gridLayout.add(cNovosAno);
                         }
@@ -395,7 +388,8 @@ public class DashboardView extends Div {
                                         return up.map(d -> d.isBefore(lR)).orElse(true);
                                 }).toList();
                                 Div cRisco = criarCard("Alunos em Risco", VaadinIcon.WARNING,
-                                                valorGrande(String.valueOf(risco.size()), "#e65100"));
+                                                valorGrande(String.valueOf(risco.size()), "cf-tone-warning"));
+                                cRisco.addClassName("cf-card-clickable");
                                 cRisco.addClickListener(e -> abrirModalAlunosRisco(risco));
                                 gridLayout.add(cRisco);
                         }
@@ -415,6 +409,7 @@ public class DashboardView extends Div {
                                 double pA = calcularPercentagemAssiduidade(turmas, todasAulas, tP, mesAtual);
                                 Div cA = criarCard("Assiduidade Global", VaadinIcon.CHECK_SQUARE_O,
                                                 criarAssiduidadeContent(pA, tP));
+                                cA.addClassName("cf-card-clickable");
                                 cA.addClickListener(e -> abrirModalAssiduidadePorTurma(turmas, todasAulas, todasPresencas, mesAtual));
                                 gridLayout.add(cA);
                         }
@@ -425,7 +420,8 @@ public class DashboardView extends Div {
                                                                 && m.getMes().getValue() == mesAtual.getMonthValue())
                                                 .mapToDouble(Mensalidade::getValor).sum();
                                 Div cP = criarCard("Previsão Mensal", VaadinIcon.MONEY,
-                                                valorGrande(String.format("%.2f €", vPrev), "#607d8b"));
+                                                valorGrande(String.format("%.2f €", vPrev), "cf-tone-neutral"));
+                                cP.addClassName("cf-card-clickable");
                                 cP.addClickListener(e -> abrirModalPrevisaoPorTurma(turmas, todasMensalidades, mesAtual));
                                 gridLayout.add(cP);
                         }
@@ -437,7 +433,7 @@ public class DashboardView extends Div {
                                                                 && m.getMes().getValue() == mesAtual.getMonthValue())
                                                 .mapToDouble(Mensalidade::getValor).sum();
                                 gridLayout.add(criarCard("Total Pago", VaadinIcon.MONEY,
-                                                valorGrande(String.format("%.2f €", vPa), "#2e7d32")));
+                                                valorGrande(String.format("%.2f €", vPa), "cf-tone-success")));
                         }
 
                         if (cardAtivo.test(DashboardCard.DIVIDA_MES)) {
@@ -447,20 +443,22 @@ public class DashboardView extends Div {
                                                                 && m.getMes().getValue() == mesAtual.getMonthValue())
                                                 .mapToDouble(Mensalidade::getValor).sum();
                                 gridLayout.add(criarCard("Dívida do Mês", VaadinIcon.CLOCK,
-                                                valorGrande(String.format("%.2f €", vDM), "#d32f2f")));
+                                                valorGrande(String.format("%.2f €", vDM), "cf-tone-error")));
                         }
 
                         if (cardAtivo.test(DashboardCard.DIVIDA_TOTAL)) {
                                 double vDT = todasMensalidades.stream().filter(m -> m.getEstado() == EstadoMensalidade.FATURADO)
                                                 .mapToDouble(Mensalidade::getValor).sum();
                                 Div cDT = criarCard("Dívida Total", VaadinIcon.COINS,
-                                                valorGrande(String.format("%.2f €", vDT), "#c62828"));
+                                                valorGrande(String.format("%.2f €", vDT), "cf-tone-error"));
+                                cDT.addClassName("cf-card-clickable");
                                 cDT.addClickListener(e -> abrirModalDividaHistorica(todasMensalidades));
                                 gridLayout.add(cDT);
                         }
 
                         if (cardAtivo.test(DashboardCard.MODALIDADES)) {
                                 Div cMod = criarCard("Modalidades", VaadinIcon.BAR_CHART, criarGraficoModalidades(turmas, 4));
+                                cMod.addClassName("cf-card-clickable");
                                 cMod.addClickListener(e -> abrirModalSimples("Ranking", criarGraficoModalidades(turmas, 100)));
                                 gridLayout.add(cMod);
                         }
@@ -470,7 +468,8 @@ public class DashboardView extends Div {
                                                 mesAtual);
                                 double totalL = lucros.values().stream().mapToDouble(v -> v).sum();
                                 Div cRent = criarCard("Rentabilidade", VaadinIcon.CHART_LINE, valorGrande(
-                                                String.format("%.2f €", totalL), totalL >= 0 ? "#2e7d32" : "#d32f2f"));
+                                                String.format("%.2f €", totalL), totalL >= 0 ? "cf-tone-success" : "cf-tone-error"));
+                                cRent.addClassName("cf-card-clickable");
                                 cRent.addClickListener(e -> abrirModalRentabilidadeDetalhada(lucros, turmas, todasMensalidades,
                                                 mesAtual));
                                 gridLayout.add(cRent);
@@ -485,42 +484,35 @@ public class DashboardView extends Div {
         private Div criarCardBoasVindas(Studio studio, String firstName, List<Aluno> todosAlunos,
                         List<Presenca> todasPresencas, LocalDate hoje) {
                 Div card = new Div();
+                card.addClassName("cf-welcome");
+                // Gradiente com as cores do estúdio (o resto do visual vem de .cf-welcome)
                 card.getStyle()
-                                .set("padding", "22px 26px")
-                                .set("border-radius", "16px")
-                                .set("background", "linear-gradient(135deg, " + corOuDefault(studio.getCorPrimaria(), "#4A90E2")
-                                                + ", " + corOuDefault(studio.getCorSecundaria(), "#2D3436") + ")")
-                                .set("color", "white")
-                                .set("grid-column", "1 / -1")
-                                .set("box-shadow", "0 4px 15px rgba(0,0,0,0.15)")
-                                .set("display", "flex")
-                                .set("flex-direction", "column")
-                                .set("gap", "16px");
+                                .set("--cf-welcome-from", corOuDefault(studio.getCorPrimaria(), "#2F6FD6"))
+                                .set("--cf-welcome-to", corOuDefault(studio.getCorSecundaria(), "#0F1F4B"));
 
                 HorizontalLayout topo = new HorizontalLayout();
                 topo.setWidthFull();
                 topo.setAlignItems(FlexComponent.Alignment.CENTER);
-                topo.getStyle().set("gap", "18px").set("flex-wrap", "wrap");
+                topo.setSpacing(false);
+                topo.addClassName("cf-welcome-top");
 
                 if (studio.getLogoPath() != null && !studio.getLogoPath().isBlank()) {
                         Image logo = new Image(LogoUrl.comVersao(studio.getLogoPath()), studio.getNome());
-                        logo.setHeight("56px");
-                        logo.getStyle().set("object-fit", "contain").set("background", "white")
-                                        .set("border-radius", "10px").set("padding", "6px");
+                        logo.addClassName("cf-welcome-logo");
                         topo.add(logo);
                 }
 
                 VerticalLayout texto = new VerticalLayout();
                 texto.setPadding(false);
                 texto.setSpacing(false);
-                texto.getStyle().set("gap", "4px").set("min-width", "220px");
+                texto.addClassName("cf-welcome-text");
 
                 Span titulo = new Span(saudacaoPeloRelogio()
                                 + (firstName != null && !firstName.isBlank() ? ", " + firstName : "") + "! 👋");
-                titulo.getStyle().set("font-size", "22px").set("font-weight", "800");
+                titulo.addClassName("cf-welcome-title");
 
                 Span sub = new Span("Aqui tens um resumo rápido do " + studio.getNome() + " para hoje.");
-                sub.getStyle().set("font-size", "13px").set("opacity", "0.9");
+                sub.addClassName("cf-welcome-sub");
 
                 texto.add(titulo, sub);
                 topo.add(texto);
@@ -529,14 +521,15 @@ public class DashboardView extends Div {
 
                 // --- Atalhos rápidos inteligentes: sempre úteis + contextuais consoante o estado do estúdio ---
                 HorizontalLayout acoes = new HorizontalLayout();
-                acoes.getStyle().set("flex-wrap", "wrap").set("gap", "10px");
+                acoes.setSpacing(false);
+                acoes.addClassName("cf-welcome-actions");
 
                 acoes.add(botaoAcaoRapida("➕ Novo Aluno", null, e -> getUI().ifPresent(ui -> ui.navigate("alunos"))));
                 acoes.add(botaoAcaoRapida("🪄 Aula Experimental", null, e -> getUI().ifPresent(ui -> ui.navigate("presencas"))));
 
                 long pendentesRenovacao = dashboardService.countRenovacoesPendentes(todosAlunos);
                 if (pendentesRenovacao > 0) {
-                        acoes.add(botaoAcaoRapida("🔔 " + pendentesRenovacao + " renovação(ões) por validar", "#e65100",
+                        acoes.add(botaoAcaoRapida("🔔 " + pendentesRenovacao + " renovação(ões) por validar", "warning",
                                         e -> getUI().ifPresent(ui -> ui.navigate("validar-inscricoes"))));
                 }
 
@@ -544,7 +537,7 @@ public class DashboardView extends Div {
                                 && a.getDataNascimento().getMonth() == hoje.getMonth()
                                 && a.getDataNascimento().getDayOfMonth() == hoje.getDayOfMonth()).count();
                 if (aniversariantesHoje > 0) {
-                        acoes.add(botaoAcaoRapida("🎂 " + aniversariantesHoje + " aniversário(s) hoje", "#e91e63",
+                        acoes.add(botaoAcaoRapida("🎂 " + aniversariantesHoje + " aniversário(s) hoje", "pink",
                                         e -> getUI().ifPresent(ui -> ui.navigate("crm"))));
                 }
 
@@ -552,7 +545,7 @@ public class DashboardView extends Div {
                                 .filter(a -> a.getDataExpiracaoSeguro() != null && a.getDataExpiracaoSeguro().isBefore(hoje))
                                 .count();
                 if (segurosExpirados > 0) {
-                        acoes.add(botaoAcaoRapida("⚠️ " + segurosExpirados + " seguro(s) expirado(s)", "#c62828",
+                        acoes.add(botaoAcaoRapida("⚠️ " + segurosExpirados + " seguro(s) expirado(s)", "error",
                                         e -> getUI().ifPresent(ui -> ui.navigate("alunos"))));
                 }
 
@@ -564,7 +557,7 @@ public class DashboardView extends Div {
                         return ultima.map(d -> d.isBefore(limiteRisco)).orElse(true);
                 }).count();
                 if (alunosRisco > 0) {
-                        acoes.add(botaoAcaoRapida("📉 " + alunosRisco + " aluno(s) em risco", "#e65100",
+                        acoes.add(botaoAcaoRapida("📉 " + alunosRisco + " aluno(s) em risco", "warning",
                                         e -> getUI().ifPresent(ui -> ui.navigate("crm"))));
                 }
 
@@ -574,18 +567,14 @@ public class DashboardView extends Div {
                 return card;
         }
 
-        private Button botaoAcaoRapida(String texto, String corDestaque,
+        /** Atalho do cartão de boas-vindas; "variante" = warning | error | pink | null (neutro). */
+        private Button botaoAcaoRapida(String texto, String variante,
                         com.vaadin.flow.component.ComponentEventListener<com.vaadin.flow.component.ClickEvent<Button>> listener) {
                 Button b = new Button(texto, listener);
-                b.getStyle()
-                                .set("background", corDestaque != null ? corDestaque : "rgba(255,255,255,0.18)")
-                                .set("color", "white")
-                                .set("border-radius", "20px")
-                                .set("font-weight", "600")
-                                .set("font-size", "12.5px")
-                                .set("padding", "6px 14px")
-                                .set("border", "none")
-                                .set("cursor", "pointer");
+                b.addClassName("cf-quick-action");
+                if (variante != null) {
+                        b.addClassName("cf-quick-action--" + variante);
+                }
                 return b;
         }
 
@@ -627,7 +616,7 @@ public class DashboardView extends Div {
                         col.setPadding(false);
                         col.setAlignItems(FlexComponent.Alignment.CENTER);
                         Div bar = new Div();
-                        bar.getStyle().set("background-color", "#1976d2").set("width", "30px");
+                        bar.addClassName("cf-bar");
                         bar.setHeight(((double) dto.getQuantidade() / max * 140) + "px");
                         col.add(new Span(String.valueOf(dto.getQuantidade())), bar);
                         chart.add(col);
@@ -754,7 +743,7 @@ public class DashboardView extends Div {
                 VerticalLayout v = new VerticalLayout();
                 v.setAlignItems(FlexComponent.Alignment.CENTER);
                 Span s = new Span(String.format("%.1f%%", p));
-                s.getStyle().set("font-size", "28px").set("font-weight", "bold");
+                s.addClassName("cf-kpi-value");
                 ProgressBar b = new ProgressBar();
                 b.setValue(Math.max(0.0, Math.min(1.0, p / 100.0)));
                 v.add(s, b, new Span(t + " presenças"));
@@ -770,13 +759,12 @@ public class DashboardView extends Div {
 
         private Div criarCard(String t, VaadinIcon i, com.vaadin.flow.component.Component c) {
                 Div card = new Div();
-                card.getStyle().set("padding", "15px").set("border-radius", "15px").set("background-color", "white")
-                                .set("box-shadow", "0 4px 12px rgba(0,0,0,0.1)").set("display", "flex")
-                                .set("flex-direction", "column");
+                card.addClassName("cf-card");
                 HorizontalLayout h = new HorizontalLayout(i.create(), new Span(t));
-                h.getStyle().set("border-bottom", "1px solid #f0f0f0").set("padding-bottom", "10px");
+                h.setSpacing(false);
+                h.addClassName("cf-card-header");
                 Div s = new Div(c);
-                s.getStyle().set("overflow-y", "auto").set("flex-grow", "1");
+                s.addClassName("cf-card-body");
                 card.add(h, s);
                 return card;
         }
@@ -785,27 +773,30 @@ public class DashboardView extends Div {
                 HorizontalLayout hl = new HorizontalLayout();
                 if (!e.isEmpty()) {
                         Icon i = VaadinIcon.WARNING.create();
-                        i.setColor("red");
+                        i.addClassName("cf-tone-error");
                         hl.add(i);
                 }
-                hl.add(valorGrande(String.valueOf(e.size()), e.isEmpty() ? "green" : "red"));
+                hl.setAlignItems(FlexComponent.Alignment.CENTER);
+                hl.add(valorGrande(String.valueOf(e.size()), e.isEmpty() ? "cf-tone-success" : "cf-tone-error"));
                 Div c = criarCard("Seguros Expirados", VaadinIcon.EXCLAMATION_CIRCLE_O, hl);
+                c.addClassName("cf-card-clickable");
                 c.addClickListener(ev -> abrirModalSeguros(e));
                 return c;
         }
 
-        private Span valorGrande(String v, String c) {
+        /** Valor KPI em destaque; "tom" = classe de cor do tema (cf-tone-success, cf-tone-error, ...). */
+        private Span valorGrande(String v, String tom) {
                 Span s = new Span(v);
-                s.getStyle().set("font-size", "28px").set("font-weight", "bold").set("color", c).set("display", "block")
-                                .set("text-align", "center").set("margin-top", "15px");
+                s.addClassNames("cf-kpi-value", "cf-kpi-center", tom);
                 return s;
         }
 
-        private Span criarLinhaTextoDestaque(String d, String v, String c) {
+        /** Linha "rótulo …… valor"; "tom" = classe de cor do tema para o valor. */
+        private Span criarLinhaTextoDestaque(String d, String v, String tom) {
                 HorizontalLayout hl = new HorizontalLayout(new Span(d), new Span(v));
                 hl.setWidthFull();
                 hl.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-                hl.getChildren().toArray(Span[]::new)[1].getStyle().set("color", c).set("font-weight", "bold");
+                hl.getChildren().toArray(Span[]::new)[1].addClassNames(tom, "cf-strong");
                 return new Span(hl);
         }
 
@@ -814,10 +805,10 @@ public class DashboardView extends Div {
                 VerticalLayout l = new VerticalLayout();
                 l.setAlignItems(FlexComponent.Alignment.CENTER);
                 Span n = new Span(String.valueOf(h.size()));
-                n.getStyle().set("font-size", "42px").set("font-weight", "bold").set("color",
-                                t ? "#e91e63" : "#9e9e9e");
+                n.addClassNames("cf-kpi-value", "cf-kpi-value--hero", t ? "cf-tone-violet" : "cf-tone-muted");
                 l.add(n, new Span(t ? "Aniversários Hoje!" : "Sem festas hoje"));
                 Div c = criarCard("Aniversários", t ? VaadinIcon.GIFT : VaadinIcon.CALENDAR_CLOCK, l);
+                c.addClassName("cf-card-clickable");
                 c.addClickListener(e -> getUI().ifPresent(ui -> ui.navigate("crm")));
                 return c;
         }
@@ -859,7 +850,7 @@ public class DashboardView extends Div {
                 content.getStyle().set("gap", "6px");
 
                 HorizontalLayout linhaTopo = new HorizontalLayout(
-                                valorGrande(String.valueOf(pendentes), pendentes > 0 ? "#e65100" : "#607d8b"),
+                                valorGrande(String.valueOf(pendentes), pendentes > 0 ? "cf-tone-warning" : "cf-tone-neutral"),
                                 new Span("pedidos por validar"));
                 linhaTopo.setAlignItems(FlexComponent.Alignment.BASELINE);
 
@@ -868,11 +859,12 @@ public class DashboardView extends Div {
                 pb.setValue(elegiveis > 0 ? Math.max(0.0, Math.min(1.0, (double) concluidas / elegiveis)) : 0.0);
 
                 Span legenda = new Span(concluidas + " de " + elegiveis + " alunos elegíveis já renovaram este ano letivo");
-                legenda.getStyle().set("font-size", "12px").set("color", "#7f8c8d");
+                legenda.addClassNames("cf-text-xs", "cf-muted");
 
                 content.add(linhaTopo, pb, legenda);
 
                 Div card = criarCard("Renovações", VaadinIcon.REFRESH, content);
+                card.addClassName("cf-card-clickable");
                 card.addClickListener(e -> abrirModalRenovacoesPendentes(alunosDoStudio));
                 return card;
         }
@@ -957,16 +949,12 @@ public class DashboardView extends Div {
                         ProgressBar pb = new ProgressBar();
                         pb.setValue(Math.min(1.0, pct));
                         pb.setWidth("120px");
-                        pb.getStyle().set("--lumo-primary-color", "#d32f2f");
+                        pb.addClassName("cf-progress-error");
                         return pb;
                 }).setHeader("% do Total").setAutoWidth(true);
 
                 Div totalDiv = new Div();
-                totalDiv.getStyle()
-                        .set("background", "#fbe9e7").set("border-radius", "8px")
-                        .set("padding", "12px 16px").set("margin-bottom", "12px")
-                        .set("font-weight", "700").set("color", "#c62828")
-                        .set("font-size", "1.1rem");
+                totalDiv.addClassName("cf-total-banner");
                 totalDiv.setText("Dívida Total: " + String.format("%.2f €", totalDivida));
 
                 VerticalLayout content = new VerticalLayout(totalDiv, grid);
@@ -1025,11 +1013,8 @@ public class DashboardView extends Div {
                 grid.addColumn(AssiduidadeTurmaDTO::esperadas).setHeader("Esperadas").setAutoWidth(true);
                 grid.addComponentColumn(row -> {
                         Span badge = new Span(String.format("%.0f%%", row.pct()));
-                        String cor = row.pct() >= 75 ? "#2e7d32" : row.pct() >= 50 ? "#e65100" : "#c62828";
-                        String bgCor = row.pct() >= 75 ? "#e8f5e9" : row.pct() >= 50 ? "#fff3e0" : "#ffebee";
-                        badge.getStyle().set("background", bgCor).set("color", cor)
-                                .set("padding", "3px 10px").set("border-radius", "12px")
-                                .set("font-weight", "700");
+                        String tom = row.pct() >= 75 ? "success" : row.pct() >= 50 ? "warning" : "error";
+                        badge.addClassNames("cf-pill", "cf-pill--" + tom);
                         return badge;
                 }).setHeader("Assiduidade").setAutoWidth(true).setSortable(true).setComparator(AssiduidadeTurmaDTO::pct);
 
@@ -1056,14 +1041,14 @@ public class DashboardView extends Div {
 
         private com.vaadin.flow.component.Component criarLinhaAgenda(String hora, String descricao, String cor) {
                 com.vaadin.flow.component.html.Span spanHora = new com.vaadin.flow.component.html.Span(hora);
-                spanHora.getStyle().set("font-weight", "700").set("color", cor).set("min-width", "50px");
+                spanHora.addClassName("cf-agenda-hora");
                 com.vaadin.flow.component.html.Span spanDesc = new com.vaadin.flow.component.html.Span(descricao);
                 spanDesc.getStyle().set("flex-grow", "1");
                 HorizontalLayout linha = new HorizontalLayout(spanHora, spanDesc);
                 linha.setWidthFull();
                 linha.setAlignItems(FlexComponent.Alignment.CENTER);
-                linha.getStyle().set("padding", "4px 8px").set("border-left", "4px solid " + cor)
-                                .set("border-radius", "4px").set("background", cor + "18");
+                linha.addClassName("cf-agenda-line");
+                linha.getStyle().set("--cf-agenda-color", cor);
                 return linha;
         }
 

@@ -66,11 +66,12 @@ public class HorarioView extends VerticalLayout {
         this.aulaRepository = aulaRepository;
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
         setSpacing(true);
+        addClassName("cf-page");
 
         H2 titulo = new H2("Horário das Aulas");
-        titulo.getStyle().set("margin-top", "0");
+        titulo.addClassName("cf-page-title");
 
         Studio studio = TenantContext.getCurrentStudio();
         todasAulas = (studio != null ? aulaRepository.findByStudioComHorario(studio)
@@ -125,13 +126,13 @@ public class HorarioView extends VerticalLayout {
 
         HorizontalLayout filtros = new HorizontalLayout(pesquisa, filtroProfessor, filtroTurma, filtroSala, limpar);
         filtros.setAlignItems(Alignment.END);
-        filtros.getStyle().set("flex-wrap", "wrap");
+        filtros.addClassName("cf-wrap");
 
-        resumo.getStyle().set("color", "#64748b").set("font-size", "0.85rem");
+        resumo.addClassNames("cf-muted", "cf-text-s");
 
         board.setWidthFull();
         board.setFlexWrap(FlexLayout.FlexWrap.WRAP);
-        board.getStyle().set("gap", "14px").set("align-items", "flex-start");
+        board.addClassName("cf-horario-board");
 
         add(titulo, filtros, resumo, board);
         render();
@@ -186,19 +187,15 @@ public class HorarioView extends VerticalLayout {
         VerticalLayout coluna = new VerticalLayout();
         coluna.setPadding(false);
         coluna.setSpacing(false);
-        coluna.getStyle().set("min-width", "230px").set("flex", "1").set("max-width", "320px")
-                .set("background", "#f8fafc").set("border", "1px solid #e2e8f0").set("border-radius", "12px")
-                .set("padding", "10px");
+        coluna.addClassName("cf-horario-coluna");
 
         Span cab = new Span(nomeDia(dia) + "  ·  " + aulas.size());
-        cab.getStyle().set("font-weight", "800").set("text-transform", "uppercase").set("font-size", "0.8rem")
-                .set("color", "#334155").set("letter-spacing", "0.04em").set("margin-bottom", "8px")
-                .set("display", "block");
+        cab.addClassName("cf-horario-dia");
         coluna.add(cab);
 
         if (aulas.isEmpty()) {
             Span vazio = new Span("—");
-            vazio.getStyle().set("color", "#cbd5e1");
+            vazio.addClassName("cf-muted");
             coluna.add(vazio);
         }
         aulas.forEach(a -> coluna.add(criarCard(a)));
@@ -214,27 +211,27 @@ public class HorarioView extends VerticalLayout {
         VerticalLayout card = new VerticalLayout();
         card.setPadding(false);
         card.setSpacing(false);
-        card.getStyle().set("background", "white").set("border-radius", "10px")
-                .set("border-left", "4px solid " + cor).set("box-shadow", "0 1px 3px rgba(0,0,0,0.08)")
-                .set("padding", "8px 10px").set("margin-bottom", "8px").set("cursor", "pointer");
+        card.addClassName("cf-horario-bloco");
+        // cor da turma/sala (dado) como acento lateral
+        card.getStyle().set("--cf-accent", cor);
 
         Span hora = new Span(a.getHoraInicio().format(HORA)
                 + (a.getHoraFim() != null ? "–" + a.getHoraFim().format(HORA) : ""));
-        hora.getStyle().set("font-weight", "700").set("font-size", "0.9rem").set("color", "#0f172a");
+        hora.addClassName("cf-horario-hora");
 
         Span nomeTurma = new Span(t.getDescricao());
-        nomeTurma.getStyle().set("font-size", "0.85rem").set("display", "block");
+        nomeTurma.addClassName("cf-horario-turma");
 
         String subtitulo = (t.getModalidade() != null ? nvl(t.getModalidade().getDescricao()) + " · " : "")
                 + t.getTodosProfessores().stream().map(p -> primeiroNome(p.getNome()))
                         .filter(s -> !s.isBlank()).collect(Collectors.joining(", "));
         Span sub = new Span(subtitulo);
-        sub.getStyle().set("font-size", "0.75rem").set("color", "#64748b").set("display", "block");
+        sub.addClassName("cf-horario-sub");
 
         card.add(hora, nomeTurma, sub);
         if (a.getSala() != null && a.getSala().getNome() != null) {
             Span salaSpan = new Span("📍 " + a.getSala().getNome());
-            salaSpan.getStyle().set("font-size", "0.72rem").set("color", "#94a3b8");
+            salaSpan.addClassName("cf-horario-sala");
             card.add(salaSpan);
         }
 
@@ -265,7 +262,7 @@ public class HorarioView extends VerticalLayout {
         Span s = new Span();
         s.getElement().setProperty("innerHTML",
                 "<strong>" + rotulo + ":</strong> " + (valor == null || valor.isBlank() ? "—" : escapar(valor)));
-        s.getStyle().set("display", "block").set("padding", "3px 0").set("font-size", "0.9rem");
+        s.addClassName("cf-detalhe-linha");
         return s;
     }
 

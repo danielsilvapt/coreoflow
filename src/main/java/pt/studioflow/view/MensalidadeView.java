@@ -97,8 +97,9 @@ public class MensalidadeView extends VerticalLayout {
         this.mensalidadeService = mensalidadeService;
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
         setSpacing(false);
+        addClassName("cf-page");
 
         injectStyles();
         ViewUtils.injetarEstiloBotoesAcao();
@@ -110,28 +111,7 @@ public class MensalidadeView extends VerticalLayout {
     }
 
     private void injectStyles() {
-        String styles = ".status-badge { " +
-                "  padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 0.75rem; " +
-                "  text-transform: uppercase; cursor: pointer; transition: all 0.2s ease; " +
-                "  display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(0,0,0,0.05); " +
-                "  box-shadow: 0 2px 4px rgba(0,0,0,0.05); " +
-                "} " +
-                ".status-badge:hover { transform: scale(1.05); filter: brightness(1.05); } " +
-                ".status-pago { background: #E6F4EA; color: #1E8E3E; } " +
-                ".status-faturado { background: #E8F0FE; color: #1967D2; } " +
-                ".status-divida { background: #FCE8E6; color: #D93025; } " +
-                ".status-pendente { background: #F1F3F4; color: #5F6368; } " +
-
-                ".stat-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; min-width: 220px; } "
-                +
-                ".stat-title { color: #7f8c8d; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; } "
-                +
-                ".stat-value { font-size: 1.6rem; font-weight: 800; display: block; margin-top: 5px; } " +
-                ".filter-bar { background: rgba(255,255,255,0.5); backdrop-filter: blur(10px); padding: 15px; border-radius: 12px; margin: 15px 0; border: 1px solid #e0e0e0; }";
-
-        UI.getCurrent().getElement().executeJs(
-                "const style = document.createElement('style'); style.textContent = $0; document.head.appendChild(style);",
-                styles);
+        // .status-*, .stat-card e .filter-bar vêm do tema coreoflow.
     }
 
     private Component criarHeader() {
@@ -139,9 +119,9 @@ public class MensalidadeView extends VerticalLayout {
         header.setWidthFull();
         header.setAlignItems(Alignment.CENTER);
         header.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        header.addClassName("cf-page-header");
 
         H2 titulo = new H2("Gestão Financeira");
-        titulo.getStyle().set("margin", "0").set("color", "#2D3436");
 
         Button btnRefresh = new Button(VaadinIcon.REFRESH.create(), e -> updateList());
         btnRefresh.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
@@ -151,31 +131,17 @@ public class MensalidadeView extends VerticalLayout {
     }
 
     private Component criarStatsCards() {
-        HorizontalLayout layout = new HorizontalLayout();
-        layout.setWidthFull();
-        layout.setSpacing(true);
-        layout.getStyle().set("margin-top", "10px");
-
-        layout.add(
+        Div layout = ViewUtils.statsRow(
                 criarStatCard("Receita Estimada", receitaEstimadaLabel, "#8E24AA", VaadinIcon.TRENDING_UP),
                 criarStatCard("Liquidado", totalPagoLabel, "#1E8E3E", VaadinIcon.CHECK_CIRCLE),
                 criarStatCard("Em Dívida", totalDividaLabel, "#D93025", VaadinIcon.CLOSE_CIRCLE),
                 criarStatCard("Por Faturar", pendentesLabel, "#5F6368", VaadinIcon.FILE_PROCESS));
+        layout.getStyle().set("margin-top", "var(--lumo-space-m)");
         return layout;
     }
 
     private Div criarStatCard(String titulo, Span valueLabel, String color, VaadinIcon icon) {
-        Div card = new Div();
-        card.addClassName("stat-card");
-        Icon i = icon.create();
-        i.setColor(color);
-        i.getStyle().set("float", "right").set("opacity", "0.8");
-        Span t = new Span(titulo);
-        t.addClassName("stat-title");
-        valueLabel.addClassName("stat-value");
-        valueLabel.getStyle().set("color", color);
-        card.add(i, t, valueLabel);
-        return card;
+        return ViewUtils.statCard(titulo, valueLabel, color, icon);
     }
 
     private Component criarToolbarFiltros() {
@@ -246,16 +212,14 @@ public class MensalidadeView extends VerticalLayout {
             layout.setAlignItems(Alignment.CENTER);
             Div avatar = new Div();
             avatar.setText(m.getAluno().getNomeCompleto().substring(0, 1).toUpperCase());
-            avatar.getStyle().set("width", "32px").set("height", "32px").set("background", "#F1F3F4")
-                    .set("border-radius", "50%").set("display", "flex").set("align-items", "center")
-                    .set("justify-content", "center").set("font-weight", "bold").set("color", "#FF5D13");
+            avatar.addClassName("cf-avatar-initial");
 
             List<Mensalidade> partes = partes(m);
             Span turmas = new Span(partes.size() > 1
                     ? partes.size() + " aulas/semana · " + partes.stream()
                             .map(p -> p.getTurma().getDescricao()).collect(Collectors.joining(", "))
                     : m.getTurma().getDescricao());
-            turmas.getStyle().set("font-size", "10px").set("color", "#7f8c8d");
+            turmas.addClassName("cf-cell-sub");
             VerticalLayout info = new VerticalLayout(new Span(m.getAluno().getNomeCompleto()), turmas);
             info.setPadding(false);
             info.setSpacing(false);

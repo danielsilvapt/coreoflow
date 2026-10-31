@@ -3,7 +3,6 @@ package pt.studioflow.view;
 import com.vaadin.flow.component.ClickEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.ComponentEventListener;
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.icon.Icon;
@@ -24,32 +23,27 @@ public final class ViewUtils {
     /** Cor primária do estúdio atual, ou azul padrão se não houver estúdio. */
     public static String corPrimaria() {
         Studio s = TenantContext.getCurrentStudio();
-        return (s != null && s.getCorPrimaria() != null) ? s.getCorPrimaria() : "#4A90E2";
+        return (s != null && s.getCorPrimaria() != null) ? s.getCorPrimaria() : "#2F6FD6";
     }
 
     /**
-     * Cria o botão "Novo …" com a cor primária do estúdio.
-     * Usar para todos os botões de criação nas views.
+     * Cria o botão "Novo …" com a cor primária do estúdio (via tema: --lumo-primary-color
+     * é derivada da cor do estúdio). Usar para todos os botões de criação nas views.
      */
     public static Button botaoNovo(String label, ComponentEventListener<ClickEvent<Button>> onClick) {
         Button btn = new Button(label, new Icon(VaadinIcon.PLUS), onClick);
         btn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        btn.getStyle().set("background-color", corPrimaria()).set("color", "white");
         return btn;
     }
 
     /**
      * Toolbar padrão: pesquisa à esquerda, botão "Novo" à direita.
-     * Fundo branco, borda em baixo, padding uniforme.
+     * Aspeto definido pela classe .cf-toolbar do tema.
      */
     public static HorizontalLayout toolbar(Component esquerda, Component direita) {
         HorizontalLayout toolbar = new HorizontalLayout(esquerda, direita);
         toolbar.setWidthFull();
-        toolbar.setPadding(true);
-        toolbar.getStyle()
-                .set("background", "white")
-                .set("border-bottom", "1px solid #e0e0e0")
-                .set("padding", "12px 20px");
+        toolbar.addClassName("cf-toolbar");
         toolbar.setAlignItems(FlexComponent.Alignment.CENTER);
         toolbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         return toolbar;
@@ -67,39 +61,17 @@ public final class ViewUtils {
     // =========================
     // BOTÕES DE AÇÃO (grelhas)
     // =========================
-    // Estilo único de botão de ação (ícone redondo, fundo suave) usado em todas
-    // as grelhas da app — nasceu na view de Alunos e foi generalizado aqui para
-    // não haver botões "Editar"/"Eliminar" com aparências diferentes consoante a view.
-
-    private static final String ACOES_CSS_ID = "cf-action-btn-styles";
-
-    private static final String ACOES_CSS =
-            ".action-btn { border-radius: 10px; padding: 8px; min-width: 40px; height: 40px; "
-                    + "transition: all 0.2s ease; border: 1px solid rgba(0,0,0,0.05); "
-                    + "box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center; }"
-                    + ".action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }"
-                    + ".btn-edit { background: #E8F0FE; color: #1967D2; }"
-                    + ".btn-del { background: #FCE8E6; color: #D93025; }"
-                    + ".btn-view { background: #E6F4EA; color: #1E8E3E; }"
-                    + ".btn-warn { background: #FFF4E5; color: #FF5D13; }"
-                    + ".btn-neutral { background: #F1F3F4; color: #5F6368; }"
-                    + ".btn-purple { background: #F3E8FD; color: #8430CE; }"
-                    // aliases históricos (Mensalidades/Financeiro), mesmas cores que btn-view/btn-warn
-                    + ".btn-vendus { background: #E6F4EA; color: #1E8E3E; }"
-                    + ".btn-obs { background: #FFF4E5; color: #FF5D13; }";
+    // Estilo único de botão de ação (ícone, fundo suave) usado em todas as grelhas.
+    // O CSS (.action-btn, .btn-edit, .btn-del, .btn-view, .btn-warn, .btn-neutral,
+    // .btn-purple, .btn-vendus, .btn-obs) está no tema
+    // src/main/frontend/themes/coreoflow/styles.css.
 
     /**
-     * Garante que o CSS partilhado dos botões de ação está na página (idempotente:
-     * verifica no próprio JS se a tag já existe, por isso é seguro chamar em toda view).
+     * Mantido por compatibilidade: o CSS dos botões de ação passou para o tema
+     * e é carregado sempre, por isso já não é preciso injetar nada.
      */
     public static void injetarEstiloBotoesAcao() {
-        UI ui = UI.getCurrent();
-        if (ui == null) return;
-        ui.getElement().executeJs(
-                "if(!document.getElementById($1)){"
-                        + "const s=document.createElement('style');s.id=$1;s.textContent=$0;"
-                        + "document.head.appendChild(s);}",
-                ACOES_CSS, ACOES_CSS_ID);
+        // sem efeito — ver tema coreoflow
     }
 
     /** Botão de ação genérico: ícone redondo com fundo suave (ver classes .btn-* acima). */
@@ -119,6 +91,54 @@ public final class ViewUtils {
     /** Botão de ação "Eliminar" — vermelho, ícone de caixote. Estilo padrão em toda a app. */
     public static Button botaoEliminar(ComponentEventListener<ClickEvent<Button>> onClick) {
         return botaoAcao(VaadinIcon.TRASH, "btn-del", "Eliminar", onClick);
+    }
+
+    // =========================
+    // CARTÕES DE ESTATÍSTICA
+    // =========================
+
+    /**
+     * Converte as cores "históricas" usadas nas vistas no tom semântico do tema
+     * (sucesso / erro / info / violeta / aviso / neutro).
+     */
+    public static String tomDaCor(String cor) {
+        if (cor == null) return "neutral";
+        return switch (cor.trim().toLowerCase()) {
+            case "#1e8e3e", "#2e7d32", "#27ae60", "#2ecc71", "#16a085" -> "success";
+            case "#d93025", "#c62828", "#d32f2f", "#e74c3c", "#c0392b" -> "error";
+            case "#1967d2", "#1976d2", "#4a90e2", "#2980b9" -> "info";
+            case "#8e24aa", "#8430ce", "#6d1b7b", "#8e44ad" -> "violet";
+            case "#ff5d13", "#e65100", "#e67e22", "#f39c12", "#ffa000" -> "warning";
+            default -> "neutral";
+        };
+    }
+
+    /**
+     * Cartão de estatística padrão (título em versalete, valor grande, ícone num quadrado
+     * com o tom semântico). O {@code valor} é mantido pela view para atualizações.
+     */
+    public static com.vaadin.flow.component.html.Div statCard(String titulo,
+            com.vaadin.flow.component.html.Span valor, String cor, VaadinIcon icone) {
+        String tom = tomDaCor(cor);
+        com.vaadin.flow.component.html.Div card = new com.vaadin.flow.component.html.Div();
+        card.addClassName("stat-card");
+        Icon i = icone.create();
+        i.addClassNames("cf-stat-icon", "cf-tone-" + tom);
+        com.vaadin.flow.component.html.Span t = new com.vaadin.flow.component.html.Span(titulo);
+        t.addClassName("stat-title");
+        valor.addClassName("stat-value");
+        if (!"neutral".equals(tom)) {
+            valor.addClassName("cf-tone-" + tom);
+        }
+        card.add(i, t, valor);
+        return card;
+    }
+
+    /** Linha de cartões de estatística, responsiva (grelha auto-fit). */
+    public static com.vaadin.flow.component.html.Div statsRow(Component... cards) {
+        com.vaadin.flow.component.html.Div row = new com.vaadin.flow.component.html.Div(cards);
+        row.addClassName("cf-stats");
+        return row;
     }
 
     /** Botão de ação "Ver" — cinzento neutro, ícone de olho. */
