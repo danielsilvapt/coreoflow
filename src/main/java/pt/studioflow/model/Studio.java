@@ -206,6 +206,17 @@ public class Studio {
     private Boolean meiaMensalidadeAutomatica = true;
 
     /**
+     * Bónus de professores por meta de alunos ativos (cartão "Metas do Professor"
+     * no dashboard). Desligado por omissão: nulo conta como desligado.
+     */
+    @Column(name = "bonus_professores")
+    private Boolean bonusProfessores = false;
+
+    /** Nº de alunos ativos que torna o professor elegível para bónus (omissão 20). */
+    @Column(name = "meta_bonus_alunos")
+    private Integer metaBonusAlunos;
+
+    /**
      * Oferece a primeira mensalidade a alunos novos: ao aceitar a inscrição, as
      * mensalidades do primeiro mês gerado ficam a 0€ e pagas. Não se aplica a
      * renovações. Desligado por omissão.
@@ -455,6 +466,12 @@ public class Studio {
 
     public Double getTabelaHoras6Mais() { return tabelaHoras6Mais; }
     public void setTabelaHoras6Mais(Double v) { this.tabelaHoras6Mais = v; }
+
+    public boolean isBonusProfessores() { return Boolean.TRUE.equals(bonusProfessores); }
+    public void setBonusProfessores(Boolean v) { this.bonusProfessores = v; }
+
+    public int getMetaBonusAlunos() { return metaBonusAlunos != null && metaBonusAlunos > 0 ? metaBonusAlunos : 20; }
+    public void setMetaBonusAlunos(Integer v) { this.metaBonusAlunos = v; }
 
     public boolean isMeiaMensalidadeAutomatica() { return !Boolean.FALSE.equals(meiaMensalidadeAutomatica); }
     public void setMeiaMensalidadeAutomatica(Boolean v) { this.meiaMensalidadeAutomatica = v; }
