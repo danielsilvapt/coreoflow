@@ -87,6 +87,12 @@ public class DashboardView extends Div {
         private final pt.studioflow.service.DashboardService dashboardService;
         private final pt.studioflow.service.RemuneracaoService remuneracaoService;
 
+        @org.springframework.beans.factory.annotation.Autowired
+        private pt.studioflow.service.AulaExperimentalService aulaExperimentalService;
+
+        @org.springframework.beans.factory.annotation.Autowired
+        private pt.studioflow.service.ProfessorTurmasService professorTurmasService;
+
         public DashboardView(
                         AlunoRepository alunoRepository,
                         TurmaRepository turmaRepository,
@@ -134,6 +140,11 @@ public class DashboardView extends Div {
         @Override
         protected void onAttach(AttachEvent attachEvent) {
                 super.onAttach(attachEvent);
+                removeAll();
+                construir();
+        }
+
+        private void reconstruirDepois() {
                 removeAll();
                 construir();
         }
@@ -227,6 +238,36 @@ public class DashboardView extends Div {
                         Div cardPessoal = criarCard("Agenda do dia", VaadinIcon.CALENDAR_USER, vPerso);
                         cardPessoal.addClassNames("cf-card--span-all", "cf-card--info");
                         gridLayout.add(cardPessoal);
+
+                        // Aulas experimentais de hoje nas turmas do professor (o admin vê todas)
+                        if (isProf && studio != null) {
+                                java.util.Set<Long> idsTurmas = professorTurmasService.restritoAsProprias()
+                                                ? professorTurmasService.turmaIdsDoUtilizador(studio) : null;
+                                List<pt.studioflow.model.AulaExperimental> expHoje =
+                                                aulaExperimentalService.deHoje(studio, idsTurmas);
+                                if (!expHoje.isEmpty()) {
+                                        VerticalLayout vExp = new VerticalLayout();
+                                        vExp.setPadding(false);
+                                        vExp.setSpacing(true);
+                                        for (pt.studioflow.model.AulaExperimental ae : expHoje) {
+                                                String quem = ae.getNomeCompleto()
+                                                                + (ae.getTelemovel() != null ? " · " + ae.getTelemovel() : "");
+                                                vExp.add(criarLinhaAgenda(
+                                                                ae.getHoraInicio() != null ? ae.getHoraInicio().toString() : "",
+                                                                ae.getTurma().getDescricao() + " — " + quem,
+                                                                "var(--cf-violet-text)"));
+                                                if (ae.getObservacoes() != null) {
+                                                        Span o = new Span(ae.getObservacoes());
+                                                        o.addClassName("cf-cell-sub");
+                                                        vExp.add(o);
+                                                }
+                                        }
+                                        Div cExp = criarCard(expHoje.size() == 1 ? "Aula experimental hoje"
+                                                        : expHoje.size() + " aulas experimentais hoje", VaadinIcon.MAGIC, vExp);
+                                        cExp.addClassNames("cf-card--span-all", "cf-card--violet");
+                                        gridLayout.add(cExp);
+                                }
+                        }
 
                         if (isProf) {
                                 // Pedidos Sala
@@ -683,8 +724,10 @@ public class DashboardView extends Div {
                 acoes.addClassName("cf-dash-actions");
                 acoes.add(ViewUtils.botaoNovo("Novo aluno", e -> getUI().ifPresent(ui -> ui.navigate("alunos",
                                 com.vaadin.flow.router.QueryParameters.of("novo", "1")))));
-                if (moduloAtivo.test(StudioModulo.PRESENCAS)) {
-                        acoes.add(new Button("Aula experimental", VaadinIcon.MAGIC.create(), e -> navegar("presencas")));
+                if (studio != null) {
+                        acoes.add(new Button("Aula experimental", VaadinIcon.MAGIC.create(),
+                                        e -> new pt.studioflow.view.component.AulaExperimentalDialog(
+                                                        aulaExperimentalService, studio, ae -> reconstruirDepois()).open()));
                 }
                 if (moduloAtivo.test(StudioModulo.COMUNICACAO)) {
                         acoes.add(new Button("Comunicação", VaadinIcon.CHAT.create(), e -> navegar("comunicacao")));

@@ -54,6 +54,9 @@ public class TurmaService {
     private ListaEsperaRepository listaEsperaRepository;
 
     @Autowired
+    private pt.studioflow.repository.AulaExperimentalRepository aulaExperimentalRepository;
+
+    @Autowired
     private OcorrenciaAulaRepository ocorrenciaAulaRepository;
 
     @Autowired
@@ -102,6 +105,8 @@ public class TurmaService {
         avaliacaoAlunoRepository.flush();
         listaEsperaRepository.deleteByTurma(turma);
         listaEsperaRepository.flush();
+        aulaExperimentalRepository.deleteByTurma(turma);
+        aulaExperimentalRepository.flush();
         ocorrenciaAulaRepository.deleteByTurma(turma);
         ocorrenciaAulaRepository.flush();
         videoAulaRepository.deleteByTurma(turma);

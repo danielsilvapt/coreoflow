@@ -1889,6 +1889,24 @@ html[theme~='dark'] .cf-whatsapp { color: #4ade80; }
 .cf-detalhe-linha { display: block; padding: 4px 0; font-size: var(--lumo-font-size-s); border-bottom: 1px solid var(--cf-border); }
 .cf-detalhe-linha:last-child { border-bottom: 0; }
 
+/* Aula experimental — página pública de marcação (/aula-experimental) */
+.cf-exp-publica { background: var(--cf-bg); min-height: 100%; box-sizing: border-box; gap: var(--lumo-space-m); }
+.cf-exp-publica-sub { color: var(--cf-text-secondary); text-align: center; font-size: var(--lumo-font-size-s); }
+.cf-exp-publica-card {
+  background: var(--cf-surface); border: 1px solid var(--cf-border); border-radius: 16px;
+  padding: var(--lumo-space-l); box-sizing: border-box; box-shadow: 0 4px 24px rgba(15, 31, 75, 0.08);
+  gap: var(--lumo-space-s);
+}
+.cf-exp-publica-card vaadin-radio-group { width: 100%; }
+.cf-exp-publica-card vaadin-radio-button {
+  border: 1px solid var(--cf-border); border-radius: 10px; padding: 6px 10px; margin: 2px 0;
+}
+.cf-exp-publica-card vaadin-radio-button[checked] { border-color: var(--lumo-primary-color); background: var(--cf-primary-soft); }
+@media (max-width: 600px) {
+  .cf-exp-publica { padding: var(--lumo-space-s); }
+  .cf-exp-publica-card { padding: var(--lumo-space-m); border-radius: 12px; }
+}
+
 /* Configuração de estúdio (SUPERADMIN): janela grande com separadores por secção */
 .cf-studio-cfg-dialog::part(content) { padding: 0; display: flex; flex-direction: column; min-height: 0; }
 .cf-studio-cfg { height: 100%; min-height: 0; }
