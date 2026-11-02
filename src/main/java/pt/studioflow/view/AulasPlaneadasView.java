@@ -110,19 +110,18 @@ public class AulasPlaneadasView extends VerticalLayout {
         setSizeFull();
         setPadding(true);
         setSpacing(true);
-        getStyle().set("background-color", "#f8f9fa");
+        addClassName("cf-page");
 
         H2 titulo = new H2("Aulas Planeadas");
-        titulo.getStyle().set("margin", "0").set("font-size", "1.4rem").set("font-weight", "700")
-                .set("color", "#2b2d42");
         Span sub = new Span("Planeamento de todas as turmas e professores num só sítio.");
-        sub.getStyle().set("color", "#7f8c8d").set("font-size", "0.85rem");
-        add(titulo, sub);
+        sub.addClassName("cf-page-subtitle");
+        Div cabecalho = new Div(new Div(titulo, sub));
+        cabecalho.addClassName("cf-page-header");
+        add(cabecalho);
 
         add(criarBarraFiltros());
 
-        statsContainer.getStyle().set("display", "flex").set("flex-wrap", "wrap").set("gap", "12px")
-                .set("margin-top", "4px");
+        statsContainer.addClassName("cf-stats");
         add(statsContainer);
 
         resumoContainer.getStyle().set("display", "flex").set("flex-wrap", "wrap").set("gap", "10px")
@@ -130,8 +129,8 @@ public class AulasPlaneadasView extends VerticalLayout {
         resumoDetails.setSummaryText("Resumo por professor");
         resumoDetails.setOpened(true);
         resumoDetails.add(resumoContainer);
-        resumoDetails.getStyle().set("background", "white").set("border-radius", "10px")
-                .set("padding", "6px 12px").set("box-shadow", "0 2px 6px rgba(0,0,0,0.06)");
+        resumoDetails.addClassName("cf-card");
+        resumoDetails.setWidthFull();
         add(resumoDetails);
 
         configurarGrid();
@@ -194,8 +193,8 @@ public class AulasPlaneadasView extends VerticalLayout {
         linha.getStyle().set("flex-wrap", "wrap").set("gap", "12px");
 
         Div card = new Div(linha);
-        card.getStyle().set("background", "white").set("border-radius", "12px").set("padding", "14px 16px")
-                .set("box-shadow", "0 2px 6px rgba(0,0,0,0.06)").set("width", "100%");
+        card.addClassName("cf-card");
+        card.setWidthFull();
         return card;
     }
 
@@ -382,34 +381,18 @@ public class AulasPlaneadasView extends VerticalLayout {
 
         statsContainer.removeAll();
         statsContainer.add(
-                criarStatCard("Aulas no período", String.valueOf(total), "#2b2d42"),
-                criarStatCard("Por planear", String.valueOf(porPlanear), "#b45309"),
-                criarStatCard("Planeadas", String.valueOf(planeadas), "#1d4ed8"),
-                criarStatCard("Sumários enviados", String.valueOf(enviadas), "#15803d"));
+                ViewUtils.statCard("Aulas no período", new Span(String.valueOf(total)), null, VaadinIcon.CALENDAR),
+                ViewUtils.statCard("Por planear", new Span(String.valueOf(porPlanear)), "#e67e22", VaadinIcon.HOURGLASS),
+                ViewUtils.statCard("Planeadas", new Span(String.valueOf(planeadas)), "#4a90e2", VaadinIcon.EDIT),
+                ViewUtils.statCard("Sumários enviados", new Span(String.valueOf(enviadas)), "#27ae60", VaadinIcon.CHECK));
 
         ProgressBar pb = new ProgressBar();
         pb.setValue(total > 0 ? (double) planeadas / total : 0);
-        pb.setWidth("220px");
-        pb.getStyle().set("--lumo-primary-color", "#1d4ed8").set("align-self", "center");
-        Span pct = new Span(total > 0 ? Math.round(100.0 * planeadas / total) + "% planeadas" : "—");
-        pct.getStyle().set("font-size", "0.8rem").set("color", "#64748b").set("align-self", "center");
-        Div wrap = new Div(pb, pct);
-        wrap.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "2px")
-                .set("justify-content", "center");
-        statsContainer.add(wrap);
-    }
-
-    private Div criarStatCard(String label, String valor, String cor) {
-        Div card = new Div();
-        card.getStyle().set("background", "white").set("border-radius", "10px").set("padding", "10px 16px")
-                .set("box-shadow", "0 2px 6px rgba(0,0,0,0.06)").set("min-width", "120px").set("text-align", "center");
-        Span v = new Span(valor);
-        v.getStyle().set("display", "block").set("font-size", "22px").set("font-weight", "800").set("color", cor);
-        Span l = new Span(label);
-        l.getStyle().set("font-size", "10px").set("color", "#95a5a6").set("font-weight", "700")
-                .set("text-transform", "uppercase").set("letter-spacing", "0.4px");
-        card.add(v, l);
-        return card;
+        pb.setWidthFull();
+        Span pctValor = new Span(total > 0 ? Math.round(100.0 * planeadas / total) + "%" : "—");
+        Div progresso = ViewUtils.statCard("Progresso", pctValor, "#4a90e2", VaadinIcon.TRENDING_UP);
+        progresso.add(pb);
+        statsContainer.add(progresso);
     }
 
     private void atualizarResumoPorProfessor() {
@@ -425,7 +408,7 @@ public class AulasPlaneadasView extends VerticalLayout {
         resumoContainer.removeAll();
         if (porProf.isEmpty()) {
             Span vazio = new Span("Sem aulas no período selecionado.");
-            vazio.getStyle().set("color", "#94a3b8").set("font-size", "0.85rem");
+            vazio.addClassNames("cf-muted", "cf-text-s");
             resumoContainer.add(vazio);
             return;
         }
@@ -437,23 +420,19 @@ public class AulasPlaneadasView extends VerticalLayout {
 
     private Div criarCardProf(String nome, int planeadas, int total) {
         double frac = total > 0 ? (double) planeadas / total : 1;
-        String cor = frac >= 0.85 ? "#15803d" : frac >= 0.5 ? "#b45309" : "#b91c1c";
+        String tom = frac >= 0.85 ? "success" : frac >= 0.5 ? "warning" : "error";
 
         Span titulo = new Span(nome);
-        titulo.getStyle().set("font-weight", "700").set("font-size", "0.85rem").set("color", "#2b2d42");
+        titulo.addClassNames("cf-cell-title", "cf-text-s");
         Span numeros = new Span(planeadas + "/" + total + " planeadas");
-        numeros.getStyle().set("font-size", "0.75rem").set("color", "#64748b");
+        numeros.addClassNames("cf-secondary", "cf-text-xs");
 
         ProgressBar pb = new ProgressBar();
         pb.setValue(frac);
         pb.setWidth("150px");
-        pb.getStyle().set("--lumo-primary-color", cor);
 
         Div card = new Div(titulo, numeros, pb);
-        card.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "4px")
-                .set("background", "#f8fafc").set("border", "1px solid #e2e8f0")
-                .set("border-left", "4px solid " + cor).set("border-radius", "10px")
-                .set("padding", "10px 12px").set("cursor", "pointer");
+        card.addClassNames("cf-subcard", "cf-progress-card", "cf-progress-card--" + tom);
         card.getElement().setAttribute("title", "Filtrar por " + nome);
         card.addClickListener(e -> comboProf.setValue(profPorNome.get(normalizar(nome))));
         return card;
@@ -507,8 +486,8 @@ public class AulasPlaneadasView extends VerticalLayout {
         String cor = o.turma() != null && o.turma().getCor() != null && !o.turma().getCor().isBlank()
                 ? o.turma().getCor() : "#94a3b8";
         Div dot = new Div();
-        dot.getStyle().set("width", "10px").set("height", "10px").set("border-radius", "50%")
-                .set("background", cor).set("flex", "0 0 auto");
+        dot.addClassName("cf-dot");
+        dot.getStyle().set("background", cor);
         Span nome = new Span(o.turma() != null ? o.turma().getDescricao() : "—");
         HorizontalLayout hl = new HorizontalLayout(dot, nome);
         hl.setAlignItems(FlexComponent.Alignment.CENTER);
@@ -520,17 +499,13 @@ public class AulasPlaneadasView extends VerticalLayout {
     private Span criarBadgeTipo(String tipo) {
         boolean regular = "REGULAR".equalsIgnoreCase(tipo);
         Span badge = new Span(regular ? "Regular" : capitalizar(tipo.toLowerCase()));
-        badge.getStyle().set("background", regular ? "#ede9fe" : "#ffedd5")
-                .set("color", regular ? "#6d28d9" : "#c2410c").set("padding", "3px 10px")
-                .set("border-radius", "12px").set("font-size", "0.75rem").set("font-weight", "600");
+        badge.addClassNames("cf-pill", regular ? "cf-pill--violet" : "cf-pill--warning");
         return badge;
     }
 
     private Span criarBadgeEstado(Estado estado) {
         Span badge = new Span(estado.icone + " " + estado.label);
-        badge.getStyle().set("background", estado.bg).set("color", estado.cor).set("padding", "3px 10px")
-                .set("border-radius", "12px").set("font-size", "0.75rem").set("font-weight", "600")
-                .set("white-space", "nowrap");
+        badge.addClassNames("cf-pill", "cf-pill--" + estado.tom);
         return badge;
     }
 
@@ -550,7 +525,7 @@ public class AulasPlaneadasView extends VerticalLayout {
         Span info = new Span(capitalizar(o.data().format(FMT_DIA_LONGO)) + "  ·  "
                 + horaTexto(o.inicio()) + " – " + horaTexto(o.fim())
                 + (o.sala() != null ? "  ·  " + o.sala().getNome() : ""));
-        info.getStyle().set("font-size", "0.85rem").set("color", "#64748b").set("font-weight", "600");
+        info.addClassNames("cf-secondary", "cf-text-s", "cf-semibold");
         conteudo.add(info);
 
         HorizontalLayout badges = new HorizontalLayout(new Span("👤 " + o.professorNome()),
@@ -576,7 +551,7 @@ public class AulasPlaneadasView extends VerticalLayout {
         }
         if (!temPlano && !temSumario) {
             Span vazio = new Span("Esta aula ainda não está planeada.");
-            vazio.getStyle().set("color", "#475569").set("font-size", "0.9rem");
+            vazio.addClassName("cf-empty");
             conteudo.add(vazio);
         }
 
@@ -587,15 +562,12 @@ public class AulasPlaneadasView extends VerticalLayout {
 
     private Div criarSeccao(String titulo, String texto) {
         Div bloco = new Div();
-        bloco.getStyle().set("background", "#f8fafc").set("border", "1px solid #e2e8f0")
-                .set("border-radius", "10px").set("padding", "10px 12px");
+        bloco.addClassName("cf-subcard");
         Span t = new Span(titulo);
-        t.getStyle().set("font-weight", "700").set("font-size", "0.8rem").set("color", "#334155")
-                .set("display", "block").set("margin-bottom", "4px");
+        t.addClassName("cf-subcard-title");
         Div corpo = new Div();
         corpo.setText(texto);
-        corpo.getStyle().set("white-space", "pre-wrap").set("font-size", "0.9rem").set("color", "#1e293b")
-                .set("line-height", "1.4");
+        corpo.addClassName("cf-pre-wrap");
         bloco.add(t, corpo);
         return bloco;
     }
@@ -621,20 +593,19 @@ public class AulasPlaneadasView extends VerticalLayout {
     // ================= TIPOS =================
 
     private enum Estado {
-        NAO_PLANEADA("⏳", "Por planear", "#e2e8f0", "#475569"),
-        PLANEADA("📝", "Planeada", "#dbeafe", "#1d4ed8"),
-        ENVIADA("✅", "Sumário enviado", "#dcfce7", "#15803d");
+        NAO_PLANEADA("⏳", "Por planear", "neutral"),
+        PLANEADA("📝", "Planeada", "info"),
+        ENVIADA("✅", "Sumário enviado", "success");
 
         final String icone;
         final String label;
-        final String bg;
-        final String cor;
+        /** Tom semântico do tema (cf-pill--tom). */
+        final String tom;
 
-        Estado(String icone, String label, String bg, String cor) {
+        Estado(String icone, String label, String tom) {
             this.icone = icone;
             this.label = label;
-            this.bg = bg;
-            this.cor = cor;
+            this.tom = tom;
         }
 
         static Estado de(SumarioAula s) {

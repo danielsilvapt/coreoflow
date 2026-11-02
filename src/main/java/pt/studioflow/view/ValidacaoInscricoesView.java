@@ -118,25 +118,16 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         setPadding(true);
         setSpacing(false);
 
-        injectStyles();
+        addClassName("cf-page");
         H2 titulo = new H2("Validação de Candidaturas");
-        titulo.getStyle().set("margin-top", "0");
-        add(titulo, criarStatsCards(), criarFiltroTipo(), grid);
+        Span subtitulo = new Span("Inscrições, aulas experimentais e renovações à espera de revisão.");
+        subtitulo.addClassName("cf-page-subtitle");
+        Div cabecalho = new Div(new Div(titulo, subtitulo));
+        cabecalho.addClassName("cf-page-header");
+        add(cabecalho, criarStatsCards(), criarFiltroTipo(), grid);
 
         configurarGrid();
         atualizarGrid();
-    }
-
-    private void injectStyles() {
-        String styles = ".stat-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; min-width: 250px; }"
-                + ".stat-title { color: #7f8c8d; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }"
-                + ".stat-value { font-size: 1.6rem; font-weight: 800; display: block; margin-top: 5px; }"
-                + ".experimental-row { background-color: #fff9f0 !important; font-weight: 500; }"
-                + ".renewal-row { background-color: #f5f0fa !important; font-weight: 500; }";
-
-        UI.getCurrent().getElement().executeJs(
-                "document.head.appendChild(Object.assign(document.createElement('style'), {textContent: $0}));",
-                styles);
     }
 
     private Component criarFiltroTipo() {
@@ -153,29 +144,10 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     }
 
     private Component criarStatsCards() {
-        HorizontalLayout layout = new HorizontalLayout();
-        layout.setWidthFull();
-        layout.setSpacing(true);
-        layout.getStyle().set("margin", "15px 0");
-        layout.add(
-                criarCard("Novas Inscrições", totalPendentesLabel, "#1967D2", VaadinIcon.USER_CHECK),
-                criarCard("Aulas Experimentais", totalExperimentaisLabel, "#FF8C00", VaadinIcon.MAGIC),
-                criarCard("Renovações", totalRenovacoesLabel, "#8E44AD", VaadinIcon.REFRESH));
-        return layout;
-    }
-
-    private Div criarCard(String titulo, Span val, String color, VaadinIcon icon) {
-        Div card = new Div();
-        card.addClassName("stat-card");
-        Icon i = icon.create();
-        i.setColor(color);
-        i.getStyle().set("float", "right");
-        Span t = new Span(titulo);
-        t.addClassName("stat-title");
-        val.addClassName("stat-value");
-        val.getStyle().set("color", color);
-        card.add(i, t, val);
-        return card;
+        return ViewUtils.statsRow(
+                ViewUtils.statCard("Novas Inscrições", totalPendentesLabel, "#1967D2", VaadinIcon.USER_CHECK),
+                ViewUtils.statCard("Aulas Experimentais", totalExperimentaisLabel, "#e67e22", VaadinIcon.MAGIC),
+                ViewUtils.statCard("Renovações", totalRenovacoesLabel, "#8E44AD", VaadinIcon.REFRESH));
     }
 
     // Badge sólido com ícone e cor por estado - mais legível do que os temas de badge
@@ -301,7 +273,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                 return new Span("");
             }
             Icon icone = VaadinIcon.CHECK_CIRCLE.create();
-            icone.setColor("#1E8E3E");
+            icone.addClassName("cf-tone-success");
             icone.setSize("18px");
             icone.getElement().setAttribute("title", "Dados já revistos pela secretaria");
             return icone;
@@ -336,17 +308,17 @@ public class ValidacaoInscricoesView extends VerticalLayout {
 
         if (aluno.getStatus() == AlunoStatus.EXPERIMENTAL) {
             content.add(criarAviso(VaadinIcon.INFO_CIRCLE, " Candidato solicitou Aula Experimental",
-                    "#FFF4E5", "#663C00"));
+                    "warning"));
         }
         if (isRenovacao) {
             content.add(criarAviso(VaadinIcon.REFRESH, " Pedido de Renovação de Matrícula",
-                    "#F3E8FF", "#4A148C"));
+                    "violet"));
         }
         if (!isRenovacao && Boolean.TRUE.equals(aluno.getJaEraAluno())) {
             content.add(criarAviso(VaadinIcon.ACADEMY_CAP, " Já é aluno do estúdio — só se está a registar na app"
                     + (mensalidadeConfig.isentoTaxaInscricao(TenantContext.getCurrentStudio(), aluno)
                             ? " (isento da taxa de inscrição)" : ""),
-                    "#E3F2FD", "#0D47A1"));
+                    "info"));
         }
 
         FormLayout form = new FormLayout();
@@ -362,11 +334,9 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         content.add(new H3("Dados de Contacto"), form, createField("Morada", moradaLimpa));
 
         if (Boolean.TRUE.equals(aluno.getTemProblemaSaude())) {
-            Div avisoSaude = new Div(new Icon(VaadinIcon.DOCTOR), new Span(" Problema de saúde: "
-                    + (aluno.getProblemaSaude() != null ? aluno.getProblemaSaude() : "(não especificado)")));
-            avisoSaude.getStyle().set("background", "#FDECEA").set("color", "#8A1C1C").set("padding", "12px")
-                    .set("border-radius", "8px").set("width", "100%").set("white-space", "pre-wrap");
-            content.add(avisoSaude);
+            content.add(criarAviso(VaadinIcon.DOCTOR, "Problema de saúde: "
+                    + (aluno.getProblemaSaude() != null ? aluno.getProblemaSaude() : "(não especificado)"),
+                    "error"));
         } else if (Boolean.FALSE.equals(aluno.getTemProblemaSaude())) {
             content.add(createField("Problemas de saúde", "Nenhum"));
         }
@@ -387,7 +357,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
 
         if (aluno.isDadosValidados()) {
             content.add(criarAviso(VaadinIcon.CHECK_CIRCLE, " Dados já revistos pela secretaria",
-                    "#E6F4EA", "#1E8E3E"));
+                    "success"));
         }
 
         Button btnAtivar = new Button("Ativar", VaadinIcon.USER_CARD.create(), e -> {
@@ -397,7 +367,6 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                     Collections.singletonMap("edit", Collections.singletonList(aluno.getId().toString()))));
         });
         btnAtivar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        btnAtivar.getStyle().set("background-color", "#673ab7");
 
         // Abre a ficha completa do aluno só para consulta/edição - não ativa nem altera o
         // estado do pedido
@@ -436,10 +405,11 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         dialog.open();
     }
 
-    private Div criarAviso(VaadinIcon icone, String texto, String fundo, String cor) {
-        Div aviso = new Div(new Icon(icone), new Span(texto));
-        aviso.getStyle().set("background", fundo).set("color", cor).set("padding", "12px")
-                .set("border-radius", "8px").set("width", "100%").set("margin-top", "0.4em");
+    /** Aviso com fundo suave no tom semântico do tema (success/warning/error/info/violet). */
+    private Div criarAviso(VaadinIcon icone, String texto, String tom) {
+        Div aviso = new Div(new Icon(icone), new Span(texto.strip()));
+        aviso.addClassNames("cf-callout", "cf-callout--" + tom);
+        aviso.getStyle().set("margin-top", "0.4em");
         return aviso;
     }
 
@@ -452,8 +422,8 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         box.setPadding(true);
         box.setSpacing(false);
         box.setWidthFull();
-        box.getStyle().set("background", "#f8f9fa").set("border", "1px solid #e9ecef")
-                .set("border-radius", "12px").set("margin-top", "0.5em");
+        box.addClassName("cf-subcard");
+        box.getStyle().set("margin-top", "0.5em");
 
         H3 titulo = new H3("Valores a Faturar");
         titulo.getStyle().set("margin", "0 0 8px 0");
@@ -461,17 +431,16 @@ public class ValidacaoInscricoesView extends VerticalLayout {
 
         pagamentoOnlineService.ultimoPagamentoDoPedido(aluno).ifPresent(p -> {
             String[] cfg = switch (p.getEstado()) {
-                case PAGO -> new String[]{"#e8f5e9", "#27AE60", "💳 Pago online: " + formatarEuro(p.getValor().doubleValue())
+                case PAGO -> new String[]{"success", "💳 Pago online: " + formatarEuro(p.getValor().doubleValue())
                         + " — ao ativar, o 1º mês fica marcado como pago"};
-                case PENDENTE -> new String[]{"#fff3e0", "#E67E22", "💳 Pagamento online por concluir ("
+                case PENDENTE -> new String[]{"warning", "💳 Pagamento online por concluir ("
                         + formatarEuro(p.getValor().doubleValue()) + ")"};
-                default -> new String[]{"#fce4ec", "#C62828", "💳 Pagamento online não concluído ("
+                default -> new String[]{"error", "💳 Pagamento online não concluído ("
                         + formatarEuro(p.getValor().doubleValue()) + ")"};
             };
-            Span badge = new Span(cfg[2]);
-            badge.getStyle().set("background", cfg[0]).set("color", cfg[1]).set("font-weight", "600")
-                    .set("padding", "4px 10px").set("border-radius", "10px").set("font-size", "0.85em")
-                    .set("display", "block").set("margin-bottom", "8px");
+            Span badge = new Span(cfg[1]);
+            badge.addClassNames("cf-callout", "cf-callout--" + cfg[0]);
+            badge.getStyle().set("margin-bottom", "8px");
             box.add(badge);
         });
 
@@ -482,7 +451,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
             Span nota = new Span(studio == null
                     ? "Sem estúdio ativo na sessão — valores indisponíveis."
                     : "As mensalidades serão calculadas após a associação às turmas.");
-            nota.getStyle().set("font-size", "0.85em").set("color", "#6c757d").set("display", "block");
+            nota.addClassNames("cf-muted", "cf-text-s");
             box.add(nota);
             return box;
         }
@@ -558,7 +527,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         Span val = new Span(formatarEuro(valor));
         val.getStyle().set("font-weight", "600");
         if (destacarDesconto) {
-            val.getStyle().set("color", "#27ae60");
+            val.addClassName("cf-tone-success");
         }
         Div linha = new Div(nome, val);
         linha.getStyle().set("font-size", "0.9em").set("margin-top", "4px");

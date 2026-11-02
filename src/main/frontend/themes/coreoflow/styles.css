@@ -897,6 +897,183 @@ html .cf-card {
 }
 .cf-wrap { flex-wrap: wrap; }
 
+/* Bloco interno (secções dentro de cartões e diálogos) */
+.cf-subcard {
+  box-sizing: border-box;
+  background: var(--cf-surface-subtle);
+  border: 1px solid var(--cf-border);
+  border-radius: var(--lumo-border-radius-m);
+  padding: 10px 12px;
+  color: var(--cf-text);
+}
+.cf-subcard-title {
+  display: block;
+  margin-bottom: 4px;
+  font-size: var(--lumo-font-size-s);
+  font-weight: var(--cf-weight-bold);
+  color: var(--cf-text);
+}
+/* Cartão de progresso por pessoa (borda esquerda com a cor do tom) */
+.cf-progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 4px solid var(--cf-tone, var(--cf-border-strong));
+  cursor: pointer;
+  transition: border-color var(--cf-transition), box-shadow var(--cf-transition);
+}
+.cf-progress-card:hover { box-shadow: var(--cf-shadow-sm); }
+.cf-progress-card vaadin-progress-bar { --lumo-primary-color: var(--cf-tone, var(--lumo-primary-color)); }
+.cf-progress-card--success { --cf-tone: var(--cf-success); }
+.cf-progress-card--warning { --cf-tone: var(--cf-warning); }
+.cf-progress-card--error { --cf-tone: var(--cf-error); }
+/* Avisos dentro de diálogos/fichas (ícone + texto, fundo suave semântico) */
+.cf-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--lumo-border-radius-m);
+  border: 1px solid var(--cf-neutral-border);
+  background: var(--cf-neutral-bg);
+  color: var(--cf-neutral-text);
+  font-size: var(--lumo-font-size-s);
+  font-weight: var(--cf-weight-semibold);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.cf-callout vaadin-icon { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+.cf-callout--success { background: var(--cf-success-bg); color: var(--cf-success-text); border-color: var(--cf-success-border); }
+.cf-callout--warning { background: var(--cf-warning-bg); color: var(--cf-warning-text); border-color: var(--cf-warning-border); }
+.cf-callout--error { background: var(--cf-error-bg); color: var(--cf-error-text); border-color: var(--cf-error-border); }
+.cf-callout--info { background: var(--cf-info-bg); color: var(--cf-info-text); border-color: var(--cf-info-border); }
+.cf-callout--violet { background: var(--cf-violet-bg); color: var(--cf-violet-text); border-color: var(--cf-violet-border); }
+
+/* Linhas destacadas em grelhas (setPartNameGenerator) */
+vaadin-grid::part(experimental-row) { background-color: color-mix(in srgb, var(--cf-warning-bg) 70%, var(--cf-surface)); }
+vaadin-grid::part(renewal-row) { background-color: color-mix(in srgb, var(--cf-violet-bg) 70%, var(--cf-surface)); }
+
+/* Notificações (NotificacoesView) */
+.cf-notif-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  gap: var(--lumo-space-m);
+  width: 100%;
+  align-items: start;
+}
+.cf-notif-grid > .cf-notif-resumo { grid-column: 1 / -1; }
+html .notif-card {
+  background: var(--cf-surface);
+  border: 1px solid var(--cf-border);
+  border-top: 3px solid var(--cf-notif-cor, var(--cf-border-strong));
+  border-radius: var(--lumo-border-radius-l);
+  box-shadow: var(--cf-shadow-sm);
+  overflow: hidden;
+}
+/* Categorias sem alertas: discretas e no fim da grelha */
+html .notif-card--vazio { order: 1; box-shadow: none; border-top-color: var(--cf-border); opacity: 0.8; }
+html .notif-card--vazio .notif-card-header { border-bottom: none; }
+.notif-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--cf-border);
+}
+.notif-card-header vaadin-icon {
+  width: 32px; height: 32px; padding: 7px; box-sizing: border-box; flex: none;
+  border-radius: var(--lumo-border-radius-m);
+  color: var(--cf-notif-cor, var(--cf-text-secondary));
+  background: color-mix(in srgb, var(--cf-notif-cor, var(--cf-text-secondary)) 14%, transparent);
+}
+.notif-card-header h3 { margin: 0; flex: 1; font-size: var(--lumo-font-size-m); color: var(--cf-text-strong); }
+.notif-badge {
+  min-width: 24px; text-align: center; box-sizing: border-box;
+  border-radius: var(--cf-radius-pill); padding: 2px 9px;
+  font-size: var(--lumo-font-size-xs); font-weight: var(--cf-weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: #fff; background: var(--cf-notif-cor, var(--cf-text-secondary));
+}
+.notif-card--vazio .notif-badge { background: var(--cf-success-bg); color: var(--cf-success-text); }
+.notif-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--cf-border);
+  font-size: var(--lumo-font-size-s);
+  color: var(--cf-text);
+}
+.notif-row:last-child { border-bottom: none; }
+.notif-row:hover { background: var(--cf-surface-subtle); }
+.notif-row-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--cf-notif-cor, var(--cf-text-tertiary)); opacity: 0.8; }
+.notif-mais { color: var(--cf-text-tertiary); font-style: italic; }
+.cf-notif-resumo {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px;
+  border-radius: var(--lumo-border-radius-l);
+  border: 1px solid var(--cf-warning-border);
+  background: var(--cf-warning-bg);
+  color: var(--cf-warning-text);
+  font-weight: var(--cf-weight-semibold);
+}
+.cf-notif-resumo vaadin-icon { width: 28px; height: 28px; flex: none; }
+.cf-notif-resumo--ok { border-color: var(--cf-success-border); background: var(--cf-success-bg); color: var(--cf-success-text); }
+
+/* Cartões de atalho (Centro de Relatórios, ...) */
+.cf-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: var(--lumo-space-m);
+  width: 100%;
+}
+html .cf-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--lumo-space-l);
+}
+.cf-tile-icon {
+  width: 44px; height: 44px; padding: 11px; box-sizing: border-box; flex: none;
+  margin-bottom: 6px;
+  border-radius: var(--lumo-border-radius-l);
+  background: var(--cf-neutral-bg);
+}
+.cf-tile-icon.cf-tone-success { background: var(--cf-success-bg); }
+.cf-tile-icon.cf-tone-error { background: var(--cf-error-bg); }
+.cf-tile-icon.cf-tone-warning { background: var(--cf-warning-bg); }
+.cf-tile-icon.cf-tone-info { background: var(--cf-info-bg); }
+.cf-tile-icon.cf-tone-violet { background: var(--cf-violet-bg); }
+html .cf-tile h3 { margin: 0; font-size: var(--lumo-font-size-l); color: var(--cf-text-strong); }
+.cf-tile-desc { color: var(--cf-text-secondary); font-size: var(--lumo-font-size-s); flex: 1; }
+.cf-tile-cta {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 8px;
+  font-size: var(--lumo-font-size-s); font-weight: var(--cf-weight-semibold);
+  color: var(--lumo-primary-text-color);
+}
+.cf-tile-cta vaadin-icon { width: 16px; height: 16px; transition: transform var(--cf-transition); }
+.cf-tile:hover .cf-tile-cta vaadin-icon { transform: translateX(3px); }
+
+/* Rentabilidade (RelatoriosView): colunas Real / Estimado e totais */
+html {
+  --cf-rent-real-bg: color-mix(in srgb, var(--cf-warning-bg) 75%, var(--cf-surface));
+  --cf-rent-est-bg: color-mix(in srgb, #fde68a 22%, var(--cf-surface));
+}
+html[theme~='dark'] { --cf-rent-est-bg: color-mix(in srgb, #fde68a 8%, var(--cf-surface)); }
+vaadin-grid::part(rent-real) { background-color: var(--cf-rent-real-bg) !important; }
+vaadin-grid::part(rent-est) { background-color: var(--cf-rent-est-bg) !important; }
+vaadin-grid::part(rent-pos) { color: var(--cf-success-text) !important; font-weight: 700; }
+vaadin-grid::part(rent-neg) { color: var(--cf-error-text) !important; font-weight: 700; }
+vaadin-grid::part(rent-grp) { font-weight: 700; border-top: 1px solid var(--cf-border-strong); }
+vaadin-grid::part(rent-sep) { border-right: 2px solid var(--cf-border-strong) !important; }
+.cf-rent-chip { padding: 1px 8px; border-radius: 4px; color: var(--cf-text); }
+.cf-rent-chip--real { background: var(--cf-rent-real-bg); }
+.cf-rent-chip--est { background: var(--cf-rent-est-bg); }
+.cf-chart-box { border: 1px solid var(--cf-border); border-radius: var(--lumo-border-radius-l); padding: 12px; box-sizing: border-box; }
+
+/* Ponto de cor (turma, sala, ...) */
+.cf-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+
 /* Toolbars */
 .cf-toolbar {
   background: var(--cf-surface);

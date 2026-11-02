@@ -204,8 +204,7 @@ public class PrevisaoReceitaView extends VerticalLayout {
                 .setHeader("Custo Professores").setAutoWidth(true);
         grid.addComponentColumn(l -> {
             Span s = new Span(String.format("%.2f €", l.receitaLiquida()));
-            s.getStyle().set("font-weight", "700")
-                    .set("color", l.receitaLiquida() >= 0 ? "#27AE60" : "#E74C3C");
+            s.addClassNames("cf-strong", l.receitaLiquida() >= 0 ? "cf-tone-success" : "cf-tone-error");
             return s;
         }).setHeader("Líquido após Profs").setAutoWidth(true);
         grid.addColumn(LinhaProjecao::tendencia).setHeader("Estado").setAutoWidth(true);
@@ -282,7 +281,7 @@ public class PrevisaoReceitaView extends VerticalLayout {
         interaction.put("intersect", false);
 
         Map<String, Object> gridY = new LinkedHashMap<>();
-        gridY.put("color", "#eef0f2");
+        gridY.put("color", "rgba(128,128,128,0.18)");
         Map<String, Object> scaleY = new LinkedHashMap<>();
         scaleY.put("beginAtZero", true);
         scaleY.put("grid", gridY);
@@ -329,13 +328,13 @@ public class PrevisaoReceitaView extends VerticalLayout {
                 itemLegenda("#1976D2", "Líquido (após professores e descontos)"),
                 itemLegenda("#95a5a6", "— — previsão (próximos meses)"));
         legenda.getStyle().set("gap", "20px").set("flex-wrap", "wrap").set("font-size", "12px")
-                .set("color", "#555").set("margin-top", "6px");
+                .set("color", "var(--cf-text-secondary)").set("margin-top", "6px");
 
         Div wrap = new Div(chart, legenda);
         wrap.setWidthFull();
+        wrap.addClassName("cf-card");
         wrap.getStyle().set("display", "flex").set("flex-direction", "column")
-                .set("background", "white").set("border-radius", "14px").set("padding", "16px")
-                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)").set("flex", "1").set("min-height", "0");
+                .set("flex", "1").set("min-height", "0");
         return wrap;
     }
 
@@ -374,17 +373,16 @@ public class PrevisaoReceitaView extends VerticalLayout {
 
     private VerticalLayout cardMetrica(String label, String valor, String cor) {
         Span v = new Span(valor);
-        v.getStyle().set("font-size", "22px").set("font-weight", "700").set("color", cor);
+        v.addClassName("cf-kpi-value");
+        v.getStyle().set("font-size", "1.6rem").set("color", cor);
         Span l = new Span(label);
-        l.getStyle().set("font-size", "11px").set("color", "#888").set("text-transform", "uppercase");
+        l.addClassName("cf-kpi-label");
         VerticalLayout card = new VerticalLayout(v, l);
         card.setAlignItems(FlexComponent.Alignment.CENTER);
         card.setSpacing(false);
         card.setPadding(true);
-        card.getStyle()
-                .set("background", "white").set("border-radius", "12px")
-                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.08)").set("flex", "1")
-                .set("min-width", "140px");
+        card.addClassName("cf-card");
+        card.getStyle().set("flex", "1").set("min-width", "140px");
         return card;
     }
 }
