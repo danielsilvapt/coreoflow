@@ -116,8 +116,11 @@ public class RelatoriosView extends VerticalLayout {
                 addClassName("cf-page");
 
                 H2 titulo = new H2("Centro de Relatórios");
-                titulo.getStyle().set("margin-top", "0");
-                add(titulo);
+                Span subtitulo = new Span("Listagens e exportações em PDF / Excel para o dia a dia do estúdio.");
+                subtitulo.addClassName("cf-page-subtitle");
+                Div cabecalho = new Div(new Div(titulo, subtitulo));
+                cabecalho.addClassName("cf-page-header");
+                add(cabecalho);
 
                 Div body = new Div();
                 body.setWidthFull();
@@ -126,44 +129,45 @@ public class RelatoriosView extends VerticalLayout {
 
                 Div gridLayout = new Div();
                 gridLayout.setWidthFull();
-                gridLayout.getStyle().set("display", "grid")
-                                .set("grid-template-columns", "repeat(auto-fill, minmax(320px, 1fr))")
-                                .set("gap", "25px");
+                gridLayout.addClassName("cf-tile-grid");
 
                 gridLayout.add(criarCardRelatorio("Listagem de Dívidas",
                                 "Cobranças pendentes com atalho para WhatsApp.",
-                                VaadinIcon.MONEY, "#FF8C00", e -> abrirRelatorioDividas()));
+                                VaadinIcon.MONEY, "error", e -> abrirRelatorioDividas()));
                 gridLayout.add(criarCardRelatorio("Pagamentos Profs",
                                 "Cálculo de honorários e pedido de recibo por email.",
-                                VaadinIcon.USER_CARD, "#FF8C00", e -> abrirRelatorioProfessores()));
+                                VaadinIcon.USER_CARD, "violet", e -> abrirRelatorioProfessores()));
                 gridLayout.add(criarCardRelatorio("Rentabilidade Mensal",
                                 "Lucro líquido detalhado e ordenado por turma.",
-                                VaadinIcon.CHART_LINE, "#FF8C00", e -> abrirRelatorioRentabilidade()));
+                                VaadinIcon.CHART_LINE, "success", e -> abrirRelatorioRentabilidade()));
                 gridLayout.add(criarCardRelatorio("Listas por Turma", "Alunos ativos, idades e presenças semanais.",
-                                VaadinIcon.USERS, "#FF8C00", e -> abrirRelatorioAlunosPorTurma()));
+                                VaadinIcon.USERS, "info", e -> abrirRelatorioAlunosPorTurma()));
                 pt.studioflow.model.Studio studioRel = pt.studioflow.config.TenantContext.getCurrentStudio();
                 gridLayout.add(criarCardRelatorio("Seguros " + (studioRel != null ? studioRel.getNome() : "do Estúdio"),
                                 "Lista para envio mensal à seguradora.",
-                                VaadinIcon.SHIELD, "#FF8C00", e -> abrirRelatorioSeguros()));
+                                VaadinIcon.SHIELD, "warning", e -> abrirRelatorioSeguros()));
 
                 body.add(gridLayout);
         }
 
 
-        private Div criarCardRelatorio(String titulo, String desc, VaadinIcon icone, String cor,
+        /** Cartão de atalho clicável; {@code tom} é o tom semântico do tema (success, error, info, ...). */
+        private Div criarCardRelatorio(String titulo, String desc, VaadinIcon icone, String tom,
                         ComponentEventListener<ClickEvent<Button>> listener) {
                 Div card = new Div();
-                card.addClassName("cf-card");
-                card.getStyle().set("padding", "20px");
+                card.addClassNames("cf-card", "cf-card-clickable", "cf-tile");
                 Icon icon = icone.create();
-                icon.setColor(cor);
-                icon.setSize("40px");
-                Button btn = new Button("Visualizar / PDF", listener);
-                btn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-                btn.getStyle().set("background-color", cor);
-                VerticalLayout content = new VerticalLayout(icon, new H3(titulo), new Span(desc), btn);
-                content.setPadding(false);
-                card.add(content);
+                icon.addClassNames("cf-tile-icon", "cf-tone-" + tom);
+                Span descricao = new Span(desc);
+                descricao.addClassName("cf-tile-desc");
+                Span cta = new Span(new Span("Abrir relatório"), VaadinIcon.ARROW_RIGHT.create());
+                cta.addClassName("cf-tile-cta");
+                card.add(icon, new H3(titulo), descricao, cta);
+                card.getElement().setAttribute("role", "button");
+                card.getElement().setAttribute("tabindex", "0");
+                card.addClickListener(e -> listener.onComponentEvent(null));
+                card.getElement().addEventListener("keydown", e -> listener.onComponentEvent(null))
+                                .setFilter("event.key === 'Enter' || event.key === ' '");
                 return card;
         }
 
@@ -210,14 +214,12 @@ public class RelatoriosView extends VerticalLayout {
                 pdf.getElement().setAttribute("download", true);
                 Button btnPdf = new Button("Download PDF", VaadinIcon.DOWNLOAD.create());
                 btnPdf.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-                btnPdf.getStyle().set("background-color", "#FF8C00");
                 pdf.add(btnPdf);
 
                 Anchor xls = new Anchor(gerarExcelGenerico(titulo, LARANJA_DANCE, headers, rows), "");
                 xls.getElement().setAttribute("download", true);
                 Button btnXls = new Button("Download Excel", VaadinIcon.DOWNLOAD.create());
                 btnXls.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-                btnXls.getStyle().set("background-color", "#FF8C00");
                 xls.add(btnXls);
 
                 return new HorizontalLayout(pdf, xls);
@@ -279,7 +281,7 @@ public class RelatoriosView extends VerticalLayout {
                         Span aviso = new Span(previsto
                                         ? "⚠️ Mês futuro — estimativa a partir das inscrições ativas e das aulas agendadas."
                                         : "Valores reais do mês selecionado (registos de horas + mensalidades).");
-                        aviso.getStyle().set("font-size", "12px").set("color", previsto ? "#e65100" : "#888");
+                        aviso.addClassNames("cf-text-xs", previsto ? "cf-tone-warning" : "cf-muted");
 
                         VerticalLayout v = new VerticalLayout(aviso, grid, linhaDownloads(tituloExport, headers, rows));
                         v.setSizeFull();
@@ -403,7 +405,6 @@ public class RelatoriosView extends VerticalLayout {
                 anchor.getElement().setAttribute("download", true);
                 Button btnPdf = new Button("Download PDF", VaadinIcon.DOWNLOAD.create());
                 btnPdf.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-                btnPdf.getStyle().set("background-color", "#FF8C00");
                 anchor.add(btnPdf);
 
                 Dialog d = new Dialog();
@@ -431,14 +432,12 @@ public class RelatoriosView extends VerticalLayout {
                 anchor.getElement().setAttribute("download", true);
                 Button btn = new Button("Download PDF", VaadinIcon.DOWNLOAD.create());
                 btn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-                btn.getStyle().set("background-color", "#FF8C00");
                 anchor.add(btn);
 
                 Anchor anchor2 = new Anchor(gerarExcelGenerico(titulo, LARANJA_DANCE, headers, rows), "");
                 anchor2.getElement().setAttribute("download", true);
                 Button btn2 = new Button("Download Excel", VaadinIcon.DOWNLOAD.create());
                 btn2.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-                btn2.getStyle().set("background-color", "#FF8C00");
                 anchor2.add(btn2);
 
                 VerticalLayout v = new VerticalLayout(grid, anchor, anchor2);
@@ -650,7 +649,6 @@ public class RelatoriosView extends VerticalLayout {
                                                 .open(WhatsAppUtil.gerarLinkMensagem(m.get("telemovel").toString(),
                                                                 msg), "_blank"));
                         });
-                        b.getStyle().set("color", "#25D366");
                         b.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_SMALL);
                         return b;
                 }).setHeader("WhatsApp");
@@ -687,16 +685,7 @@ public class RelatoriosView extends VerticalLayout {
                 container.setWidthFull();
                 container.getStyle().set("flex-grow", "1").set("overflow", "auto");
 
-                UI.getCurrent().getElement().executeJs(
-                                "if(!document.getElementById('rent-styles')){"
-                                + "const s=document.createElement('style');s.id='rent-styles';s.textContent=$0;"
-                                + "document.head.appendChild(s);}",
-                                "vaadin-grid::part(rent-real){background-color:#FFF3E0 !important;}"
-                                + "vaadin-grid::part(rent-est){background-color:#FFFDE7 !important;}"
-                                + "vaadin-grid::part(rent-pos){color:#2E7D32 !important;font-weight:700;}"
-                                + "vaadin-grid::part(rent-neg){color:#C62828 !important;font-weight:700;}"
-                                + "vaadin-grid::part(rent-grp){font-weight:700;border-top:1px solid #cfd8dc;}"
-                                + "vaadin-grid::part(rent-sep){border-right:2px solid #b0bec5 !important;}");
+                // Cores das colunas Real/Estimado e totais: ver "Rentabilidade" no styles.css do tema.
 
                 Runnable render = () -> {
                         container.removeAll();
@@ -788,13 +777,13 @@ public class RelatoriosView extends VerticalLayout {
                         Span aviso = new Span(previsto
                                         ? "Mês futuro: as colunas Real ainda estão praticamente a zero (mensalidades por emitir, horas por registar) — orienta-te pelas colunas Estimadas."
                                         : "Real = faturado / horas registadas. Estimado = projeção das inscrições ativas e horário planeado.");
-                        aviso.getStyle().set("font-size", "12px").set("color", previsto ? "#e65100" : "#888");
+                        aviso.addClassNames("cf-text-xs", previsto ? "cf-tone-warning" : "cf-muted");
 
                         Span legendaCores = new Span();
                         legendaCores.getElement().setProperty("innerHTML",
-                                        "<span style='background:#FFF3E0;padding:1px 8px;border-radius:4px'>Real</span>"
+                                        "<span class='cf-rent-chip cf-rent-chip--real'>Real</span>"
                                         + "&nbsp;&nbsp;"
-                                        + "<span style='background:#FFFDE7;padding:1px 8px;border-radius:4px'>Estimado</span>");
+                                        + "<span class='cf-rent-chip cf-rent-chip--est'>Estimado</span>");
                         legendaCores.getStyle().set("font-size", "12px");
                         HorizontalLayout linhaAviso = new HorizontalLayout(aviso, legendaCores);
                         linhaAviso.setWidthFull();
@@ -810,13 +799,11 @@ public class RelatoriosView extends VerticalLayout {
                         aPdf.getElement().setAttribute("download", true);
                         Button bPdf = new Button("Download PDF", VaadinIcon.DOWNLOAD.create());
                         bPdf.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-                        bPdf.getStyle().set("background-color", "#FF8C00");
                         aPdf.add(bPdf);
                         Anchor aXls = new Anchor(gerarExcelGenerico(tituloExport, LARANJA_DANCE, headers, rows), "");
                         aXls.getElement().setAttribute("download", true);
                         Button bXls = new Button("Download Excel", VaadinIcon.DOWNLOAD.create());
                         bXls.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-                        bXls.getStyle().set("background-color", "#FF8C00");
                         aXls.add(bXls);
                         HorizontalLayout downloadsRent = new HorizontalLayout(aPdf, aXls);
 
@@ -891,7 +878,8 @@ public class RelatoriosView extends VerticalLayout {
                 Span s = new Span(txt);
                 s.getStyle().set("width", "100%").set("text-align", "center")
                                 .set("font-size", "0.78em").set("font-weight", "600")
-                                .set("color", estimado ? "#F9A825" : "#E65100");
+                                .set("color", "var(--cf-warning-text)")
+                                .set("opacity", estimado ? "0.75" : "1");
                 return s;
         }
 
@@ -1176,7 +1164,7 @@ public class RelatoriosView extends VerticalLayout {
                 plugins.put("tooltip", tooltip);
 
                 Map<String, Object> gridY = new LinkedHashMap<>();
-                gridY.put("color", "#f0f0f0");
+                gridY.put("color", "rgba(128,128,128,0.18)");
                 Map<String, Object> scaleY = new LinkedHashMap<>();
                 scaleY.put("grid", gridY);
                 Map<String, Object> gridX = new LinkedHashMap<>();
@@ -1215,13 +1203,13 @@ public class RelatoriosView extends VerticalLayout {
                                 legendaItem("rgba(255,140,0,0.85)", "Real (meses fechados)"),
                                 legendaItem("rgba(255,193,7,0.75)", "Estimativa (meses futuros)"));
                 legenda.getStyle().set("gap", "18px").set("flex-wrap", "wrap").set("margin-top", "8px")
-                                .set("font-size", "0.8em").set("color", "#555");
+                                .set("font-size", "0.8em").set("color", "var(--cf-text-secondary)");
 
                 VerticalLayout wrap = new VerticalLayout(chart, legenda);
                 wrap.setPadding(false);
                 wrap.setSpacing(false);
                 wrap.setWidthFull();
-                wrap.getStyle().set("border", "1px solid #eee").set("border-radius", "10px").set("padding", "12px");
+                wrap.addClassName("cf-chart-box");
                 return wrap;
         }
 

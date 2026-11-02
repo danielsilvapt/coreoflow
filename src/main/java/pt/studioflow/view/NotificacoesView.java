@@ -89,14 +89,13 @@ public class NotificacoesView extends VerticalLayout {
         setSizeFull();
         setPadding(true);
         setSpacing(false);
-        injectStyles();
-
         HorizontalLayout headerRow = new HorizontalLayout();
         headerRow.setWidthFull();
         headerRow.setAlignItems(Alignment.CENTER);
         headerRow.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        headerRow.addClassName("cf-page-header");
+        addClassName("cf-page");
         H2 titulo = new H2("Notificações");
-        titulo.getStyle().set("margin-top", "0");
         Button btnAtualizar = new Button("Atualizar", VaadinIcon.REFRESH.create());
         btnAtualizar.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         btnAtualizar.addClickListener(e -> {
@@ -105,30 +104,11 @@ public class NotificacoesView extends VerticalLayout {
         });
         headerRow.add(titulo, btnAtualizar);
 
-        conteudo.getStyle()
-            .set("display", "flex")
-            .set("flex-direction", "column")
-            .set("gap", "16px")
-            .set("width", "100%")
-            .set("margin-top", "20px");
+        conteudo.addClassName("cf-notif-grid");
+        conteudo.getStyle().set("margin-top", "var(--lumo-space-m)");
 
         add(headerRow, conteudo);
         carregarNotificacoes();
-    }
-
-    private void injectStyles() {
-        String css =
-            ".notif-card { background: white; border-radius: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #eee; overflow: hidden; }" +
-            ".notif-card-header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid #f0f0f0; }" +
-            ".notif-badge { border-radius: 20px; padding: 3px 10px; font-size: 0.75rem; font-weight: 700; color: white; }" +
-            ".notif-row { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid #f9f9f9; }" +
-            ".notif-row:last-child { border-bottom: none; }" +
-            ".notif-row:hover { background: #fafafa; }" +
-            ".notif-empty { padding: 16px 20px; color: #aaa; font-style: italic; }" +
-            ".notif-section-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #aaa; padding: 8px 0 4px 0; }";
-
-        getElement().executeJs(
-            "const s = document.createElement('style'); s.textContent = $0; document.head.appendChild(s);", css);
     }
 
     private boolean isAdmin() {
@@ -442,81 +422,66 @@ public class NotificacoesView extends VerticalLayout {
     // =========================================================
     private Div criarResumoGlobal(int totalAlertas, int aniversarios) {
         Div card = new Div();
-        card.getStyle()
-            .set("background", totalAlertas == 0 ? "#e8f5e9" : "#fff8e1")
-            .set("border-radius", "14px").set("padding", "20px 24px")
-            .set("display", "flex").set("align-items", "center").set("gap", "16px")
-            .set("border", totalAlertas == 0 ? "1px solid #c8e6c9" : "1px solid #ffe082");
+        card.addClassName("cf-notif-resumo");
+        if (totalAlertas == 0) {
+            card.addClassName("cf-notif-resumo--ok");
+        }
         Icon ico = totalAlertas == 0 ? VaadinIcon.CHECK_CIRCLE.create() : VaadinIcon.WARNING.create();
-        ico.setSize("28px");
-        ico.setColor(totalAlertas == 0 ? "#2e7d32" : "#f57f17");
         String mensagem = totalAlertas == 0 ? "Tudo em ordem — sem alertas ativos."
             : totalAlertas + " alerta(s) requerem atenção.";
         if (aniversarios > 0) mensagem += "  🎂 " + aniversarios + " aniversário(s) hoje!";
-        Span texto = new Span(mensagem);
-        texto.getStyle().set("font-weight", "600").set("font-size", "1rem")
-            .set("color", totalAlertas == 0 ? "#2e7d32" : "#e65100");
-        card.add(ico, texto);
+        card.add(ico, new Span(mensagem));
         return card;
     }
 
     private Div criarCardAlerta(String titulo, String mensagem, String cor, VaadinIcon icone, String rota) {
-        Div card = new Div();
-        card.addClassName("notif-card");
-        Div header = new Div();
-        header.addClassName("notif-card-header");
-        Icon ico = icone.create(); ico.setColor(cor); ico.setSize("20px");
-        H3 titCard = new H3(titulo);
-        titCard.getStyle().set("margin", "0").set("font-size", "0.95rem").set("flex", "1");
-        Button btnVer = new Button("Ver", VaadinIcon.ARROW_FORWARD.create());
-        btnVer.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-        btnVer.addClickListener(e -> UI.getCurrent().navigate(rota));
-        header.add(ico, titCard, btnVer);
-        card.add(header);
+        Div card = criarCardBase(titulo, cor, icone, rota, null);
         Div row = new Div(); row.addClassName("notif-row");
-        Span label = new Span(mensagem);
-        label.getStyle().set("font-size", "0.88rem").set("color", "#333");
-        row.add(label); card.add(row);
+        row.add(new Span(mensagem));
+        card.add(row);
         return card;
     }
 
     private Div criarCard(String titulo, int contagem, String cor, VaadinIcon icone,
             List<String> linhas, String rotaDestino) {
-        Div card = new Div();
-        card.addClassName("notif-card");
-        Div header = new Div();
-        header.addClassName("notif-card-header");
-        Icon ico = icone.create(); ico.setColor(cor); ico.setSize("20px");
-        H3 titCard = new H3(titulo);
-        titCard.getStyle().set("margin", "0").set("font-size", "0.95rem").set("flex", "1");
         Span badge = new Span(String.valueOf(contagem));
         badge.addClassName("notif-badge");
-        badge.getStyle().set("background-color", contagem == 0 ? "#4caf50" : cor);
-        Button btnVer = new Button("Ver", VaadinIcon.ARROW_FORWARD.create());
-        btnVer.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-        btnVer.addClickListener(e -> UI.getCurrent().navigate(rotaDestino));
-        header.add(ico, titCard, badge, btnVer);
-        card.add(header);
+        Div card = criarCardBase(titulo, cor, icone, rotaDestino, badge);
         if (linhas.isEmpty()) {
-            Div empty = new Div(); empty.addClassName("notif-empty");
-            empty.setText("Sem alertas nesta categoria."); card.add(empty);
+            card.addClassName("notif-card--vazio");
         } else {
             List<String> aExibir = linhas.size() > 8 ? linhas.subList(0, 8) : linhas;
             for (String linha : aExibir) {
                 Div row = new Div(); row.addClassName("notif-row");
-                Icon dot = VaadinIcon.CIRCLE.create(); dot.setColor(cor); dot.setSize("10px");
-                dot.getStyle().set("flex-shrink", "0").set("opacity", "0.7");
-                Span label = new Span(linha);
-                label.getStyle().set("font-size", "0.88rem").set("color", "#333");
-                row.add(dot, label); card.add(row);
+                Span dot = new Span(); dot.addClassName("notif-row-dot");
+                row.add(dot, new Span(linha));
+                card.add(row);
             }
             if (linhas.size() > 8) {
-                Div mais = new Div(); mais.addClassName("notif-row");
-                Span maisSpan = new Span("... e mais " + (linhas.size() - 8) + " registos.");
-                maisSpan.getStyle().set("font-size", "0.82rem").set("color", "#999").set("font-style", "italic");
-                mais.add(maisSpan); card.add(mais);
+                Div mais = new Div(); mais.addClassNames("notif-row", "notif-mais");
+                mais.setText("... e mais " + (linhas.size() - 8) + " registos.");
+                card.add(mais);
             }
         }
+        return card;
+    }
+
+    /** Cartão com cabeçalho (ícone na cor da categoria, título, contagem opcional e botão "Ver"). */
+    private Div criarCardBase(String titulo, String cor, VaadinIcon icone, String rota, Span badge) {
+        Div card = new Div();
+        card.addClassName("notif-card");
+        card.getStyle().set("--cf-notif-cor", cor);
+        Div header = new Div();
+        header.addClassName("notif-card-header");
+        H3 titCard = new H3(titulo);
+        Button btnVer = new Button("Ver", VaadinIcon.ARROW_FORWARD.create());
+        btnVer.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+        btnVer.setIconAfterText(true);
+        btnVer.addClickListener(e -> UI.getCurrent().navigate(rota));
+        header.add(icone.create(), titCard);
+        if (badge != null) header.add(badge);
+        header.add(btnVer);
+        card.add(header);
         return card;
     }
 }

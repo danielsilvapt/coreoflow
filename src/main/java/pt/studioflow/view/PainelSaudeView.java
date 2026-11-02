@@ -90,7 +90,7 @@ public class PainelSaudeView extends VerticalLayout {
         }
         if (studios.isEmpty()) {
             Span vazio = new Span("Nenhum estúdio ativo.");
-            vazio.getStyle().set("color", "#888");
+            vazio.addClassName("cf-empty");
             add(vazio);
         }
     }
@@ -227,11 +227,11 @@ public class PainelSaudeView extends VerticalLayout {
         Span nomeStudio = new Span(studio.getNome());
         nomeStudio.getStyle().set("font-weight", "700").set("font-size", "16px");
         Span slug = new Span("@" + studio.getSlug());
-        slug.getStyle().set("color", "#888").set("font-size", "12px").set("margin-left", "8px");
+        slug.addClassNames("cf-muted", "cf-text-xs");
+        slug.getStyle().set("margin-left", "8px");
         Span badge = new Span(semaforoLabel);
-        badge.getStyle().set("background", semaforo).set("color", "white")
-                .set("padding", "2px 10px").set("border-radius", "12px")
-                .set("font-size", "11px").set("font-weight", "700").set("margin-left", "auto");
+        badge.addClassNames("cf-pill", "cf-pill--" + (critico ? "error" : atencao ? "warning" : "success"));
+        badge.getStyle().set("margin-left", "auto");
         HorizontalLayout header = new HorizontalLayout(nomeStudio, slug, badge);
         header.setAlignItems(FlexComponent.Alignment.CENTER);
         header.setWidthFull();
@@ -243,6 +243,7 @@ public class PainelSaudeView extends VerticalLayout {
                 criarMetrica("Em Dívida", mensalidadesEmDivida, VaadinIcon.WARNING, "#E74C3C", mensalidadesEmDivida > 0),
                 criarMetrica("Turmas s/ Prof", turmasSemProf, VaadinIcon.ACADEMY_CAP, "#9B59B6", turmasSemProf > 0));
         metricas.setSpacing(true);
+        metricas.setWidthFull();
         metricas.getStyle().set("flex-wrap", "wrap");
 
         card.add(header, metricas);
@@ -257,10 +258,8 @@ public class PainelSaudeView extends VerticalLayout {
         card.setPadding(true);
         card.setSpacing(false);
         card.setWidthFull();
+        card.addClassName("cf-card");
         card.getStyle()
-                .set("background", "white")
-                .set("border-radius", "12px")
-                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.07)")
                 .set("border-left", "4px solid " + cor)
                 .set("margin-bottom", "8px");
         return card;
@@ -270,7 +269,7 @@ public class PainelSaudeView extends VerticalLayout {
         Span t = new Span(titulo);
         t.getStyle().set("font-weight", "700").set("font-size", "16px");
         Span s = new Span(subtitulo);
-        s.getStyle().set("color", "#888").set("font-size", "12px");
+        s.addClassNames("cf-muted", "cf-text-xs");
         VerticalLayout v = new VerticalLayout(t, s);
         v.setPadding(false);
         v.setSpacing(false);
@@ -284,12 +283,14 @@ public class PainelSaudeView extends VerticalLayout {
         Span l = new Span(label);
         l.getStyle().set("font-size", "13px").set("min-width", "230px");
         Span v = new Span(valor + "   (" + String.format("%.0f%%", pct) + ")");
-        v.getStyle().set("font-size", "12px").set("color", "#666").set("min-width", "150px")
+        v.addClassNames("cf-secondary", "cf-text-xs");
+        v.getStyle().set("min-width", "150px")
                 .set("text-align", "right");
 
         ProgressBar bar = new ProgressBar();
         bar.setValue(pct / 100.0);
-        bar.setWidth("100%");
+        bar.setMinWidth("120px");
+        bar.getStyle().set("flex", "1 1 0");
         bar.getStyle().set("--lumo-primary-color", cor);
 
         HorizontalLayout row = new HorizontalLayout(l, bar, v);
@@ -303,21 +304,23 @@ public class PainelSaudeView extends VerticalLayout {
     private VerticalLayout criarMetrica(String label, long valor, VaadinIcon icone, String cor, boolean alerta) {
         Icon icon = icone.create();
         icon.setSize("16px");
-        icon.setColor(alerta ? cor : "#bbb");
+        icon.setColor(alerta ? cor : "var(--cf-text-tertiary)");
         Span valorSpan = new Span(String.valueOf(valor));
         valorSpan.getStyle().set("font-size", "22px").set("font-weight", "700")
-                .set("color", alerta ? cor : "#ccc");
+                .set("color", alerta ? cor : "var(--cf-text-tertiary)");
         Span labelSpan = new Span(label);
-        labelSpan.getStyle().set("font-size", "11px").set("color", "#888");
+        labelSpan.addClassNames("cf-kpi-label");
         VerticalLayout box = new VerticalLayout(icon, valorSpan, labelSpan);
         box.setAlignItems(FlexComponent.Alignment.CENTER);
         box.setSpacing(false);
         box.setPadding(true);
+        box.setWidth(null);
         box.getStyle()
+                .set("flex", "1 1 130px")
                 .set("min-width", "110px")
-                .set("background", alerta ? "#fff8f0" : "#fafafa")
+                .set("background", alerta ? "color-mix(in srgb, " + cor + " 10%, var(--cf-surface))" : "var(--cf-surface-subtle)")
                 .set("border-radius", "10px")
-                .set("border", "1px solid " + (alerta ? cor + "44" : "#eee"));
+                .set("border", "1px solid " + (alerta ? "color-mix(in srgb, " + cor + " 30%, transparent)" : "var(--cf-border)"));
         return box;
     }
 

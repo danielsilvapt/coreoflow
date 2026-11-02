@@ -84,7 +84,7 @@ public class TreinadorDancaView extends VerticalLayout {
         H2 titulo = new H2("Treinador de Dança IA");
         titulo.getStyle().set("margin", "0");
         Span sub = new Span("Planos de aprendizagem passo a passo, com tutoriais e um treinador para tirar dúvidas.");
-        sub.getStyle().set("color", "#6b7280").set("font-size", "13px");
+        sub.getStyle().set("color", "var(--cf-text-tertiary)").set("font-size", "13px");
         add(titulo, sub);
 
         if (!service.disponivel()) {
@@ -200,12 +200,12 @@ public class TreinadorDancaView extends VerticalLayout {
         t.getStyle().set("font-weight", "700");
         Span m = new Span((p.getParaQuem() != null && !p.getParaQuem().isBlank() ? p.getParaQuem() + " · " : "")
                 + (p.getDataCriacao() != null ? p.getDataCriacao().format(DT) : ""));
-        m.getStyle().set("font-size", "11px").set("color", "#6b7280");
+        m.getStyle().set("font-size", "11px").set("color", "var(--cf-text-tertiary)");
         VerticalLayout c = new VerticalLayout(t, m);
         c.setPadding(false);
         c.setSpacing(false);
-        c.getStyle().set("padding", "10px 12px").set("background", "white")
-                .set("border-radius", "10px").set("box-shadow", "0 1px 4px rgba(0,0,0,0.08)")
+        c.getStyle().set("padding", "10px 12px").set("background", "var(--cf-surface)")
+                .set("border-radius", "10px").set("box-shadow", "var(--cf-shadow-xs)")
                 .set("cursor", "pointer");
         c.addClickListener(e -> abrir(p.getId()));
         return c;
@@ -237,7 +237,7 @@ public class TreinadorDancaView extends VerticalLayout {
 
         if (p.getObjetivo() != null && !p.getObjetivo().isBlank()) {
             Span o = new Span("🎯 " + p.getObjetivo());
-            o.getStyle().set("color", "#374151").set("font-size", "13px");
+            o.getStyle().set("color", "var(--cf-text)").set("font-size", "13px");
             detalhe.add(o);
         }
         if (!c.resumo().isBlank()) {
@@ -256,7 +256,7 @@ public class TreinadorDancaView extends VerticalLayout {
         if (!c.passos().isEmpty()) {
             ProgressBar pb = new ProgressBar(0, c.passos().size(), dominados);
             Span lbl = new Span("Progresso: " + dominados + " / " + c.passos().size() + " passos");
-            lbl.getStyle().set("font-size", "12px").set("color", "#6b7280");
+            lbl.getStyle().set("font-size", "12px").set("color", "var(--cf-text-tertiary)");
             detalhe.add(lbl, pb);
         }
 
@@ -305,8 +305,8 @@ public class TreinadorDancaView extends VerticalLayout {
         Details d = new Details();
         d.setSummary(dom);
         d.setWidthFull();
-        d.getElement().getStyle().set("background", "white").set("border-radius", "10px")
-                .set("box-shadow", "0 1px 4px rgba(0,0,0,0.08)").set("padding", "4px 8px");
+        d.getElement().getStyle().set("background", "var(--cf-surface)").set("border-radius", "10px")
+                .set("box-shadow", "var(--cf-shadow-xs)").set("padding", "4px 8px");
 
         boolean[] carregado = { false };
         d.addOpenedChangeListener(e -> {
@@ -467,7 +467,7 @@ public class TreinadorDancaView extends VerticalLayout {
 
         Span nota = new Span("A câmara é processada só no teu dispositivo — nada é gravado nem enviado. "
                 + "Só as métricas resumidas vão para o treinador.");
-        nota.getStyle().set("font-size", "12px").set("color", "#6b7280");
+        nota.getStyle().set("font-size", "12px").set("color", "var(--cf-text-tertiary)");
 
         com.vaadin.flow.component.html.Div cont = new com.vaadin.flow.component.html.Div();
         cont.setId(praticaContId);
@@ -565,7 +565,7 @@ public class TreinadorDancaView extends VerticalLayout {
         Span t = new Span(v.titulo());
         t.getStyle().set("font-size", "12px").set("max-width", "200px").set("display", "block");
         Span ch = new Span(v.canal());
-        ch.getStyle().set("font-size", "11px").set("color", "#6b7280");
+        ch.getStyle().set("font-size", "11px").set("color", "var(--cf-text-tertiary)");
         VerticalLayout box = new VerticalLayout(thumb, t, ch);
         box.setPadding(false);
         box.setSpacing(false);
@@ -630,7 +630,7 @@ public class TreinadorDancaView extends VerticalLayout {
         mensagens.setPadding(false);
         mensagens.setSpacing(false);
         mensagens.getStyle().set("max-height", "280px").set("overflow-y", "auto")
-                .set("background", "#f9fafb").set("border-radius", "10px").set("padding", "10px");
+                .set("background", "var(--cf-surface-subtle)").set("border-radius", "10px").set("padding", "10px");
         for (MensagemChat m : service.historicoChat(p)) {
             mensagens.add(balao(m));
         }
@@ -681,8 +681,8 @@ public class TreinadorDancaView extends VerticalLayout {
         s.getStyle().set("display", "inline-block").set("padding", "7px 11px")
                 .set("border-radius", "12px").set("margin", "4px 0").set("font-size", "13px")
                 .set("white-space", "pre-wrap").set("max-width", "85%")
-                .set("background", treinador ? "#e0f2fe" : "#ffffff")
-                .set("border", "1px solid " + (treinador ? "#bae6fd" : "#e5e7eb"));
+                .set("background", treinador ? "var(--cf-info-bg)" : "var(--cf-surface)")
+                .set("border", "1px solid " + (treinador ? "var(--cf-info-border)" : "var(--cf-border)"));
         VerticalLayout row = new VerticalLayout(s);
         row.setPadding(false);
         row.setSpacing(false);
@@ -724,8 +724,8 @@ public class TreinadorDancaView extends VerticalLayout {
         v.setPadding(true);
         v.setSpacing(true);
         v.setWidthFull();
-        v.getStyle().set("background", "white").set("border-radius", "12px")
-                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.07)");
+        v.getStyle().set("background", "var(--cf-surface)").set("border-radius", "12px")
+                .set("box-shadow", "var(--cf-shadow-sm)");
         return v;
     }
 
@@ -754,14 +754,14 @@ public class TreinadorDancaView extends VerticalLayout {
 
     private Component linhaIcone(String txt) {
         Span s = new Span(txt);
-        s.getStyle().set("font-size", "13px").set("color", "#374151").set("display", "block")
+        s.getStyle().set("font-size", "13px").set("color", "var(--cf-text)").set("display", "block")
                 .set("margin", "2px 0");
         return s;
     }
 
     private Component vazio(String txt) {
         Span s = new Span(txt);
-        s.getStyle().set("color", "#9ca3af").set("font-size", "13px").set("padding", "8px");
+        s.getStyle().set("color", "var(--cf-text-tertiary)").set("font-size", "13px").set("padding", "8px");
         return s;
     }
 
@@ -769,7 +769,7 @@ public class TreinadorDancaView extends VerticalLayout {
         VerticalLayout v = card();
         Span s = new Span("O Treinador IA ainda não está ativo. O superadmin pode ligá-lo em "
                 + "Configurações da Plataforma (chave GROQ e, opcionalmente, chave do YouTube).");
-        s.getStyle().set("color", "#6b7280");
+        s.getStyle().set("color", "var(--cf-text-tertiary)");
         v.add(s);
         return v;
     }
