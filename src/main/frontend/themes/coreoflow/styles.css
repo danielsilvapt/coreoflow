@@ -703,13 +703,13 @@ vaadin-button.cf-drawer-logout-btn:hover { background: var(--cf-error-bg); }
 html[theme~='dark'] .brand-line1 { background: linear-gradient(90deg, #dbe4ff 0 56%, var(--cf-teal) 56% 100%); -webkit-background-clip: text; background-clip: text; }
 .brand-line2 { font-size: 10.5px; color: var(--cf-text-tertiary); letter-spacing: 0.02em; }
 
-/* Loader central "Pirueta": bailarina estilizada (en pointe, perna em passé,
-   fita na mão) faz plié, relevé e duas piruetas; a fita roda com ela.
+/* Loader central "Pirueta": bailarina estilizada (en pointe, perna em passé)
+   faz plié, relevé e duas piruetas.
    Só se animam transform/opacity. A figura é uma máscara SVG pintada com o
    gradiente da marca, por isso as cores vêm dos tokens (e do modo escuro). */
 .v-loading-indicator {
   display: none !important;
-  --cf-loader-dancer: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 -8 100 128'><g fill='black'><circle cx='50' cy='13' r='6.4'/><circle cx='50' cy='5.2' r='3'/><path d='M44.5 24.5 Q50 22.6 55.5 24.5 L53 44 Q50 45.2 47 44 Z'/><path d='M29 47.5 C39 40.5 61 40.5 71 47.5 C63 53 37 53 29 47.5 Z'/></g><g fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round'><path d='M45 25.5 C34 22 33.5 2 46.5 -1' stroke-width='3.2'/><path d='M55 25.5 C66 22 66.5 2 53.5 -1' stroke-width='3.2'/><path d='M49.2 50 L50 111' stroke-width='4.2'/><path d='M50 110 L50.2 115.5' stroke-width='2.4'/><path d='M52.5 50 L64.5 66 L51.5 79' stroke-width='3.8'/><path d='M53.5 -1 C74 -9 90 6 84 22 C78 38 94 46 90 62 C86 78 70 80 74 94 C77 104 90 104 92 96' stroke-width='2.3'/></g></svg>");
+  --cf-loader-dancer: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 -8 100 128'><g fill='black'><circle cx='50' cy='13' r='6.4'/><circle cx='50' cy='5.2' r='3'/><path d='M44.5 24.5 Q50 22.6 55.5 24.5 L53 44 Q50 45.2 47 44 Z'/><path d='M29 47.5 C39 40.5 61 40.5 71 47.5 C63 53 37 53 29 47.5 Z'/></g><g fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round'><path d='M45 25.5 C34 22 33.5 2 46.5 -1' stroke-width='3.2'/><path d='M55 25.5 C66 22 66.5 2 53.5 -1' stroke-width='3.2'/><path d='M49.2 50 L50 111' stroke-width='4.2'/><path d='M50 110 L50.2 115.5' stroke-width='2.4'/><path d='M52.5 50 L64.5 66 L51.5 79' stroke-width='3.8'/></g></svg>");
   --cf-loader-paint: linear-gradient(170deg, var(--cf-ink) 0%, var(--cf-ink) 46%, var(--cf-teal) 68%, var(--cf-mint) 100%);
   --cf-loader-veil: rgba(244, 246, 250, 0.62);
   --cf-loader-floor: rgba(15, 31, 75, 0.22);
