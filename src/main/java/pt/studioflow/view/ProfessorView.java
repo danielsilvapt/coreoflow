@@ -50,7 +50,7 @@ public class ProfessorView extends VerticalLayout {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        getStyle().set("background", "#f5f7fa");
+        getStyle().set("background", "var(--cf-bg)");
 
         ViewUtils.injetarEstiloBotoesAcao();
         Div tituloWrapper = new Div();
@@ -69,8 +69,8 @@ public class ProfessorView extends VerticalLayout {
         toolbar.setWidthFull();
         toolbar.setPadding(true);
         toolbar.getStyle()
-                .set("background", "white")
-                .set("border-bottom", "1px solid #e0e0e0")
+                .set("background", "var(--cf-surface)")
+                .set("border-bottom", "1px solid var(--cf-border)")
                 .set("padding", "12px 20px");
         toolbar.setAlignItems(FlexComponent.Alignment.CENTER);
         toolbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
@@ -192,7 +192,7 @@ public class ProfessorView extends VerticalLayout {
         Span remunHint = new Span(studio != null
                 ? "Deixa \"Herdar do estúdio\" para usar: " + remuneracaoService.descricaoEfetiva(null, studio)
                 : "Deixa \"Herdar do estúdio\" para usar a configuração do estúdio.");
-        remunHint.getStyle().set("font-size", "12px").set("color", "#888");
+        remunHint.getStyle().set("font-size", "12px").set("color", "var(--cf-text-tertiary)");
 
         final String HERDAR = "— Herdar do estúdio —";
         ComboBox<String> tipoRemun = new ComboBox<>("Tipo de remuneração");

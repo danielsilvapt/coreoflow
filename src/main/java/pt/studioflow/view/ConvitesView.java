@@ -231,7 +231,7 @@ public class ConvitesView extends VerticalLayout {
 
         Div resumo = new Div();
         resumo.setWidthFull();
-        resumo.getStyle().set("background", "#f6f8fa").set("padding", "12px").set("border-radius", "8px");
+        resumo.getStyle().set("background", "var(--cf-surface-subtle)").set("padding", "12px").set("border-radius", "8px");
 
         String conf = todasTurmas.stream()
                 .filter(t -> c.getParticipacoes().get(t.getId()) == StatusParticipacao.CONFIRMADO)

@@ -182,13 +182,13 @@ public class SuporteView extends VerticalLayout {
                 + (p.getTipo() != null ? p.getTipo() + "  ·  " : "")
                 + (p.getDataCriacao() != null ? DataUtil.formatar(p.getDataCriacao()) : "")
                 + (p.getEmailUtilizador() != null ? "  ·  " + p.getEmailUtilizador() : "  ·  (sem email)"));
-        meta.getStyle().set("font-size", "12px").set("color", "#888");
+        meta.getStyle().set("font-size", "12px").set("color", "var(--cf-text-tertiary)");
 
         Span assunto = new Span(p.getAssunto());
         assunto.getStyle().set("font-weight", "700").set("font-size", "15px");
 
         Pre descr = new Pre(p.getDescricao() != null ? p.getDescricao() : "");
-        descr.getStyle().set("white-space", "pre-wrap").set("background", "#f7f7f9").set("padding", "10px")
+        descr.getStyle().set("white-space", "pre-wrap").set("background", "var(--cf-surface-subtle)").set("padding", "10px")
                 .set("border-radius", "8px").set("font-size", "13px").set("margin", "6px 0");
 
         VerticalLayout conteudo = new VerticalLayout(meta, assunto, descr);
@@ -248,13 +248,13 @@ public class SuporteView extends VerticalLayout {
         Span v = new Span(String.valueOf(valor));
         v.getStyle().set("font-size", "24px").set("font-weight", "800").set("color", cor);
         Span l = new Span(label);
-        l.getStyle().set("font-size", "11px").set("color", "#888").set("text-transform", "uppercase");
+        l.getStyle().set("font-size", "11px").set("color", "var(--cf-text-tertiary)").set("text-transform", "uppercase");
         VerticalLayout c = new VerticalLayout(v, l);
         c.setAlignItems(FlexComponent.Alignment.CENTER);
         c.setSpacing(false);
         c.setPadding(true);
-        c.getStyle().set("background", "white").set("border-radius", "12px")
-                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.07)").set("flex", "1").set("min-width", "150px");
+        c.getStyle().set("background", "var(--cf-surface)").set("border-radius", "12px")
+                .set("box-shadow", "var(--cf-shadow-sm)").set("flex", "1").set("min-width", "150px");
         return c;
     }
 }

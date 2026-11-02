@@ -98,8 +98,8 @@ public class AlunoVideosView extends VerticalLayout {
         card.setPadding(true);
         card.setSpacing(false);
         card.setAlignItems(Alignment.CENTER);
-        card.getStyle().set("border", "1px solid #e2e8f0").set("border-radius", "12px")
-                .set("background", "white").set("box-shadow", "0 2px 6px rgba(0,0,0,0.08)");
+        card.getStyle().set("border", "1px solid var(--cf-border)").set("border-radius", "12px")
+                .set("background", "var(--cf-surface)").set("box-shadow", "var(--cf-shadow-sm)");
 
         VerticalLayout thumb = new VerticalLayout();
         thumb.setWidthFull();
@@ -123,7 +123,7 @@ public class AlunoVideosView extends VerticalLayout {
         data.getStyle().set("font-size", "12px").set("font-weight", "600").set("margin-top", "8px");
 
         Span nome = new Span(video.getNomeFicheiro());
-        nome.getStyle().set("font-size", "11px").set("color", "#666").set("text-align", "center")
+        nome.getStyle().set("font-size", "11px").set("color", "var(--cf-text-secondary)").set("text-align", "center")
                 .set("width", "100%").set("white-space", "nowrap").set("text-overflow", "ellipsis")
                 .set("overflow", "hidden");
 

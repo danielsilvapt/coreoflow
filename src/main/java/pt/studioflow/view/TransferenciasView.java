@@ -216,13 +216,13 @@ public class TransferenciasView extends VerticalLayout {
                     .set("font-weight", "700");
 
             if ("AGUARDA_ASSINATURAS".equals(t.getEstado()) || "AGUARDA_UMA_ASSINATURA".equals(t.getEstado())) {
-                badge.getStyle().set("background-color", "#feebc8").set("color", "#c05621");
+                badge.getStyle().set("background-color", "var(--cf-warning-bg)").set("color", "var(--cf-warning-text)");
             } else if ("AGUARDA_PAGAMENTO".equals(t.getEstado())) {
                 badge.getStyle().set("background-color", "#bee3f8").set("color", "#2b6cb0");
             } else if ("PAGO".equals(t.getEstado())) {
                 badge.getStyle().set("background-color", "#c6f6d5").set("color", "#22543d");
             } else {
-                badge.getStyle().set("background-color", "#fed7d7").set("color", "#9b2c2c");
+                badge.getStyle().set("background-color", "var(--cf-error-bg)").set("color", "var(--cf-error-text)");
             }
             return badge;
         }).setHeader("Estado").setAutoWidth(true);
@@ -398,7 +398,7 @@ public class TransferenciasView extends VerticalLayout {
         String nomeExibicao = t.getNomeFicheiroComprovativo()
                 .substring(t.getNomeFicheiroComprovativo().indexOf("_") + 1);
         Span info = new Span("Ficheiro anexado: " + nomeExibicao);
-        info.getStyle().set("font-size", "0.9rem").set("color", "#4a5568");
+        info.getStyle().set("font-size", "0.9rem").set("color", "var(--cf-text-secondary)");
 
         StreamResource resource = new StreamResource(nomeExibicao, () -> {
             try {

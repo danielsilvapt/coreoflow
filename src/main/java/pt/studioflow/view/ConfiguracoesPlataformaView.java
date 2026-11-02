@@ -238,8 +238,8 @@ public class ConfiguracoesPlataformaView extends VerticalLayout {
         card.setPadding(true);
         card.setSpacing(false);
         card.setWidthFull();
-        card.getStyle().set("background", "white").set("border-radius", "12px")
-                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.07)");
+        card.getStyle().set("background", "var(--cf-surface)").set("border-radius", "12px")
+                .set("box-shadow", "var(--cf-shadow-sm)");
         return card;
     }
 

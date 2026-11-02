@@ -1071,6 +1071,28 @@ vaadin-grid::part(rent-sep) { border-right: 2px solid var(--cf-border-strong) !i
 .cf-rent-chip--est { background: var(--cf-rent-est-bg); }
 .cf-chart-box { border: 1px solid var(--cf-border); border-radius: var(--lumo-border-radius-l); padding: 12px; box-sizing: border-box; }
 
+/* Galeria de alunos selecionáveis (Centro de Comunicação) */
+html .cf-aluno-card {
+  box-sizing: border-box;
+  background: var(--cf-surface);
+  border: 1px solid var(--cf-border);
+  border-radius: var(--lumo-border-radius-l);
+  box-shadow: var(--cf-shadow-xs);
+  color: var(--cf-text);
+  transition: border-color var(--cf-transition), background-color var(--cf-transition), box-shadow var(--cf-transition);
+}
+html .cf-aluno-card:hover { box-shadow: var(--cf-shadow-sm); }
+html .cf-aluno-card--selecionado {
+  background: var(--cf-success-bg);
+  border-color: var(--cf-success);
+  box-shadow: 0 0 0 1px var(--cf-success);
+}
+.cf-aluno-card-nome { font-size: var(--lumo-font-size-s); font-weight: var(--cf-weight-semibold); text-align: center; color: var(--cf-text-strong); }
+.cf-aluno-card-sem-foto {
+  width: 80px; height: 80px; padding: 22px; box-sizing: border-box; border-radius: 50%;
+  background: var(--cf-surface-sunken); color: var(--cf-text-tertiary);
+}
+
 /* Ponto de cor (turma, sala, ...) */
 .cf-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
 

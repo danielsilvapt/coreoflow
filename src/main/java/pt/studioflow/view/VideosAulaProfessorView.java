@@ -96,7 +96,7 @@ public class VideosAulaProfessorView extends VerticalLayout {
         HorizontalLayout filtros = new HorizontalLayout(turmaCombo, dataPicker);
         filtros.setAlignItems(Alignment.END);
 
-        semTurmaAviso.getStyle().set("color", "#888");
+        semTurmaAviso.getStyle().set("color", "var(--cf-text-tertiary)");
 
         listaVideos.setFlexWrap(FlexLayout.FlexWrap.WRAP);
         listaVideos.getStyle().set("gap", "16px").set("margin-top", "8px");
@@ -170,8 +170,8 @@ public class VideosAulaProfessorView extends VerticalLayout {
         card.setPadding(true);
         card.setSpacing(false);
         card.setAlignItems(Alignment.CENTER);
-        card.getStyle().set("border", "1px solid #e2e8f0").set("border-radius", "12px")
-                .set("background", "white").set("box-shadow", "0 2px 6px rgba(0,0,0,0.08)");
+        card.getStyle().set("border", "1px solid var(--cf-border)").set("border-radius", "12px")
+                .set("background", "var(--cf-surface)").set("box-shadow", "var(--cf-shadow-sm)");
 
         VerticalLayout thumb = new VerticalLayout();
         thumb.setWidthFull();
