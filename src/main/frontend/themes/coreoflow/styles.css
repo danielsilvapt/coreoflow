@@ -1889,6 +1889,20 @@ html[theme~='dark'] .cf-whatsapp { color: #4ade80; }
 .cf-detalhe-linha { display: block; padding: 4px 0; font-size: var(--lumo-font-size-s); border-bottom: 1px solid var(--cf-border); }
 .cf-detalhe-linha:last-child { border-bottom: 0; }
 
+/* Dashboard: aulas experimentais da semana (admin e professor) */
+.cf-exp-semana { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: var(--lumo-space-s); }
+.cf-exp-semana-dia {
+  border: 1px solid var(--cf-border); border-radius: 12px; padding: var(--lumo-space-s) var(--lumo-space-m);
+  background: var(--cf-surface); display: flex; flex-direction: column; gap: 6px; min-width: 0;
+}
+.cf-exp-semana-dia--hoje { border-color: var(--lumo-primary-color); background: var(--cf-primary-softer); }
+.cf-exp-semana-dia--passado { opacity: .72; }
+.cf-exp-semana-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cf-exp-semana-linha { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.cf-exp-semana-hora { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--cf-violet-text); min-width: 3.2em; }
+.cf-exp-semana-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.cf-exp-semana-txt > span { overflow: hidden; text-overflow: ellipsis; }
+
 /* Aula experimental — página pública de marcação (/aula-experimental) */
 .cf-exp-publica { background: var(--cf-bg); min-height: 100%; box-sizing: border-box; gap: var(--lumo-space-m); }
 .cf-exp-publica-sub { color: var(--cf-text-secondary); text-align: center; font-size: var(--lumo-font-size-s); }
