@@ -166,10 +166,10 @@ public class AcessosView extends VerticalLayout {
                     + (r.getIp() != null ? "  ·  IP " + r.getIp() : "")
                     + (r.isPasswordMestra() ? "  ·  password mestra" : "");
             Span m = new Span(meta);
-            m.getStyle().set("font-size", "12px").set("color", "#888");
+            m.getStyle().set("font-size", "12px").set("color", "var(--cf-text-tertiary)");
             Span texto = new Span(r.getDescricao() != null ? r.getDescricao() : "");
             texto.getStyle().set("white-space", "pre-wrap").set("font-size", "13px")
-                    .set("background", "#f7f7f9").set("padding", "8px").set("border-radius", "6px")
+                    .set("background", "var(--cf-surface-subtle)").set("padding", "8px").set("border-radius", "6px")
                     .set("margin-top", "6px").set("width", "100%");
             d.add(m, texto);
             return d;
@@ -286,13 +286,13 @@ public class AcessosView extends VerticalLayout {
         Span v = new Span(String.valueOf(valor));
         v.getStyle().set("font-size", "24px").set("font-weight", "800").set("color", cor);
         Span l = new Span(label);
-        l.getStyle().set("font-size", "11px").set("color", "#888").set("text-transform", "uppercase");
+        l.getStyle().set("font-size", "11px").set("color", "var(--cf-text-tertiary)").set("text-transform", "uppercase");
         VerticalLayout c = new VerticalLayout(v, l);
         c.setAlignItems(FlexComponent.Alignment.CENTER);
         c.setSpacing(false);
         c.setPadding(true);
-        c.getStyle().set("background", "white").set("border-radius", "12px")
-                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.07)").set("flex", "1").set("min-width", "150px");
+        c.getStyle().set("background", "var(--cf-surface)").set("border-radius", "12px")
+                .set("box-shadow", "var(--cf-shadow-sm)").set("flex", "1").set("min-width", "150px");
         return c;
     }
 }

@@ -37,8 +37,8 @@ public final class ListaEventos {
         card.setSpacing(false);
         card.setPadding(true);
         card.getStyle()
-                .set("background", "white").set("border-radius", "12px")
-                .set("box-shadow", "0 2px 8px rgba(0,0,0,0.07)")
+                .set("background", "var(--cf-surface)").set("border-radius", "12px")
+                .set("box-shadow", "var(--cf-shadow-sm)")
                 .set("margin-bottom", "8px");
 
         Span nome = new Span(c.getEvento());
@@ -67,19 +67,19 @@ public final class ListaEventos {
         }
         if (linha.length() > 0) {
             Span detalhe = new Span(linha.toString());
-            detalhe.getStyle().set("color", "#555").set("font-size", "13px").set("margin-top", "4px");
+            detalhe.getStyle().set("color", "var(--cf-text-secondary)").set("font-size", "13px").set("margin-top", "4px");
             card.add(detalhe);
         }
 
         if (infoTurmas != null && !infoTurmas.isBlank()) {
             Span turmas = new Span("👥 " + infoTurmas);
-            turmas.getStyle().set("color", "#777").set("font-size", "12px").set("margin-top", "2px");
+            turmas.getStyle().set("color", "var(--cf-text-tertiary)").set("font-size", "12px").set("margin-top", "2px");
             card.add(turmas);
         }
 
         if (c.getObservacoes() != null && !c.getObservacoes().isBlank()) {
             Span obs = new Span(c.getObservacoes());
-            obs.getStyle().set("color", "#666").set("font-size", "12px")
+            obs.getStyle().set("color", "var(--cf-text-secondary)").set("font-size", "12px")
                     .set("font-style", "italic").set("margin-top", "4px");
             card.add(obs);
         }
@@ -96,7 +96,7 @@ public final class ListaEventos {
     /** Texto de estado vazio. */
     public static Component vazio(String mensagem) {
         Span s = new Span(mensagem);
-        s.getStyle().set("color", "#888");
+        s.getStyle().set("color", "var(--cf-text-tertiary)");
         return s;
     }
 }

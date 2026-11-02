@@ -250,11 +250,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
         List<Aluno> alunos = alunosParaGaleria(turma);
         for (Aluno aluno : alunos) {
             VerticalLayout card = new VerticalLayout();
-            card.getStyle()
-                    .set("border", "1px solid #e0e0e0")
-                    .set("border-radius", "12px")
-                    .set("background", "#f9f9f9")
-                    .set("box-shadow", "0 2px 5px rgba(0,0,0,0.1)");
+            card.addClassName("cf-aluno-card");
 
             Div avatar = new Div();
 
@@ -276,15 +272,14 @@ public class TurmaComunicacaoView extends VerticalLayout {
             } else {
                 // Se não houver foto, usa o ícone padrão que você já tinha configurado
                 Icon defaultIcon = new Icon(VaadinIcon.USER);
-                defaultIcon.getStyle()
-                        .set("font-size", "40px") // Ajusta o tamanho do ícone para o container de 80px
-                        .set("color", "#666");
+                defaultIcon.addClassName("cf-aluno-card-sem-foto");
 
                 avatar.add(defaultIcon);
             }
 
             Span nome = new Span(aluno.getNomeCompleto());
-            nome.getStyle().set("font-size", "0.9em").set("text-align", "center").set("height", "40px");
+            nome.addClassName("cf-aluno-card-nome");
+            nome.getStyle().set("height", "40px");
 
             Checkbox check = new Checkbox("Selecionar");
             listaCheckboxes.add(check);
@@ -292,10 +287,10 @@ public class TurmaComunicacaoView extends VerticalLayout {
             check.addValueChangeListener(v -> {
                 if (v.getValue()) {
                     selecionados.add(aluno);
-                    card.getStyle().set("border", "2px solid #2ecc71").set("background", "#ebfaf0");
+                    card.addClassName("cf-aluno-card--selecionado");
                 } else {
                     selecionados.remove(aluno);
-                    card.getStyle().set("border", "1px solid #e0e0e0").set("background", "#f9f9f9");
+                    card.removeClassName("cf-aluno-card--selecionado");
                 }
             });
 

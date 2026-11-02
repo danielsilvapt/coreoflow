@@ -276,12 +276,12 @@ public class PlaneamentoAulasView extends VerticalLayout {
 
     private Component statCard(String label, String valor, String cor) {
         Div card = new Div();
-        card.getStyle().set("background", "white").set("border-radius", "10px").set("padding", "10px 16px")
-                .set("box-shadow", "0 2px 6px rgba(0,0,0,0.06)").set("min-width", "120px").set("text-align", "center");
+        card.getStyle().set("background", "var(--cf-surface)").set("border-radius", "10px").set("padding", "10px 16px")
+                .set("box-shadow", "var(--cf-shadow-sm)").set("min-width", "120px").set("text-align", "center");
         Span v = new Span(valor);
         v.getStyle().set("display", "block").set("font-size", "20px").set("font-weight", "800").set("color", cor);
         Span l = new Span(label);
-        l.getStyle().set("font-size", "10px").set("color", "#95a5a6").set("font-weight", "700")
+        l.getStyle().set("font-size", "10px").set("color", "var(--cf-text-tertiary)").set("font-weight", "700")
                 .set("text-transform", "uppercase").set("letter-spacing", "0.4px");
         card.add(v, l);
         return card;
@@ -298,7 +298,7 @@ public class PlaneamentoAulasView extends VerticalLayout {
         Span info = new Span(capitalizar(l.data().format(FMT_DIA_LONGO)) + "  ·  " + l.horaInicio()
                 + (l.horaFim() != null ? "–" + l.horaFim() : "")
                 + (l.sala() != null ? "  ·  " + l.sala().getNome() : ""));
-        info.getStyle().set("font-size", "0.85rem").set("color", "#64748b").set("font-weight", "600");
+        info.getStyle().set("font-size", "0.85rem").set("color", "var(--cf-text-secondary)").set("font-weight", "600");
 
         SumarioAula s = l.sumario();
 
