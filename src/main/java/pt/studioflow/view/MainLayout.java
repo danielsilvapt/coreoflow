@@ -62,6 +62,7 @@ public class MainLayout extends AppLayout {
         private final BuildProperties buildProperties;
         private final EmailService emailService;
         private final pt.studioflow.service.SuporteService suporteService;
+        private final pt.studioflow.service.AulaExperimentalService aulaExperimentalService;
         private final LeadRepository leadRepository;
         private final pt.studioflow.repository.ContaPortalRepository contaPortalRepository;
 
@@ -84,7 +85,9 @@ public class MainLayout extends AppLayout {
                         BuildProperties buildProperties, EmailService emailService,
                         LeadRepository leadRepository,
                         pt.studioflow.repository.ContaPortalRepository contaPortalRepository,
-                        pt.studioflow.service.SuporteService suporteService) {
+                        pt.studioflow.service.SuporteService suporteService,
+                        pt.studioflow.service.AulaExperimentalService aulaExperimentalService) {
+                this.aulaExperimentalService = aulaExperimentalService;
                 this.userRepository = userRepository;
                 this.authService = authService;
                 authService.initTenantContext(); // Inicializa o TenantContext para esta sessão
@@ -425,6 +428,12 @@ public class MainLayout extends AppLayout {
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.INSCRICOES))
                         tabs.add(criarTab("Validar Inscrições", VaadinIcon.USER_CHECK, getPrimaryColor(),
                                         ValidacaoInscricoesView.class, pendentesInsc));
+                        if (studioParaModulos != null) {
+                                long expPorRealizar = aulaExperimentalService.porRealizar(studioParaModulos);
+                                tabs.add(criarTab("Aulas Experimentais", VaadinIcon.MAGIC, "#8E44AD",
+                                                AulasExperimentaisView.class,
+                                                expPorRealizar > 0 ? String.valueOf(expPorRealizar) : null));
+                        }
 
                         // 1. Obter o utilizador logado (username)
                         String usernameLogado = com.vaadin.flow.server.VaadinServletRequest.getCurrent()

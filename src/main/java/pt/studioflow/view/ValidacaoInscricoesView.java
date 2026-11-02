@@ -65,6 +65,9 @@ import pt.studioflow.util.DataUtil;
 public class ValidacaoInscricoesView extends VerticalLayout {
 
     private final AlunoRepository repository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private pt.studioflow.repository.AulaExperimentalRepository aulaExperimentalRepository;
     private final TurmaRepository turmaRepository;
     private final AlunoTurmaRepository alunoTurmaRepository;
     private final AulaRepository aulaRepository;
@@ -791,6 +794,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         compraCreditoRepository.deleteByAluno(alunoSimplificado);
         pagamentoOnlineRepository.deleteByAluno(alunoSimplificado);
         alunoTurmaRepository.deleteByAlunoId(id);
+        aulaExperimentalRepository.desvincularAluno(id);
 
         repository.findById(id).ifPresent(managedAluno -> {
             repository.delete(managedAluno);

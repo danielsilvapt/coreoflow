@@ -600,6 +600,35 @@ public class EmailService {
                 enviarNotificacaoInterna(studio, "Novo Aluno Experimental: " + aluno.getNomeCompleto(), corpo);
         }
 
+        /** Notifica o estúdio de uma aula experimental marcada online pelo interessado. */
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
+        public void enviarEmailAulaExperimentalMarcada(pt.studioflow.model.AulaExperimental ae) {
+                Studio studio = ae.getStudio();
+                if (envioBloqueado(studio)) return;
+                String quando = ae.getData().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                                + (ae.getHoraInicio() != null ? " às " + ae.getHoraInicio() : "");
+                String corpo = String.format(
+                                "<div style='font-family: Arial, sans-serif; color: #333;'>" +
+                                                "<p>Olá,</p>" +
+                                                "<p>Foi marcada uma nova aula experimental pela página pública.</p>" +
+                                                "<ul style='background-color: #f2f2f2; padding: 15px; border-left: 4px solid #666; list-style-type: none;'>" +
+                                                "  <li><b>Nome:</b> %s</li>" +
+                                                "  <li><b>Telemóvel:</b> %s</li>" +
+                                                "  <li><b>Email:</b> %s</li>" +
+                                                "  <li><b>Turma:</b> %s</li>" +
+                                                "  <li><b>Quando:</b> %s</li>" +
+                                                "</ul>" +
+                                                "<p>Consulte o menu 'Aulas Experimentais' na área de administração.</p>" +
+                                                "<p style='font-size: 0.8em; color: #999;'>Mensagem gerada automaticamente pela plataforma CoreoFlow.</p>" +
+                                                "</div>",
+                                ae.getNomeCompleto(),
+                                ae.getTelemovel() != null ? ae.getTelemovel() : "-",
+                                ae.getEmail() != null ? ae.getEmail() : "-",
+                                ae.getTurma().getDescricao(),
+                                quando);
+                enviarNotificacaoInterna(studio, "Aula experimental marcada: " + ae.getNomeCompleto(), corpo);
+        }
+
         /** Notifica o admin do estúdio de uma nova compra de aula avulsa/pack. */
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailNotificacaoCompraAvulso(pt.studioflow.model.CompraCredito compra) {
