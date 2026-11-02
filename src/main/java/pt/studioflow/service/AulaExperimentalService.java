@@ -213,6 +213,19 @@ public class AulaExperimentalService {
                 .toList();
     }
 
+    /**
+     * Marcações da semana atual (segunda a domingo), sem as canceladas, opcionalmente
+     * só nas turmas indicadas.
+     */
+    @Transactional(readOnly = true)
+    public List<AulaExperimental> daSemana(Studio studio, Set<Long> turmaIds) {
+        LocalDate seg = LocalDate.now().with(java.time.DayOfWeek.MONDAY);
+        return repository.findByStudioAndDataBetweenOrderByDataAscHoraInicioAsc(studio, seg, seg.plusDays(6)).stream()
+                .filter(a -> a.getEstado() != AulaExperimental.Estado.CANCELADA)
+                .filter(a -> turmaIds == null || turmaIds.contains(a.getTurma().getId()))
+                .toList();
+    }
+
     /** Nº de marcações por realizar (hoje e futuras) — badge do menu. */
     @Transactional(readOnly = true)
     public long porRealizar(Studio studio) {
