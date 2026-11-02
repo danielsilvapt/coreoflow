@@ -78,7 +78,8 @@ public class TreinadorDancaView extends VerticalLayout {
         this.podeVerTodos = temPapel("ADMIN") || temPapel("PROF") || temPapel("DELEG");
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
 
         H2 titulo = new H2("Treinador de Dança IA");

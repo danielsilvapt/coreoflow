@@ -65,6 +65,7 @@ public class ConvitesView extends VerticalLayout {
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         pt.studioflow.model.Studio _studio = pt.studioflow.config.TenantContext.getCurrentStudio();

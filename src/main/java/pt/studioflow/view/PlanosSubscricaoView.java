@@ -48,11 +48,12 @@ public class PlanosSubscricaoView extends VerticalLayout {
         this.studioRepo = studioRepo;
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Planos de Subscrição");
-        titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
+        titulo.getStyle().set("margin", "0 0 8px 0");
 
         add(titulo, ViewUtils.toolbar(ViewUtils.botaoNovo("Novo Plano", e -> abrirDialogPlano(null))),
             criarGrid());

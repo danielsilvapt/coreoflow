@@ -98,6 +98,7 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         injectStyles();
@@ -114,7 +115,7 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
         header.setWidthFull();
         header.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
         header.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
-        header.addClassNames("cf-page-header", "cf-page-header-padded");
+        header.addClassName("cf-page-header");
 
         add(header, criarStatsCards(), grid);
 
@@ -132,7 +133,6 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
                 criarCard("Registados", totalAlunosLabel, "#2D3436", VaadinIcon.USERS),
                 criarCard("Ativos", ativosLabel, "#1E8E3E", VaadinIcon.USER_CHECK),
                 criarCard("Em Dívida", dividasLabel, "#D93025", VaadinIcon.WARNING));
-        layout.addClassName("cf-page-padded-x");
         layout.getStyle().set("margin", "var(--lumo-space-m) 0");
         return layout;
     }

@@ -74,6 +74,7 @@ public class TransferenciasView extends VerticalLayout {
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         Div cssInjetado = new Div();

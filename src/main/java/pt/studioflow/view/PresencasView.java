@@ -132,7 +132,8 @@ public class PresencasView extends VerticalLayout {
         // Alterado para permitir scroll infinito na página
         setSizeFull();
         setHeight("auto");
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         injectStyles();

@@ -57,15 +57,16 @@ public class LeadsView extends VerticalLayout {
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Leads & Prospecção");
-        titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
+        titulo.getStyle().set("margin", "0 0 8px 0");
 
         cardsRow.setWidthFull();
         cardsRow.setSpacing(true);
-        cardsRow.getStyle().set("padding", "0 20px 12px 20px");
+        cardsRow.getStyle().set("padding", "0 0 12px 0");
 
         filtroEstado.setItems(EstadoLead.values());
         filtroEstado.setItemLabelGenerator(EstadoLead::getLabel);

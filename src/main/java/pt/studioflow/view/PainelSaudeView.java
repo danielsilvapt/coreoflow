@@ -61,7 +61,8 @@ public class PainelSaudeView extends VerticalLayout {
         this.jdbc = jdbc;
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
 
         render();

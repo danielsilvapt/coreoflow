@@ -49,12 +49,13 @@ public class ProfessorView extends VerticalLayout {
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
         getStyle().set("background", "var(--cf-bg)");
 
         ViewUtils.injetarEstiloBotoesAcao();
         Div tituloWrapper = new Div();
-        tituloWrapper.getStyle().set("padding", "20px 20px 0 20px");
+        tituloWrapper.getStyle();
         H2 titulo = new H2("Gestão de Professores");
         titulo.getStyle().set("margin-top", "0");
         tituloWrapper.add(titulo);

@@ -58,7 +58,8 @@ public class ContasPortalView extends VerticalLayout {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
 
         H2 titulo = new H2("Acessos ao Portal");

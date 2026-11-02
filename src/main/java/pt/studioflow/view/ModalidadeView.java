@@ -60,6 +60,7 @@ public class ModalidadeView extends VerticalLayout {
 
         this.setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         ViewUtils.injetarEstiloBotoesAcao();

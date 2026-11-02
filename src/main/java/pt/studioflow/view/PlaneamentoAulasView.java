@@ -104,7 +104,8 @@ public class PlaneamentoAulasView extends VerticalLayout {
                 : profTurmas.turmaIdsDoUtilizador(TenantContext.getCurrentStudio());
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
 
         H2 titulo = new H2(isAdmin ? "Planeamento de Aulas" : "O Meu Planeamento");

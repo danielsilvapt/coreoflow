@@ -28,7 +28,8 @@ public class ContratoAssinaturaView extends VerticalLayout implements HasUrlPara
     public ContratoAssinaturaView(ContratoDigitalRepository contratoRepo) {
         this.contratoRepo = contratoRepo;
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
     }
 
     @Override

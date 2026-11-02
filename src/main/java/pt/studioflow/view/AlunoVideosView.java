@@ -50,7 +50,8 @@ public class AlunoVideosView extends VerticalLayout {
         this.storageService = storageService;
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
         add(new H2("Vídeos das Aulas"));
 
