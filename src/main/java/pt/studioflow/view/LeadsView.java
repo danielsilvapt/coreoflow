@@ -283,7 +283,7 @@ public class LeadsView extends VerticalLayout {
         valorSpan.getStyle().set("font-size", "28px").set("font-weight", "700").set("color", cor).set("line-height", "1");
 
         Span labelSpan = new Span(label);
-        labelSpan.getStyle().set("font-size", "12px").set("color", "#666")
+        labelSpan.getStyle().set("font-size", "12px").set("color", "var(--cf-text-secondary)")
                 .set("text-transform", "uppercase").set("letter-spacing", "0.8px");
 
         VerticalLayout card = new VerticalLayout(icon, valorSpan, labelSpan);
@@ -291,7 +291,7 @@ public class LeadsView extends VerticalLayout {
         card.setSpacing(false);
         card.setPadding(true);
         card.getStyle()
-                .set("background", "white")
+                .set("background", "var(--cf-surface)")
                 .set("border-radius", "16px")
                 .set("box-shadow", "0 2px 12px rgba(0,0,0,0.08)")
                 .set("border", "1px solid #f0f0f0")
