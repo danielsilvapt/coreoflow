@@ -121,7 +121,7 @@ public class MensalidadeView extends VerticalLayout {
         header.setJustifyContentMode(JustifyContentMode.BETWEEN);
         header.addClassName("cf-page-header");
 
-        H2 titulo = new H2("Gestão Financeira");
+        H2 titulo = new H2("Gestão de Mensalidades");
 
         Button btnRefresh = new Button(VaadinIcon.REFRESH.create(), e -> updateList());
         btnRefresh.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
