@@ -178,6 +178,8 @@ public class AulaExperimentalService {
         ae.setObservacoes(limpar(p.observacoes()));
         ae = repository.save(ae);
 
+        avisarProfessores(ae);
+
         // Marcações online avisam o estúdio por email (as registadas pela secretaria não).
         if (ae.getOrigem() == AulaExperimental.Origem.ONLINE) {
             emailService.enviarEmailAulaExperimentalMarcada(ae);
@@ -240,6 +242,66 @@ public class AulaExperimentalService {
                         && a.getTelemovel().replaceAll("\\D", "").endsWith(telDigitos.substring(telDigitos.length() - 9)))
                         || (email != null && email.equalsIgnoreCase(a.getEmail())))
                 .findFirst();
+    }
+
+    /**
+     * Avisa por email o(s) professor(es) da sessão: o da aula (ou o principal da turma)
+     * e os co-professores, com os dados do interessado e da aula.
+     */
+    private void avisarProfessores(AulaExperimental ae) {
+        Aula aula = aulaRepository.findByTurma(ae.getTurma()).stream()
+                .filter(a -> a.getDia() == ae.getData().getDayOfWeek() && a.getHoraInicio() != null
+                        && a.getHoraInicio().equals(ae.getHoraInicio()))
+                .findFirst().orElse(null);
+        java.util.Map<String, String> destinos = new java.util.LinkedHashMap<>(); // email -> nome
+        pt.studioflow.model.Professor principal = aula != null ? aula.getProfessorEfetivo() : ae.getTurma().getProfessor();
+        java.util.List<pt.studioflow.model.Professor> profs = new java.util.ArrayList<>();
+        if (principal != null) profs.add(principal);
+        if (ae.getTurma().getCoProfessores() != null) profs.addAll(ae.getTurma().getCoProfessores());
+        for (pt.studioflow.model.Professor pr : profs) {
+            if (pr.getEmail() != null && !pr.getEmail().isBlank()) {
+                destinos.putIfAbsent(pr.getEmail().trim().toLowerCase(), pr.getNome());
+            }
+        }
+        pt.studioflow.model.Sala sala = aula != null && aula.getSala() != null ? aula.getSala() : ae.getTurma().getSala();
+        if (destinos.isEmpty()) return;
+
+        java.time.format.DateTimeFormatter f = java.time.format.DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", PT);
+        String dia = ae.getData().format(f);
+        String horas = ae.getHoraInicio() != null
+                ? ae.getHoraInicio() + (ae.getHoraFim() != null ? "–" + ae.getHoraFim() : "") : "";
+        String assunto = "Aula experimental: " + ae.getNomeCompleto() + " — " + ae.getTurma().getDescricao()
+                + " (" + ae.getData().format(DateTimeFormatter.ofPattern("dd/MM")) + ")";
+        StringBuilder linhas = new StringBuilder();
+        linha(linhas, "Turma", ae.getTurma().getDescricao());
+        linha(linhas, "Dia", Character.toUpperCase(dia.charAt(0)) + dia.substring(1));
+        linha(linhas, "Hora", horas);
+        if (sala != null) linha(linhas, "Sala", sala.getNome());
+        linha(linhas, "Nome", ae.getNomeCompleto());
+        linha(linhas, "Telemóvel", ae.getTelemovel());
+        linha(linhas, "Email", ae.getEmail());
+        linha(linhas, "Observações", ae.getObservacoes());
+        linha(linhas, "Marcada por", ae.getOrigem().getLabel());
+
+        for (java.util.Map.Entry<String, String> d : destinos.entrySet()) {
+            String nomeProf = d.getValue() != null ? d.getValue().split(" ")[0] : "";
+            String html = "<p>Olá " + esc(nomeProf) + ",</p>"
+                    + "<p>Foi marcada uma <b>aula experimental</b> numa das tuas turmas:</p>"
+                    + "<table style='border-collapse:collapse;background:#f6f3fa;border-left:4px solid #8E44AD;'>"
+                    + linhas + "</table>"
+                    + "<p>A pessoa já aparece nas presenças dessa aula. Bom trabalho!</p>";
+            emailService.enviarEmailAulaExperimentalProfessor(ae.getStudio(), d.getKey(), assunto, html);
+        }
+    }
+
+    private static void linha(StringBuilder sb, String rotulo, String valor) {
+        if (valor == null || valor.isBlank()) return;
+        sb.append("<tr><td style='padding:6px 12px;color:#666;'>").append(rotulo)
+                .append("</td><td style='padding:6px 12px;'><b>").append(esc(valor)).append("</b></td></tr>");
+    }
+
+    private static String esc(String s) {
+        return s == null ? "" : org.springframework.web.util.HtmlUtils.htmlEscape(s);
     }
 
     private static String limpar(String s) {

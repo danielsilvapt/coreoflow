@@ -600,6 +600,19 @@ public class EmailService {
                 enviarNotificacaoInterna(studio, "Novo Aluno Experimental: " + aluno.getNomeCompleto(), corpo);
         }
 
+        /** Avisa um professor de uma aula experimental marcada numa das suas turmas. */
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
+        public void enviarEmailAulaExperimentalProfessor(Studio studio, String para, String assunto, String corpoHtml) {
+                if (para == null || para.isBlank() || envioBloqueado(studio)) return;
+                try {
+                        enviarHtmlComAssinatura(para, studio, studio != null ? studio.getNome() : "CoreoFlow", assunto,
+                                        "<div style='font-family:Arial,Helvetica,sans-serif;color:#333;max-width:600px;'>"
+                                                        + corpoHtml + "</div>");
+                } catch (Exception ex) {
+                        System.err.println("Falha ao enviar e-mail de aula experimental ao professor: " + ex.getMessage());
+                }
+        }
+
         /** Notifica o estúdio de uma aula experimental marcada online pelo interessado. */
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarEmailAulaExperimentalMarcada(pt.studioflow.model.AulaExperimental ae) {
