@@ -119,15 +119,27 @@ public final class ViewUtils {
      */
     public static com.vaadin.flow.component.html.Div statCard(String titulo,
             com.vaadin.flow.component.html.Span valor, String cor, VaadinIcon icone) {
-        String tom = tomDaCor(cor);
+        return statCardTom(titulo, valor, tomDaCor(cor), icone, true);
+    }
+
+    /**
+     * Como {@link #statCard}, mas recebe diretamente o tom semântico
+     * (success / error / warning / info / violet / neutral). Com {@code pintarValor = false}
+     * só o ícone leva o tom e o valor fica na cor de texto forte (menos ruído visual
+     * quando há muitos cartões lado a lado, ex.: Dashboard).
+     */
+    public static com.vaadin.flow.component.html.Div statCardTom(String titulo,
+            com.vaadin.flow.component.html.Span valor, String tom, VaadinIcon icone, boolean pintarValor) {
+        if (tom == null) tom = "neutral";
         com.vaadin.flow.component.html.Div card = new com.vaadin.flow.component.html.Div();
         card.addClassName("stat-card");
         Icon i = icone.create();
         i.addClassNames("cf-stat-icon", "cf-tone-" + tom);
+        i.getElement().setAttribute("aria-hidden", "true");
         com.vaadin.flow.component.html.Span t = new com.vaadin.flow.component.html.Span(titulo);
         t.addClassName("stat-title");
         valor.addClassName("stat-value");
-        if (!"neutral".equals(tom)) {
+        if (pintarValor && !"neutral".equals(tom)) {
             valor.addClassName("cf-tone-" + tom);
         }
         card.add(i, t, valor);
