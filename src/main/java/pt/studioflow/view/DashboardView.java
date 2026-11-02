@@ -239,31 +239,14 @@ public class DashboardView extends Div {
                         cardPessoal.addClassNames("cf-card--span-all", "cf-card--info");
                         gridLayout.add(cardPessoal);
 
-                        // Aulas experimentais de hoje nas turmas do professor (o admin vê todas)
-                        if (isProf && studio != null) {
+                        // Aulas experimentais da semana nas turmas do professor (o admin tem painel próprio)
+                        if (isProf && !isAdmin && studio != null) {
                                 java.util.Set<Long> idsTurmas = professorTurmasService.restritoAsProprias()
                                                 ? professorTurmasService.turmaIdsDoUtilizador(studio) : null;
-                                List<pt.studioflow.model.AulaExperimental> expHoje =
-                                                aulaExperimentalService.deHoje(studio, idsTurmas);
-                                if (!expHoje.isEmpty()) {
-                                        VerticalLayout vExp = new VerticalLayout();
-                                        vExp.setPadding(false);
-                                        vExp.setSpacing(true);
-                                        for (pt.studioflow.model.AulaExperimental ae : expHoje) {
-                                                String quem = ae.getNomeCompleto()
-                                                                + (ae.getTelemovel() != null ? " · " + ae.getTelemovel() : "");
-                                                vExp.add(criarLinhaAgenda(
-                                                                ae.getHoraInicio() != null ? ae.getHoraInicio().toString() : "",
-                                                                ae.getTurma().getDescricao() + " — " + quem,
-                                                                "var(--cf-violet-text)"));
-                                                if (ae.getObservacoes() != null) {
-                                                        Span o = new Span(ae.getObservacoes());
-                                                        o.addClassName("cf-cell-sub");
-                                                        vExp.add(o);
-                                                }
-                                        }
-                                        Div cExp = criarCard(expHoje.size() == 1 ? "Aula experimental hoje"
-                                                        : expHoje.size() + " aulas experimentais hoje", VaadinIcon.MAGIC, vExp);
+                                List<pt.studioflow.model.AulaExperimental> expSemana = aulaExperimentalService.daSemana(studio, idsTurmas);
+                                if (!expSemana.isEmpty()) {
+                                        Div cExp = criarCard("Aulas experimentais esta semana", VaadinIcon.MAGIC,
+                                                        listaExperimentaisSemana(expSemana));
                                         cExp.addClassNames("cf-card--span-all", "cf-card--violet");
                                         gridLayout.add(cExp);
                                 }
@@ -507,6 +490,10 @@ public class DashboardView extends Div {
                                 alunosRisco, ultimaPresenca, cardAtivo, moduloAtivo));
                 topo.add(criarPainelHoje(studio, todasAulas, marcacoesHoje, inscritosPorTurma, hoje, moduloAtivo));
                 dash.add(topo);
+
+                if (studio != null) {
+                        dash.add(criarPainelExperimentaisSemana(studio));
+                }
 
                 // --- 3. Saúde do negócio ---
                 List<Component> principais = new ArrayList<>();
@@ -1049,6 +1036,75 @@ public class DashboardView extends Div {
                 verHorario.addClassName("cf-dash-more");
                 card.add(verHorario);
                 return card;
+        }
+
+        /** Painel do admin: aulas experimentais da semana atual (todas as turmas). */
+        private Component criarPainelExperimentaisSemana(Studio studio) {
+                List<pt.studioflow.model.AulaExperimental> semana = aulaExperimentalService.daSemana(studio, null);
+                Span contador = pill(semana.isEmpty() ? "nenhuma" : plural(semana.size(), "marcada", "marcadas"),
+                                semana.isEmpty() ? "neutral" : "violet", null);
+                Component corpo = semana.isEmpty()
+                                ? estadoVazio(VaadinIcon.MAGIC, "neutral", "Sem aulas experimentais esta semana",
+                                                "Usa o botão \"Aula experimental\" para registar um contacto.")
+                                : listaExperimentaisSemana(semana);
+                Div card = criarPainel("Aulas experimentais esta semana", VaadinIcon.MAGIC, contador, corpo);
+                Button ver = new Button("Ver todas", VaadinIcon.ARROW_RIGHT.create(), e -> navegar("aulas-experimentais"));
+                ver.setIconAfterText(true);
+                ver.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+                ver.addClassName("cf-dash-more");
+                card.add(ver);
+                return card;
+        }
+
+        /** Lista das aulas experimentais agrupada por dia (hoje em destaque). */
+        private Component listaExperimentaisSemana(List<pt.studioflow.model.AulaExperimental> semana) {
+                LocalDate hoje = LocalDate.now();
+                Locale lpt = Locale.forLanguageTag("pt-PT");
+                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("d MMM", lpt);
+                Div lista = new Div();
+                lista.addClassName("cf-exp-semana");
+                java.util.Map<LocalDate, List<pt.studioflow.model.AulaExperimental>> porDia = new java.util.TreeMap<>(
+                                semana.stream().collect(Collectors.groupingBy(pt.studioflow.model.AulaExperimental::getData)));
+                porDia.forEach((dia, aulas) -> {
+                        Div grupo = new Div();
+                        grupo.addClassName("cf-exp-semana-dia");
+                        if (dia.equals(hoje)) grupo.addClassName("cf-exp-semana-dia--hoje");
+                        if (dia.isBefore(hoje)) grupo.addClassName("cf-exp-semana-dia--passado");
+                        Div cab = new Div();
+                        cab.addClassName("cf-exp-semana-cab");
+                        String nd = dia.getDayOfWeek().getDisplayName(java.time.format.TextStyle.SHORT, lpt);
+                        Span nomeDia = new Span(Character.toUpperCase(nd.charAt(0)) + nd.substring(1) + " " + dia.format(fmt));
+                        nomeDia.addClassName("cf-strong");
+                        cab.add(nomeDia);
+                        if (dia.equals(hoje)) cab.add(pill("Hoje", "info", null));
+                        grupo.add(cab);
+                        for (pt.studioflow.model.AulaExperimental ae : aulas) {
+                                Div linha = new Div();
+                                linha.addClassName("cf-exp-semana-linha");
+                                Span hora = new Span(ae.getHoraInicio() != null ? ae.getHoraInicio().toString() : "");
+                                hora.addClassName("cf-exp-semana-hora");
+                                Span quem = new Span(ae.getNomeCompleto());
+                                quem.addClassName("cf-strong");
+                                Span turma = new Span(ae.getTurma().getDescricao()
+                                                + (ae.getTelemovel() != null ? " · " + ae.getTelemovel() : ""));
+                                turma.addClassName("cf-cell-sub");
+                                Div txt = new Div(quem, turma);
+                                txt.addClassName("cf-exp-semana-txt");
+                                linha.add(hora, txt);
+                                if (ae.getEstado() != pt.studioflow.model.AulaExperimental.Estado.MARCADA) {
+                                        String tom = switch (ae.getEstado()) {
+                                                case REALIZADA -> "success";
+                                                case INSCRITO -> "violet";
+                                                case FALTOU -> "warning";
+                                                default -> "neutral";
+                                        };
+                                        linha.add(pill(ae.getEstado().getLabel(), tom, null));
+                                }
+                                grupo.add(linha);
+                        }
+                        lista.add(grupo);
+                });
+                return lista;
         }
 
         private Component criarLinhaHoje(LinhaHoje l, boolean terminada, boolean aDecorrer, boolean proxima) {

@@ -16,6 +16,9 @@ public interface AulaExperimentalRepository extends JpaRepository<AulaExperiment
 
     List<AulaExperimental> findByStudioAndDataOrderByHoraInicioAsc(Studio studio, LocalDate data);
 
+    List<AulaExperimental> findByStudioAndDataBetweenOrderByDataAscHoraInicioAsc(Studio studio, LocalDate de,
+            LocalDate ate);
+
     long countByStudioAndEstadoAndDataGreaterThanEqual(Studio studio, AulaExperimental.Estado estado, LocalDate data);
 
     boolean existsByTurmaAndDataAndTelemovelAndEstado(Turma turma, LocalDate data, String telemovel,
