@@ -6,7 +6,7 @@ import com.vaadin.flow.server.VaadinServiceInitListener;
 import org.springframework.stereotype.Component;
 
 /**
- * O loader "CF" com brilho (definido em MainLayout) só aparece a partir do
+ * O loader "Pirueta" (bailarina, definido no tema coreoflow/styles.css) só aparece a partir do
  * "first delay" do Vaadin, que por omissão é 450ms. Páginas rápidas (a
  * maioria dos menus CRUD) nunca chegam lá, por isso o loader parecia
  * exclusivo do Treinador IA (chamadas à IA e ao modelo 3D, mais lentas).

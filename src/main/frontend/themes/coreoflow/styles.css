@@ -703,52 +703,68 @@ vaadin-button.cf-drawer-logout-btn:hover { background: var(--cf-error-bg); }
 html[theme~='dark'] .brand-line1 { background: linear-gradient(90deg, #dbe4ff 0 56%, var(--cf-teal) 56% 100%); -webkit-background-clip: text; background-clip: text; }
 .brand-line2 { font-size: 10.5px; color: var(--cf-text-tertiary); letter-spacing: 0.02em; }
 
-/* Loader central: "CF" fixo com um brilho a passar */
-.v-loading-indicator { display: none !important; }
+/* Loader central "Pirueta": bailarina estilizada (en pointe, perna em passé,
+   fita na mão) faz plié, relevé e duas piruetas; a fita roda com ela.
+   Só se animam transform/opacity. A figura é uma máscara SVG pintada com o
+   gradiente da marca, por isso as cores vêm dos tokens (e do modo escuro). */
+.v-loading-indicator {
+  display: none !important;
+  --cf-loader-dancer: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 -8 100 128'><g fill='black'><circle cx='50' cy='13' r='6.4'/><circle cx='50' cy='5.2' r='3'/><path d='M44.5 24.5 Q50 22.6 55.5 24.5 L53 44 Q50 45.2 47 44 Z'/><path d='M29 47.5 C39 40.5 61 40.5 71 47.5 C63 53 37 53 29 47.5 Z'/></g><g fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round'><path d='M45 25.5 C34 22 33.5 2 46.5 -1' stroke-width='3.2'/><path d='M55 25.5 C66 22 66.5 2 53.5 -1' stroke-width='3.2'/><path d='M49.2 50 L50 111' stroke-width='4.2'/><path d='M50 110 L50.2 115.5' stroke-width='2.4'/><path d='M52.5 50 L64.5 66 L51.5 79' stroke-width='3.8'/><path d='M53.5 -1 C74 -9 90 6 84 22 C78 38 94 46 90 62 C86 78 70 80 74 94 C77 104 90 104 92 96' stroke-width='2.3'/></g></svg>");
+  --cf-loader-paint: linear-gradient(170deg, var(--cf-ink) 0%, var(--cf-ink) 46%, var(--cf-teal) 68%, var(--cf-mint) 100%);
+  --cf-loader-veil: rgba(244, 246, 250, 0.62);
+  --cf-loader-floor: rgba(15, 31, 75, 0.22);
+  --cf-loader-text: #4b5873;
+}
 .v-loading-indicator.first, .v-loading-indicator.second, .v-loading-indicator.third {
   display: block !important; position: fixed !important; inset: 0 !important;
   top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important;
-  margin: 0 !important; padding: 0 !important; background: rgba(244, 246, 250, 0.62) !important;
+  margin: 0 !important; padding: 0 !important;
+  /* sombra do "palco" (estática) por baixo da ponta do pé + véu */
+  background: radial-gradient(ellipse 38px 7px at 50% calc(50% + 22px), var(--cf-loader-floor), transparent 72%),
+              var(--cf-loader-veil) !important;
   backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 2147483647 !important;
   pointer-events: all; border: none !important; box-shadow: none !important;
   animation: none !important; transition: opacity .15s ease;
 }
 .v-loading-indicator.first::before, .v-loading-indicator.second::before, .v-loading-indicator.third::before {
-  content: 'CF'; position: absolute; left: 50%; top: 50%;
-  transform: translate(-50%, -50%); letter-spacing: 1px;
-  font: 800 54px/1 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
-  background-image: linear-gradient(110deg, transparent 42%, rgba(255, 255, 255, 0.95) 50%, transparent 58%),
-                    linear-gradient(90deg, #0f1f4b 0%, #0f1f4b 46%, #13c4c9 56%, #3ddc97 100%);
-  background-size: 250% 100%, 100% 100%; background-position: 130% 0, 0 0;
-  background-repeat: no-repeat;
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent; color: transparent;
-  filter: drop-shadow(0 6px 14px rgba(15, 31, 75, 0.2));
-  animation: cf-brilho 1.8s ease-in-out infinite;
+  content: ''; position: absolute; width: 104px; height: 133px;
+  left: calc(50% - 52px); top: calc(50% - 108px);
+  background: var(--cf-loader-paint);
+  -webkit-mask: var(--cf-loader-dancer) center / contain no-repeat;
+  mask: var(--cf-loader-dancer) center / contain no-repeat;
+  transform-origin: 50% 96%;
+  will-change: transform;
+  animation: cf-pirueta 2.4s ease-in-out infinite;
 }
 .v-loading-indicator.first::after, .v-loading-indicator.second::after, .v-loading-indicator.third::after {
   content: 'a carregar\2026'; position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, 44px); white-space: nowrap;
   font: 600 13px/1 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif; letter-spacing: 2px;
-  color: #4b5873; border: none !important;
-  animation: cf-carregar 1.8s ease-in-out infinite;
+  color: var(--cf-loader-text); border: none !important;
+  animation: cf-compasso 2.4s ease-in-out infinite;
 }
-@keyframes cf-brilho {
-  0%, 18% { background-position: 130% 0, 0 0; }
-  72%, 100% { background-position: -30% 0, 0 0; }
+/* plié -> relevé -> 2 voltas -> aterragem; 720deg == 0deg, o ciclo é contínuo */
+@keyframes cf-pirueta {
+  0%   { transform: perspective(520px) translateY(0)    rotateY(0deg)   scale(1, 1); }
+  12%  { transform: perspective(520px) translateY(3px)  rotateY(0deg)   scale(1.03, .95); }
+  22%  { transform: perspective(520px) translateY(-7px) rotateY(0deg)   scale(.98, 1.03); }
+  62%  { transform: perspective(520px) translateY(-7px) rotateY(720deg) scale(.98, 1.03); }
+  74%  { transform: perspective(520px) translateY(2px)  rotateY(720deg) scale(1.03, .96); }
+  86%, 100% { transform: perspective(520px) translateY(0) rotateY(720deg) scale(1, 1); }
 }
-@keyframes cf-carregar { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
-html[theme~='dark'] .v-loading-indicator.first, html[theme~='dark'] .v-loading-indicator.second,
-html[theme~='dark'] .v-loading-indicator.third { background: rgba(11, 17, 32, 0.66) !important; }
-html[theme~='dark'] .v-loading-indicator.first::before, html[theme~='dark'] .v-loading-indicator.second::before,
-html[theme~='dark'] .v-loading-indicator.third::before {
-  background-image: linear-gradient(110deg, transparent 42%, rgba(255, 255, 255, 0.95) 50%, transparent 58%),
-                    linear-gradient(90deg, #dbe4ff 0%, #dbe4ff 46%, #13c4c9 56%, #3ddc97 100%);
+/* o texto marca o tempo: acende no relevé, descansa na aterragem */
+@keyframes cf-compasso { 0%, 100% { opacity: .5; } 22%, 62% { opacity: 1; } }
+html[theme~='dark'] .v-loading-indicator {
+  --cf-loader-paint: linear-gradient(170deg, #dbe4ff 0%, #dbe4ff 46%, var(--cf-teal) 68%, var(--cf-mint) 100%);
+  --cf-loader-veil: rgba(11, 17, 32, 0.66);
+  --cf-loader-floor: rgba(19, 196, 201, 0.30);
+  --cf-loader-text: #aab4c6;
 }
-html[theme~='dark'] .v-loading-indicator.first::after, html[theme~='dark'] .v-loading-indicator.second::after,
-html[theme~='dark'] .v-loading-indicator.third::after { color: #aab4c6; }
+/* Versão calma: sem voltas nem saltos, a figura apenas "respira" */
+@keyframes cf-respira { 0%, 100% { opacity: .7; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .v-loading-indicator::before, .v-loading-indicator::after { animation: none !important; }
+  .v-loading-indicator::before { animation: cf-respira 2.4s ease-in-out infinite !important; transform: none !important; }
+  .v-loading-indicator::after { animation: none !important; opacity: 1; }
 }
 
 /* ---------- 6. Padrões partilhados ---------- */
