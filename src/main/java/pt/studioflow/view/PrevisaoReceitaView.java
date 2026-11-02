@@ -79,7 +79,8 @@ public class PrevisaoReceitaView extends VerticalLayout {
         this.aulaRepo = aulaRepo;
         this.remuneracaoService = remuneracaoService;
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
 
         Studio studio = TenantContext.getCurrentStudio();

@@ -63,13 +63,14 @@ public class TurmaView extends VerticalLayout {
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         ViewUtils.injetarEstiloBotoesAcao();
         configurarGrid();
 
         Div tituloWrapper = new Div();
-        tituloWrapper.addClassNames("cf-page-header", "cf-page-header-padded");
+        tituloWrapper.addClassName("cf-page-header");
         H2 titulo = new H2("Configurar Turmas");
         tituloWrapper.add(titulo);
 

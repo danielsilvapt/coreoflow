@@ -71,7 +71,8 @@ public class AcessosView extends VerticalLayout {
         this.repo = repo;
         this.studioRepository = studioRepository;
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
 
         H2 titulo = new H2("Acessos & Auditoria");

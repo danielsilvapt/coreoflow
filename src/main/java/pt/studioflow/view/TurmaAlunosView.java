@@ -73,6 +73,7 @@ public class TurmaAlunosView extends VerticalLayout {
         setSizeFull();
         setSpacing(false);
         setPadding(false);
+        addClassName("cf-page");
 
         injectCustomStyles();
         ViewUtils.injetarEstiloBotoesAcao();

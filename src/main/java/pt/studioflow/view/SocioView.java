@@ -86,6 +86,7 @@ public class SocioView extends VerticalLayout {
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         injectStyles();
@@ -103,7 +104,6 @@ public class SocioView extends VerticalLayout {
         header.setWidthFull();
         header.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
         header.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
-        header.getStyle().set("padding", "15px 20px 0 20px");
 
         add(header, criarStatsCards(), grid);
 

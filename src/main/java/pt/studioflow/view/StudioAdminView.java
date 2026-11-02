@@ -68,7 +68,8 @@ public class StudioAdminView extends VerticalLayout {
         this.tocOnlineApiService = tocOnlineApiService;
         this.studioRemocaoService = studioRemocaoService;
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
 
         ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Gestão de Estúdios");

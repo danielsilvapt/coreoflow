@@ -68,7 +68,8 @@ public class VideosAulaProfessorView extends VerticalLayout {
         this.storageService = storageService;
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
 
         add(new com.vaadin.flow.component.html.H2("Vídeos das Aulas"));

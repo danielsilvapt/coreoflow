@@ -96,6 +96,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         H2 titulo = new H2("Centro de Comunicação");
