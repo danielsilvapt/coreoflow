@@ -679,7 +679,8 @@ public class DashboardView extends Div {
 
                 Div acoes = new Div();
                 acoes.addClassName("cf-dash-actions");
-                acoes.add(ViewUtils.botaoNovo("Novo aluno", e -> navegar("alunos")));
+                acoes.add(ViewUtils.botaoNovo("Novo aluno", e -> getUI().ifPresent(ui -> ui.navigate("alunos",
+                                com.vaadin.flow.router.QueryParameters.of("novo", "1")))));
                 if (moduloAtivo.test(StudioModulo.PRESENCAS)) {
                         acoes.add(new Button("Aula experimental", VaadinIcon.MAGIC.create(), e -> navegar("presencas")));
                 }

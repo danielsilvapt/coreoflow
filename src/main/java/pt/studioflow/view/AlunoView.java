@@ -437,6 +437,12 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
                 Long id = Long.parseLong(params.get("edit").get(0));
                 alunoRepository.findById(id).ifPresent(this::abrirFormAluno);
             } catch (NumberFormatException ignored) {}
+        } else if (params.containsKey("novo")) {
+            // Atalho "Novo aluno" do dashboard: abre logo o formulário vazio
+            alunoForm.abrir(null);
+            vincularAtualizacaoAoFechar();
+            // Limpa o parâmetro para que recarregar a página não volte a abrir o formulário
+            getUI().ifPresent(ui -> ui.getPage().getHistory().replaceState(null, "alunos"));
         }
         updateList();
     }
