@@ -10,6 +10,11 @@ import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H4;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.tabs.TabSheetVariant;
+import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -221,14 +226,13 @@ public class StudioAdminView extends VerticalLayout {
 
     private void abrirFormulario(Studio studio) {
         Dialog dialog = new Dialog();
-        dialog.setWidth("720px");
+        dialog.setWidth("min(1120px, 96vw)");
+        dialog.setHeight("min(860px, 92vh)");
         dialog.setMaxWidth("100%");
+        dialog.addClassName("cf-studio-cfg-dialog");
         dialog.setHeaderTitle(studio.getId() == null ? "Novo Estúdio" : "Editar: " + studio.getNome());
 
         // --- Logotipo ---
-        H4 secLogo = new H4("Logotipo");
-        secLogo.getStyle().set("margin", "8px 0 4px 0");
-
         Image logoPreview = new Image();
         logoPreview.setHeight("56px");
         logoPreview.getStyle().set("object-fit", "contain").set("display",
@@ -270,14 +274,14 @@ public class StudioAdminView extends VerticalLayout {
                 Notification.show("Ficheiro rejeitado: " + event.getErrorMessage())
                         .addThemeVariants(NotificationVariant.LUMO_ERROR));
 
-        VerticalLayout logoSection = new VerticalLayout(secLogo, logoPreview, upload);
+        VerticalLayout logoSection = new VerticalLayout(logoPreview, upload);
         logoSection.setPadding(false);
         logoSection.setSpacing(false);
         logoSection.getStyle().set("gap", "8px");
 
         // --- Formulário principal ---
         FormLayout form = new FormLayout();
-        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("520px", 2));
 
         TextField nome = new TextField("Nome");
         nome.setValue(studio.getNome() != null ? studio.getNome() : "");
@@ -381,12 +385,12 @@ public class StudioAdminView extends VerticalLayout {
 
         FormLayout grupoPadrao = new FormLayout(mensalidadeCrianca1x, mensalidadeCrianca2x,
                 mensalidadeAdulto1x, mensalidadeAdulto2x, naoSocioAdicional);
-        grupoPadrao.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
+        grupoPadrao.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("520px", 2), new FormLayout.ResponsiveStep("860px", 3));
         grupoPadrao.setWidthFull();
 
         FormLayout grupoHorasSemana = new FormLayout(tabelaHoras1, tabelaHoras2, tabelaHoras3,
                 tabelaHoras4, tabelaHoras5, tabelaHoras6Mais);
-        grupoHorasSemana.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
+        grupoHorasSemana.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("520px", 2), new FormLayout.ResponsiveStep("860px", 3));
         grupoHorasSemana.setWidthFull();
 
         NumberField tabelaModAulaFixa = new NumberField("Aula fixa — 1 aula/semana (€)");
@@ -406,7 +410,7 @@ public class StudioAdminView extends VerticalLayout {
         tabelaModLivre.setMin(0);
 
         FormLayout grupoModalidades = new FormLayout(tabelaModAulaFixa, tabelaMod1, tabelaMod2, tabelaModLivre);
-        grupoModalidades.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
+        grupoModalidades.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("520px", 2), new FormLayout.ResponsiveStep("860px", 3));
         grupoModalidades.setWidthFull();
 
         Runnable ajustarVisibilidadeModelo = () -> {
@@ -488,28 +492,18 @@ public class StudioAdminView extends VerticalLayout {
                 "Quando desligado, a plataforma não envia nenhum email (convites do portal, "
                         + "notificações, avisos, aniversários, etc.) para este estúdio.");
 
-        form.add(nome, slug, email, corPrimaria, corSecundaria, vendusApiKey,
-                mollieApiKey, checkinJanelaAntes, checkinJanelaDepois, emailCriador,
-                emailAssinante1, emailAssinante2,
-                diaLimitePagamento,
-                multaAtraso,
-                descontoFamiliares, descontoFamiliaresPct, descontoDirecao, descontoMaisModal, descontoMais65,
-                taxaInscricao, taxaRenovacao, valorSeguro, segurosPermitidos, primeiraGratis,
-                isentarJaAlunos, ativo, enviarEmails);
+        form.add(nome, slug, email);
+        form.setColspan(email, 2);
 
         // --- Modelo de Preçário ---
-        H4 secPrecario = new H4("Modelo de Preçário");
-        secPrecario.getStyle().set("margin", "16px 0 4px 0");
 
         // --- Campos do aluno ---
-        H4 secCampos = new H4("Campos do Formulário de Aluno");
-        secCampos.getStyle().set("margin", "16px 0 4px 0");
 
         CheckboxGroup<CampoAluno> camposGroup = new CheckboxGroup<>();
         camposGroup.setLabel("Seleciona os campos opcionais visíveis no formulário de aluno");
         camposGroup.setItems(CampoAluno.values());
         camposGroup.setItemLabelGenerator(CampoAluno::getLabel);
-        camposGroup.addThemeVariants(CheckboxGroupVariant.LUMO_VERTICAL);
+        camposGroup.addClassName("cf-check-columns");
         camposGroup.setWidthFull();
 
         Set<CampoAluno> camposSel;
@@ -525,17 +519,14 @@ public class StudioAdminView extends VerticalLayout {
         camposGroup.setValue(camposSel);
 
         // --- Faturação automática ---
-        H4 secFat = new H4("Faturação");
-        secFat.getStyle().set("margin", "16px 0 4px 0");
         Checkbox faturacaoAuto = new Checkbox("Emitir fatura automaticamente ao marcar mensalidade como Faturado");
         faturacaoAuto.setValue(studio.isFaturacaoAutomatica());
-        faturacaoAuto.getStyle().set("font-size", "13px");
 
         ComboBox<String> programaFaturacao = new ComboBox<>("Programa de Faturação");
         programaFaturacao.setItems("VENDUS", "TOCONLINE");
         programaFaturacao.setItemLabelGenerator(v -> "TOCONLINE".equals(v) ? "TOCOnline" : "Vendus");
         programaFaturacao.setValue(studio.getProgramaFaturacao() != null ? studio.getProgramaFaturacao() : "VENDUS");
-        programaFaturacao.setWidth("220px");
+        programaFaturacao.setWidthFull();
 
         TextField tocClientId = new TextField("Client ID (TOCOnline)");
         tocClientId.setValue(studio.getTocOnlineClientId() != null ? studio.getTocOnlineClientId() : "");
@@ -584,15 +575,14 @@ public class StudioAdminView extends VerticalLayout {
         tocSecao.setSpacing(true);
         tocSecao.setVisible("TOCONLINE".equals(programaFaturacao.getValue()));
 
-        programaFaturacao.addValueChangeListener(e ->
-                tocSecao.setVisible("TOCONLINE".equals(programaFaturacao.getValue())));
+        vendusApiKey.setVisible(!"TOCONLINE".equals(programaFaturacao.getValue()));
+        programaFaturacao.addValueChangeListener(e -> {
+            tocSecao.setVisible("TOCONLINE".equals(programaFaturacao.getValue()));
+            vendusApiKey.setVisible(!"TOCONLINE".equals(programaFaturacao.getValue()));
+        });
 
         // --- Remuneração de professores ---
-        H4 secRemun = new H4("Remuneração de Professores");
-        secRemun.getStyle().set("margin", "16px 0 4px 0");
 
-        Span remunHint = new Span("Valores por defeito do estúdio. Cada professor pode sobrepô-los na página Professores.");
-        remunHint.getStyle().set("font-size", "12px").set("color", "#888");
 
         ComboBox<String> tipoRemun = new ComboBox<>("Tipo de remuneração");
         tipoRemun.setItems("HORA", "PERCENTAGEM");
@@ -616,7 +606,7 @@ public class StudioAdminView extends VerticalLayout {
         valorPrivada.setHelperText("Vazio = usa o valor da aula regular");
 
         FormLayout grupoHora = new FormLayout(valorRemun, valorEnsaio, valorPrivada);
-        grupoHora.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
+        grupoHora.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("520px", 2), new FormLayout.ResponsiveStep("860px", 3));
         grupoHora.setWidthFull();
 
         // --- Grupo PERCENTAGEM (% por frequência semanal) ---
@@ -642,7 +632,7 @@ public class StudioAdminView extends VerticalLayout {
         percOutras.setHelperText("Usada quando a frequência do aluno não tem valor próprio. Ensaios/privadas são sempre pagos à hora.");
 
         FormLayout grupoPerc = new FormLayout(perc1x, perc2x, perc3x, percOutras);
-        grupoPerc.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
+        grupoPerc.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("520px", 2));
         grupoPerc.setWidthFull();
 
         Checkbox bonusProf = new Checkbox("Bónus de professores por meta de alunos");
@@ -664,14 +654,12 @@ public class StudioAdminView extends VerticalLayout {
         ajustarVisibilidadeRemun.run();
 
         // --- Módulos ativos ---
-        H4 secModulos = new H4("Módulos Ativos");
-        secModulos.getStyle().set("margin", "12px 0 4px 0");
 
         CheckboxGroup<StudioModulo> modulosGroup = new CheckboxGroup<>();
         modulosGroup.setLabel("Seleciona os módulos visíveis para este estúdio");
         modulosGroup.setItems(StudioModulo.values());
         modulosGroup.setItemLabelGenerator(StudioModulo::getLabel);
-        modulosGroup.addThemeVariants(CheckboxGroupVariant.LUMO_VERTICAL);
+        modulosGroup.addClassName("cf-check-columns");
         modulosGroup.setWidthFull();
 
         // Pré-selecionar: se nulo/vazio = todos; senão, os que estão na string
@@ -690,14 +678,12 @@ public class StudioAdminView extends VerticalLayout {
         modulosGroup.setValue(selecionados);
 
         // --- Cards do Dashboard ---
-        H4 secDashboard = new H4("Cards do Dashboard");
-        secDashboard.getStyle().set("margin", "12px 0 4px 0");
 
         CheckboxGroup<DashboardCard> dashboardCardsGroup = new CheckboxGroup<>();
         dashboardCardsGroup.setLabel("Seleciona os cards de KPI visíveis no Dashboard do administrador");
         dashboardCardsGroup.setItems(DashboardCard.values());
         dashboardCardsGroup.setItemLabelGenerator(DashboardCard::getLabel);
-        dashboardCardsGroup.addThemeVariants(CheckboxGroupVariant.LUMO_VERTICAL);
+        dashboardCardsGroup.addClassName("cf-check-columns");
         dashboardCardsGroup.setWidthFull();
 
         Set<DashboardCard> dashboardCardsSel;
@@ -713,32 +699,74 @@ public class StudioAdminView extends VerticalLayout {
         dashboardCardsGroup.setValue(dashboardCardsSel);
 
         // --- Idiomas do formulário público ---
-        H4 secIdiomas = new H4("Idiomas do Formulário Público");
-        secIdiomas.getStyle().set("margin", "12px 0 4px 0");
 
         CheckboxGroup<Idioma> idiomasGroup = new CheckboxGroup<>();
         idiomasGroup.setLabel("Idiomas disponíveis na inscrição/renovação online");
         idiomasGroup.setItems(Idioma.values());
         idiomasGroup.setItemLabelGenerator(Idioma::getLabel);
-        idiomasGroup.addThemeVariants(CheckboxGroupVariant.LUMO_VERTICAL);
+        idiomasGroup.addClassName("cf-check-columns");
         idiomasGroup.setWidthFull();
         idiomasGroup.setValue(new HashSet<>(studio.getIdiomasDisponiveisList()));
 
-        VerticalLayout content = new VerticalLayout(
-                logoSection, form,
-                secPrecario, modeloPrecario, grupoPadrao, grupoHorasSemana, grupoModalidades, meiaMensalidade,
-                secCampos, camposGroup,
-                secFat, faturacaoAuto, programaFaturacao, tocSecao,
-                secRemun, remunHint, tipoRemun, grupoHora, grupoPerc, bonusProf, metaBonus,
-                secModulos, modulosGroup,
-                secDashboard, dashboardCardsGroup,
-                secIdiomas, idiomasGroup);
-        content.setPadding(false);
-        content.setSpacing(true);
+        // --- Organização por secções (separadores) ---
+        HorizontalLayout cores = new HorizontalLayout(corPrimaria, corSecundaria);
+        cores.setWidthFull();
+        cores.setSpacing(true);
+        cores.getStyle().set("flex-wrap", "wrap");
+
+        TabSheet tabs = new TabSheet();
+        tabs.setSizeFull();
+        tabs.addClassName("cf-studio-cfg");
+
+        Tab tabGeral = tabs.add(tab(VaadinIcon.COG, "Geral"), painel(
+                secao("Identificação", "Nome, slug de login e contacto principal do estúdio.", form),
+                secao("Imagem", "Logotipo e cores aplicados à app e às páginas públicas do estúdio.",
+                        logoSection, cores),
+                secao("Estado", null, ativo, enviarEmails)));
+
+        tabs.add(tab(VaadinIcon.EURO, "Preçário"), painel(
+                secao("Modelo de preçário", "Como se calcula a mensalidade de cada aluno.",
+                        modeloPrecario, grupoPadrao, grupoHorasSemana, grupoModalidades, meiaMensalidade),
+                secao("Vencimento", "Quando uma mensalidade passa a \"Em dívida\" e a multa aplicada.",
+                        grelha(diaLimitePagamento, multaAtraso))));
+
+        tabs.add(tab(VaadinIcon.TAGS, "Descontos"), painel(
+                secao("Descontos automáticos", "Aplicados ao gerar mensalidades e no resumo da inscrição.",
+                        grelha(descontoFamiliares, descontoFamiliaresPct, descontoDirecao,
+                                descontoMaisModal, descontoMais65))));
+
+        tabs.add(tab(VaadinIcon.CLIPBOARD_USER, "Inscrições & Alunos"), painel(
+                secao("Taxas", "Cobradas no primeiro pagamento da inscrição ou da renovação.",
+                        grelha(taxaInscricao, taxaRenovacao), primeiraGratis, isentarJaAlunos),
+                secao("Seguro desportivo", null, grelha(valorSeguro, segurosPermitidos)),
+                secao("Formulário público", "Idiomas disponíveis na inscrição/renovação online.", idiomasGroup),
+                secao("Ficha do aluno", "Campos opcionais visíveis no formulário de aluno.", camposGroup)));
+
+        tabs.add(tab(VaadinIcon.INVOICE, "Faturação & Pagamentos"), painel(
+                secao("Faturação", null, faturacaoAuto, grelha(programaFaturacao, vendusApiKey), tocSecao),
+                secao("Pagamentos online", "Mollie: inscrições, renovações, mensalidades no portal e aulas avulso.",
+                        mollieApiKey)));
+
+        tabs.add(tab(VaadinIcon.ACADEMY_CAP, "Professores"), painel(
+                secao("Remuneração", "Valores por defeito do estúdio. Cada professor pode sobrepô-los na página Professores.",
+                        tipoRemun, grupoHora, grupoPerc),
+                secao("Bónus", "Cartão \"Metas do Professor\" no dashboard dos professores.",
+                        bonusProf, metaBonus)));
+
+        tabs.add(tab(VaadinIcon.CHECK_SQUARE_O, "Check-in & Documentos"), painel(
+                secao("Janela de check-in", "Período em que o aluno pode registar a presença.",
+                        grelha(checkinJanelaAntes, checkinJanelaDepois)),
+                secao("Transferências e contratos", "Emails usados nas transferências e na assinatura de contratos.",
+                        grelha(emailCriador, emailAssinante1, emailAssinante2))));
+
+        tabs.add(tab(VaadinIcon.GRID_BIG_O, "Módulos"), painel(
+                secao("Módulos ativos", "Áreas da app visíveis para este estúdio.", modulosGroup),
+                secao("Cards do dashboard", "KPIs visíveis no dashboard do administrador.", dashboardCardsGroup)));
 
         Button salvar = new Button("Guardar", e -> {
             if (nome.getValue().isBlank() || slug.getValue().isBlank()) {
                 Notification.show("Nome e Slug são obrigatórios.").addThemeVariants(NotificationVariant.LUMO_ERROR);
+                tabs.setSelectedTab(tabGeral);
                 return;
             }
             studio.setNome(nome.getValue().trim());
@@ -834,8 +862,49 @@ public class StudioAdminView extends VerticalLayout {
         });
         salvar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        dialog.add(content);
+        dialog.add(tabs);
         dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), salvar);
         dialog.open();
+    }
+
+    // --- Blocos de layout do formulário de estúdio ---
+
+    private static Tab tab(VaadinIcon icon, String texto) {
+        return new Tab(icon.create(), new Span(texto));
+    }
+
+    /** Conteúdo de um separador: secções empilhadas. */
+    private static Component painel(Component... secoes) {
+        Div d = new Div(secoes);
+        d.addClassName("cf-studio-cfg-panel");
+        return d;
+    }
+
+    /** Secção com título, descrição opcional e conteúdo. */
+    private static Component secao(String titulo, String descricao, Component... conteudo) {
+        Div sec = new Div();
+        sec.addClassName("cf-studio-cfg-section");
+        H4 h = new H4(titulo);
+        h.addClassName("cf-studio-cfg-title");
+        sec.add(h);
+        if (descricao != null) {
+            Span d = new Span(descricao);
+            d.addClassName("cf-studio-cfg-desc");
+            sec.add(d);
+        }
+        Div corpo = new Div(conteudo);
+        corpo.addClassName("cf-studio-cfg-body");
+        sec.add(corpo);
+        return sec;
+    }
+
+    /** Grelha responsiva de campos: 1 coluna no telemóvel, até 3 em ecrãs largos. */
+    private static FormLayout grelha(Component... campos) {
+        FormLayout f = new FormLayout(campos);
+        f.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1),
+                new FormLayout.ResponsiveStep("520px", 2),
+                new FormLayout.ResponsiveStep("860px", 3));
+        f.setWidthFull();
+        return f;
     }
 }
