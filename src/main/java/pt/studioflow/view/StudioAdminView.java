@@ -645,6 +645,16 @@ public class StudioAdminView extends VerticalLayout {
         grupoPerc.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
         grupoPerc.setWidthFull();
 
+        Checkbox bonusProf = new Checkbox("Bónus de professores por meta de alunos");
+        bonusProf.setValue(studio.isBonusProfessores());
+        bonusProf.setTooltipText("Mostra aos professores, no dashboard, o progresso para o bónus");
+        NumberField metaBonus = new NumberField("Meta de alunos ativos para bónus");
+        metaBonus.setValue((double) studio.getMetaBonusAlunos());
+        metaBonus.setMin(1);
+        metaBonus.setStep(1);
+        metaBonus.setVisible(bonusProf.getValue());
+        bonusProf.addValueChangeListener(e -> metaBonus.setVisible(e.getValue()));
+
         Runnable ajustarVisibilidadeRemun = () -> {
             boolean hora = !"PERCENTAGEM".equals(tipoRemun.getValue());
             grupoHora.setVisible(hora);
@@ -719,7 +729,7 @@ public class StudioAdminView extends VerticalLayout {
                 secPrecario, modeloPrecario, grupoPadrao, grupoHorasSemana, grupoModalidades, meiaMensalidade,
                 secCampos, camposGroup,
                 secFat, faturacaoAuto, programaFaturacao, tocSecao,
-                secRemun, remunHint, tipoRemun, grupoHora, grupoPerc,
+                secRemun, remunHint, tipoRemun, grupoHora, grupoPerc, bonusProf, metaBonus,
                 secModulos, modulosGroup,
                 secDashboard, dashboardCardsGroup,
                 secIdiomas, idiomasGroup);
@@ -801,6 +811,8 @@ public class StudioAdminView extends VerticalLayout {
             studio.setPercProf2x(perc2x.getValue());
             studio.setPercProf3x(perc3x.getValue());
             studio.setPercProfOutras(percOutras.getValue());
+            studio.setBonusProfessores(bonusProf.getValue());
+            studio.setMetaBonusAlunos(metaBonus.getValue() != null ? metaBonus.getValue().intValue() : null);
 
             // Módulos
             String modulosStr = modulosGroup.getValue().stream()
