@@ -228,7 +228,9 @@ public class AlunosProfessorView extends VerticalLayout {
 
         Map<Aluno, Set<String>> alunoTurmasMap = new HashMap<>();
         for (Turma t : turmasDoProf) {
-            turmaService.getAlunosDaTurma(t)
+            // Alunos em aula experimental não aparecem na lista do professor
+            turmaService.getAlunosDaTurma(t).stream()
+                    .filter(aluno -> aluno.getStatus() != Aluno.AlunoStatus.EXPERIMENTAL)
                     .forEach(aluno -> alunoTurmasMap.computeIfAbsent(aluno, k -> new TreeSet<>()).add(t.getDescricao()));
         }
 
