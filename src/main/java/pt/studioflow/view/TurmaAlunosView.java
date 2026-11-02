@@ -98,18 +98,18 @@ public class TurmaAlunosView extends VerticalLayout {
     private void injectCustomStyles() {
         String styles = ".grid-modern { background: transparent !important; border: none !important; }" +
                 ".aluno-card { " +
-                "  background: white; border-radius: 12px; padding: 10px 15px; " +
-                "  box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #eee; " +
+                "  background: var(--lumo-base-color); color: var(--lumo-body-text-color); border-radius: 12px; padding: 10px 15px; " +
+                "  box-shadow: var(--lumo-box-shadow-xs); border: 1px solid var(--lumo-contrast-10pct); " +
                 "  display: flex; align-items: center; gap: 12px; width: 100%; transition: all 0.2s; " +
                 "} " +
-                ".aluno-card:hover { border-color: #FF5D13; background: #fffcfb; }" +
+                ".aluno-card:hover { border-color: #FF5D13; background: var(--lumo-contrast-5pct); }" +
                 ".avatar-circle { " +
                 "  width: 35px; height: 35px; border-radius: 50%; background: #FF5D13; " +
                 "  display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; " +
                 "} " +
                 ".section-container { " +
-                "  background: rgba(255,255,255,0.6); backdrop-filter: blur(10px); " +
-                "  border-radius: 16px; padding: 15px; border: 1px solid #e0e0e0; " +
+                "  background: var(--lumo-contrast-5pct); color: var(--lumo-body-text-color); " +
+                "  border-radius: 16px; padding: 15px; border: 1px solid var(--lumo-contrast-10pct); " +
                 "}";
 
         UI.getCurrent().getElement().executeJs(
