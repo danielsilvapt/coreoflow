@@ -330,13 +330,14 @@ public class DashboardView extends Div {
                                                 + mesAtual.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt")),
                                                 VaadinIcon.CHART, vA));
 
-                                // BI do Professor
+                                // BI do Professor (só em estúdios com bónus de professores)
+                                if (studio != null && studio.isBonusProfessores()) {
                                 VerticalLayout vBI = new VerticalLayout();
                                 vBI.setPadding(false);
                                 // Conta cabeças: aluno em várias turmas do professor só conta uma vez.
                                 // Só alunos ativados e confirmados (sem experimentais nem pendentes)
                                 // e com pelo menos uma presença registada numa turma do professor
-                                final int META_BONUS_ALUNOS = 20;
+                                final int META_BONUS_ALUNOS = studio.getMetaBonusAlunos();
                                 Set<Long> idsTurmasProfBI = turmas.stream().filter(t -> t.getProfessor() != null
                                                         && normalizar(t.getProfessor().getNome()).contains(busca))
                                                 .map(Turma::getId).collect(Collectors.toSet());
@@ -365,6 +366,7 @@ public class DashboardView extends Div {
                                 Div cBI = criarCard("Metas do Professor", VaadinIcon.LIGHTBULB, vBI);
                                 cBI.addClassName("cf-card--violet");
                                 gridLayout.add(cBI);
+                                }
                         }
 
                         if (isAdmin) {
