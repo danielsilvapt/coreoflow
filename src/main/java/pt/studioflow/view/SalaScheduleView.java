@@ -142,7 +142,7 @@ public class SalaScheduleView extends VerticalLayout {
         setPadding(true);
         setSpacing(true);
         setSizeFull();
-        getStyle().set("background-color", "#f8f9fa");
+        getStyle().set("background-color", "var(--cf-bg)");
         ViewUtils.injetarEstiloBotoesAcao();
 
         // Injeção de Estilos CSS Avançados para Efeitos de Grelha e Transições
@@ -150,7 +150,7 @@ public class SalaScheduleView extends VerticalLayout {
         Div estiloInjetado = new Div();
         estiloInjetado.getElement().setProperty("innerHTML", "<style>"
                 + ".grid-slot { transition: background-color 0.15s ease; }"
-                + ".grid-slot:hover { background-color: #f1f5f9 !important; z-index: 1; }"
+                + ".grid-slot:hover { background-color: var(--lumo-contrast-5pct) !important; z-index: 1; }"
                 + ".schedule-card { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease; }"
                 + ".schedule-card:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important; z-index: 50 !important; }"
                 + "</style>");
@@ -163,13 +163,13 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("margin", "0")
                 .set("font-size", "1.4rem")
                 .set("font-weight", "700")
-                .set("color", "#2b2d42");
+                .set("color", "var(--cf-text-strong)");
 
         if (isAdmin) {
             notificationsSection = new VerticalLayout();
             notificationsSection.getStyle()
-                    .set("background-color", "#fff5f5")
-                    .set("border", "1px solid #feb2b2")
+                    .set("background-color", "var(--cf-error-bg)")
+                    .set("border", "1px solid var(--cf-error-border)")
                     .set("border-radius", "12px")
                     .set("padding", "16px")
                     .set("margin-bottom", "10px");
@@ -191,7 +191,7 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("font-weight", "600")
                 .set("font-size", "1rem")
                 .set("margin", "0 10px")
-                .set("color", "#4a5568")
+                .set("color", "var(--cf-text-secondary)")
                 .set("white-space", "nowrap");
 
         btnAnterior.addClickListener(e -> {
@@ -211,10 +211,10 @@ public class SalaScheduleView extends VerticalLayout {
         navLayout.setAlignItems(FlexComponent.Alignment.CENTER);
         navLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
         navLayout.getStyle()
-                .set("background-color", "#ffffff")
+                .set("background-color", "var(--cf-surface)")
                 .set("padding", "6px 12px")
                 .set("border-radius", "30px")
-                .set("box-shadow", "0 2px 4px rgba(0,0,0,0.04)");
+                .set("box-shadow", "var(--cf-shadow-xs)");
 
         Button btnAdicionarRegular = new Button("➕ Regular");
         btnAdicionarRegular.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -247,7 +247,7 @@ public class SalaScheduleView extends VerticalLayout {
             criarChipLegenda("Aula Regular", "#3b82f6"),
             criarChipLegenda("Aula Pontual / Privada", "#f97316"),
             criarChipLegenda("Pendente aprovação", "#94a3b8"),
-            criarChipLegenda("Hoje", "#f0fdf4", "#16a34a")
+            criarChipLegenda("Hoje", "var(--cf-success-bg)", "var(--cf-success-text)")
         );
 
         add(topBar, legenda);
@@ -258,8 +258,8 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("overflow", "auto")
                 .set("-webkit-overflow-scrolling", "touch")
                 .set("border-radius", "12px")
-                .set("background-color", "#ffffff")
-                .set("box-shadow", "0 4px 12px rgba(0,0,0,0.05)");
+                .set("background-color", "var(--cf-surface)")
+                .set("box-shadow", "var(--cf-shadow-sm)");
         add(grelhaContainer);
 
         atualizarTudo();
@@ -291,8 +291,8 @@ public class SalaScheduleView extends VerticalLayout {
 
         notificationsSection.setVisible(true);
         notificationsSection.getStyle()
-                .set("background-color", "#fff7ed")
-                .set("border", "1px solid #fed7aa")
+                .set("background-color", "var(--cf-warning-bg)")
+                .set("border", "1px solid var(--cf-warning-border)")
                 .set("border-radius", "12px")
                 .set("padding", "14px 16px")
                 .set("margin-bottom", "10px");
@@ -309,7 +309,7 @@ public class SalaScheduleView extends VerticalLayout {
         bellIcon.setColor("#ea580c");
         bellIcon.setSize("18px");
         H3 titulo = new H3("Pedidos de Sala Pendentes");
-        titulo.getStyle().set("margin", "0 0 0 8px").set("font-size", "0.95rem").set("color", "#c2410c");
+        titulo.getStyle().set("margin", "0 0 0 8px").set("font-size", "0.95rem").set("color", "var(--cf-warning-text)");
         Span badge = new Span(String.valueOf(pendentes.size()));
         badge.getStyle()
                 .set("background", "#ea580c").set("color", "white")
@@ -318,7 +318,7 @@ public class SalaScheduleView extends VerticalLayout {
         left.add(bellIcon, titulo, badge);
 
         Span hint = new Span("Clique em Aprovar ou Recusar para cada pedido");
-        hint.getStyle().set("font-size", "0.78rem").set("color", "#9a3412").set("opacity", "0.8");
+        hint.getStyle().set("font-size", "0.78rem").set("color", "var(--cf-warning-text)").set("opacity", "0.8");
         cabecalho.add(left, hint);
         notificationsSection.add(cabecalho);
 
@@ -329,11 +329,11 @@ public class SalaScheduleView extends VerticalLayout {
             item.setWidthFull();
             item.setAlignItems(FlexComponent.Alignment.CENTER);
             item.getStyle()
-                    .set("background", "white")
+                    .set("background", "var(--cf-surface)")
                     .set("border-radius", "8px")
                     .set("padding", "10px 14px")
                     .set("margin-top", "8px")
-                    .set("box-shadow", "0 1px 3px rgba(0,0,0,0.06)")
+                    .set("box-shadow", "var(--cf-shadow-xs)")
                     .set("border-left", "4px solid #ea580c")
                     .set("flex-wrap", "wrap")
                     .set("gap", "8px");
@@ -347,13 +347,13 @@ public class SalaScheduleView extends VerticalLayout {
             String dataStr = p.getData() != null ? p.getData().format(fmtData) : "—";
             Span linha1 = new Span("👤 " + p.getProfessor() + "   📅 " + dataStr
                     + "   🕐 " + p.getHoraInicio() + " – " + p.getHoraFim());
-            linha1.getStyle().set("font-weight", "600").set("font-size", "0.88rem").set("color", "#1c1917");
+            linha1.getStyle().set("font-weight", "600").set("font-size", "0.88rem").set("color", "var(--cf-text-strong)");
 
             String sala = p.getSala() != null ? p.getSala().getNome() : "—";
             String obs = (p.getObservacoes() != null && !p.getObservacoes().isBlank())
                     ? " · " + p.getObservacoes() : "";
             Span linha2 = new Span("🏠 " + sala + "   📋 " + p.getTipo() + obs);
-            linha2.getStyle().set("font-size", "0.8rem").set("color", "#78716c");
+            linha2.getStyle().set("font-size", "0.8rem").set("color", "var(--cf-text-secondary)");
 
             info.add(linha1, linha2);
 
@@ -484,7 +484,7 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("padding", "3px 10px")
                 .set("font-size", "0.75rem")
                 .set("font-weight", "600")
-                .set("border", "1px solid rgba(0,0,0,0.08)");
+                .set("border", "1px solid var(--cf-border)");
         return chip;
     }
 
@@ -500,7 +500,7 @@ public class SalaScheduleView extends VerticalLayout {
         List<Sala> salas = studio != null ? salaRepository.findAllByStudio(studio) : salaRepository.findAll();
         if (salas.isEmpty()) {
             Span emptySpan = new Span("Nenhuma sala configurada no sistema.");
-            emptySpan.getStyle().set("padding", "20px").set("color", "#718096");
+            emptySpan.getStyle().set("padding", "20px").set("color", "var(--cf-text-tertiary)");
             grelhaContainer.add(emptySpan);
             return;
         }
@@ -561,7 +561,7 @@ public class SalaScheduleView extends VerticalLayout {
             Div diaDiv = new Div(txtDia, dataDiaSpan);
             diaDiv.getStyle()
                     .set("grid-column", "span " + numSalas)
-                    .set("border-left", "1px solid #334155")
+                    .set("border-left", "1px solid rgba(255,255,255,0.12)")
                     .set("padding", "8px 0")
                     .set("text-align", "center");
             if (isHojeHeader) {
@@ -582,21 +582,21 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("position", "sticky")
                 .set("top", "37px")
                 .set("z-index", "90")
-                .set("background-color", "#f1f5f9")
-                .set("border-bottom", "1px solid #e2e8f0")
+                .set("background-color", "var(--cf-surface-subtle)")
+                .set("border-bottom", "1px solid var(--cf-border)")
                 .set("text-align", "center");
 
         Span txtHora = new Span("Hora");
-        txtHora.getStyle().set("font-size", "0.65rem").set("font-weight", "600").set("color", "#64748b");
+        txtHora.getStyle().set("font-size", "0.65rem").set("font-weight", "600").set("color", "var(--cf-text-tertiary)");
         headerSalas.add(new Div(txtHora));
 
         for (DayOfWeek dia : diasSemana) {
             for (Sala sala : salas) {
                 Span sTxt = new Span(sala.getNome());
-                sTxt.getStyle().set("font-size", "0.7rem").set("font-weight", "600").set("color", "#334155");
+                sTxt.getStyle().set("font-size", "0.7rem").set("font-weight", "600").set("color", "var(--cf-text)");
                 Div sDiv = new Div(sTxt);
                 sDiv.getStyle()
-                        .set("border-left", "1px solid #e2e8f0")
+                        .set("border-left", "1px solid var(--cf-border)")
                         .set("padding", "6px 0");
                 headerSalas.add(sDiv);
             }
@@ -613,8 +613,8 @@ public class SalaScheduleView extends VerticalLayout {
         Div colHoras = new Div();
         colHoras.getStyle()
                 .set("position", "relative")
-                .set("border-right", "1px solid #cbd5e1")
-                .set("background-color", "#f8fafc");
+                .set("border-right", "1px solid var(--cf-border-strong)")
+                .set("background-color", "var(--cf-surface-subtle)");
         // Primeira marca é a própria hora de início da grelha (07:30), depois uma por cada hora cheia.
         Span horaLabelInicio = new Span(String.format("%02d:%02d", HORA_INICIO_MINUTOS / 60, HORA_INICIO_MINUTOS % 60));
         horaLabelInicio.getStyle()
@@ -623,7 +623,7 @@ public class SalaScheduleView extends VerticalLayout {
                 .set("left", "8px")
                 .set("font-size", "0.7rem")
                 .set("font-weight", "500")
-                .set("color", "#64748b");
+                .set("color", "var(--cf-text-tertiary)");
         colHoras.add(horaLabelInicio);
         for (int h = (HORA_INICIO_MINUTOS / 60) + 1; h < HORA_FIM; h++) {
             Span horaLabel = new Span(String.format("%02d:00", h));
@@ -633,7 +633,7 @@ public class SalaScheduleView extends VerticalLayout {
                     .set("left", "8px")
                     .set("font-size", "0.7rem")
                     .set("font-weight", "500")
-                    .set("color", "#64748b");
+                    .set("color", "var(--cf-text-tertiary)");
             colHoras.add(horaLabel);
         }
         corpoGrelha.add(colHoras);
@@ -646,11 +646,11 @@ public class SalaScheduleView extends VerticalLayout {
                 Div coluna = new Div();
                 coluna.getStyle()
                         .set("position", "relative")
-                        .set("border-left", "1px solid #f1f5f9")
+                        .set("border-left", "1px solid var(--cf-border)")
                         .set("height", "100%");
 
                 if (isHoje) {
-                    coluna.getStyle().set("background-color", "#f0fdf4");
+                    coluna.getStyle().set("background-color", "var(--cf-success-bg)");
                 }
 
                 // Primeiro slot cobre só a meia-hora inicial (07:30–08:00); os restantes são de hora inteira.
@@ -661,7 +661,7 @@ public class SalaScheduleView extends VerticalLayout {
                         .set("top", "0px")
                         .set("width", "100%")
                         .set("height", (PIXELS_POR_HORA / 2) + "px")
-                        .set("border-top", "1px solid #f1f5f9")
+                        .set("border-top", "1px solid var(--cf-border)")
                         .set("cursor", "pointer")
                         .set("z-index", "0");
                 LocalTime horaInicioFixa = LocalTime.of(HORA_INICIO_MINUTOS / 60, HORA_INICIO_MINUTOS % 60);
@@ -683,7 +683,7 @@ public class SalaScheduleView extends VerticalLayout {
                             .set("top", Math.round((h - HORA_INICIO) * PIXELS_POR_HORA) + "px")
                             .set("width", "100%")
                             .set("height", PIXELS_POR_HORA + "px")
-                            .set("border-top", "1px solid #f1f5f9")
+                            .set("border-top", "1px solid var(--cf-border)")
                             .set("cursor", "pointer")
                             .set("z-index", "0");
 
@@ -865,7 +865,7 @@ public class SalaScheduleView extends VerticalLayout {
         String horas = a.getHoraInicio() + (a.getHoraFim() != null ? " – " + a.getHoraFim() : "");
         Span sub = new Span(capitalizarPt(data.format(fmt)) + "  ·  " + horas
                 + (a.getSala() != null ? "  ·  " + a.getSala().getNome() : ""));
-        sub.getStyle().set("font-size", "0.85rem").set("color", "#64748b").set("font-weight", "600");
+        sub.getStyle().set("font-size", "0.85rem").set("color", "var(--cf-text-tertiary)").set("font-weight", "600");
 
         TextArea planeamento = new TextArea("📝 Plano da aula");
         planeamento.setPlaceholder("O que vais dar nesta aula...");
@@ -885,7 +885,7 @@ public class SalaScheduleView extends VerticalLayout {
 
         if (existente != null && existente.isEnviado() && existente.getDataEnvio() != null) {
             Span env = new Span("Sumário enviado à turma em " + DataUtil.formatar(existente.getDataEnvio()));
-            env.getStyle().set("color", "#15803d").set("font-weight", "600").set("font-size", "0.8rem");
+            env.getStyle().set("color", "var(--cf-success-text)").set("font-weight", "600").set("font-size", "0.8rem");
             conteudo.add(env);
         }
         dialog.add(conteudo);
@@ -1414,7 +1414,7 @@ public class SalaScheduleView extends VerticalLayout {
             List<VideoAula> videos = videoAulaRepository.findByTurmaAndDataOrderByDataUploadDesc(turma, data);
             if (videos.isEmpty()) {
                 Span vazio = new Span("Ainda não há vídeos para esta aula.");
-                vazio.getStyle().set("color", "#888");
+                vazio.getStyle().set("color", "var(--cf-text-tertiary)");
                 lista.add(vazio);
             } else {
                 videos.forEach(v -> lista.add(criarCardVideoMapa(v, refresh[0])));
@@ -1471,7 +1471,7 @@ public class SalaScheduleView extends VerticalLayout {
         card.setPadding(false);
         card.setSpacing(false);
         card.setAlignItems(Alignment.CENTER);
-        card.getStyle().set("border", "1px solid #e2e8f0").set("border-radius", "10px").set("padding", "8px");
+        card.getStyle().set("border", "1px solid var(--cf-border)").set("border-radius", "10px").set("padding", "8px");
 
         Div thumb = new Div(VaadinIcon.PLAY_CIRCLE.create());
         thumb.getStyle().set("width", "100%").set("height", "56px").set("border-radius", "6px")
