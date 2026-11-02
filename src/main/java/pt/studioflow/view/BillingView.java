@@ -47,7 +47,8 @@ public class BillingView extends VerticalLayout {
         this.alunoRepo = alunoRepo;
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
 
         H2 titulo = new H2("Billing dos Estúdios");
         titulo.getStyle().set("margin-top", "0");

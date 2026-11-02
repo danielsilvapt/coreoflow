@@ -44,7 +44,8 @@ public class LogsView extends VerticalLayout {
     public LogsView(LogEntryRepository repo) {
         this.repo = repo;
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
 
         H2 titulo = new H2("Logs & Erros");

@@ -106,9 +106,10 @@ public class RegistoHorasView extends VerticalLayout {
         // no viewport
         setWidthFull();
         setMinHeight("100%");
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
-        setClassName("view-container-scrollable");
+        addClassName("view-container-scrollable");
 
         injectStyles();
         ViewUtils.injetarEstiloBotoesAcao();

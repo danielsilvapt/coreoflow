@@ -76,6 +76,7 @@ public class InqueritosView extends VerticalLayout {
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
         ViewUtils.injetarEstiloBotoesAcao();
         add(ViewUtils.toolbar(ViewUtils.botaoNovo("Novo Inquérito", e -> abrirDialogFormulario(null))),

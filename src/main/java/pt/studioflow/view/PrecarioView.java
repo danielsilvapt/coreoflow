@@ -37,6 +37,8 @@ public class PrecarioView extends VerticalLayout {
         this.studioService = studioService;
 
         setWidthFull();
+        setPadding(false);
+        addClassName("cf-page");
         setMaxWidth("900px");
 
         H2 titulo = new H2("Preçário");

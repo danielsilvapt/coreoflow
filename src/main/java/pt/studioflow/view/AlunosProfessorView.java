@@ -65,6 +65,7 @@ public class AlunosProfessorView extends VerticalLayout {
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         H2 titulo = new H2("Os Meus Alunos");

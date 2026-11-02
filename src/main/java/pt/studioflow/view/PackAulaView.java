@@ -48,6 +48,7 @@ public class PackAulaView extends VerticalLayout {
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         ViewUtils.injetarEstiloBotoesAcao();

@@ -37,7 +37,8 @@ public class SuperAdminDashboardView extends VerticalLayout {
                                    SessaoAtivaService sessaoAtivaService) {
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
 
         List<Studio> studios = studioRepository.findAll();

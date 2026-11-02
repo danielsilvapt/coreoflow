@@ -80,11 +80,12 @@ public class AvaliacoesView extends VerticalLayout {
 
         setSizeFull();
         setPadding(false);
+        addClassName("cf-page");
         setSpacing(false);
 
         ViewUtils.injetarEstiloBotoesAcao();
         H2 titulo = new H2("Avaliações");
-        titulo.getStyle().set("margin", "0 0 8px 0").set("padding", "20px 20px 0 20px");
+        titulo.getStyle().set("margin", "0 0 8px 0");
 
         add(titulo, criarToolbar(), criarGrid());
         atualizar();

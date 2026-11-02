@@ -139,7 +139,8 @@ public class SalaScheduleView extends VerticalLayout {
         this.isAdmin = VaadinServletRequest.getCurrent().getHttpServletRequest().isUserInRole("ADMIN");
         this.professorLogado = isAdmin ? null : resolverProfessorLogado();
 
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
         setSizeFull();
         getStyle().set("background-color", "var(--cf-bg)");

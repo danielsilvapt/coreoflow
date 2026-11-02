@@ -63,7 +63,8 @@ public class ConvitesProfessorView extends VerticalLayout {
         this.profTurmas = profTurmas;
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
 
         // 1. Identificar Permissões
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

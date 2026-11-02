@@ -34,7 +34,8 @@ public class ConfiguracoesPlataformaView extends VerticalLayout {
         this.groqService = groqService;
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
 
         H2 titulo = new H2("Configurações da Plataforma");

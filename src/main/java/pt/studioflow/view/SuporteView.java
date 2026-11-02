@@ -49,7 +49,8 @@ public class SuporteView extends VerticalLayout {
         this.repo = repo;
 
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        addClassName("cf-page");
         setSpacing(true);
 
         H2 titulo = new H2("Suporte");
