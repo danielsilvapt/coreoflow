@@ -1,8 +1,12 @@
 package pt.studioflow.view;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -29,6 +33,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.component.upload.receivers.MultiFileMemoryBuffer;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
@@ -59,6 +65,11 @@ public class TurmaComunicacaoView extends VerticalLayout {
     private final UserRepository userRepository;
     private final AlunoRepository alunoRepository;
     private final R2StorageService storageService;
+
+    // Limites dos anexos: os servidores SMTP recusam mensagens acima de ~25 MB
+    // (alguns relays menos), e a codificação base64 aumenta o tamanho em ~33%.
+    private static final int MAX_ANEXOS = 10;
+    private static final int MAX_TAMANHO_ANEXOS_BYTES = 15 * 1024 * 1024;
 
     private final Div containerCards = new Div();
 
@@ -376,6 +387,37 @@ public class TurmaComunicacaoView extends VerticalLayout {
         ccProfessor.setValue(true);
         ccProfessor.setEnabled(professorCorrespondente != null);
 
+        // Anexos: um ou mais documentos, guardados em memória até ao envio.
+        // O nome do ficheiro é a chave (o componente Upload também identifica os
+        // ficheiros pelo nome quando o utilizador os remove da lista).
+        Map<String, EmailService.AnexoEmail> anexos = new LinkedHashMap<>();
+        MultiFileMemoryBuffer bufferAnexos = new MultiFileMemoryBuffer();
+        Upload uploadAnexos = new Upload(bufferAnexos);
+        uploadAnexos.setMaxFiles(MAX_ANEXOS);
+        uploadAnexos.setMaxFileSize(MAX_TAMANHO_ANEXOS_BYTES);
+        uploadAnexos.setUploadButton(new Button("Anexar documentos", new Icon(VaadinIcon.PAPERCLIP)));
+        uploadAnexos.setDropLabel(new Span("ou arraste os ficheiros para aqui"));
+        uploadAnexos.setWidthFull();
+        uploadAnexos.addSucceededListener(ev -> {
+            String nome = ev.getFileName();
+            try (InputStream is = bufferAnexos.getInputStream(nome)) {
+                anexos.put(nome, new EmailService.AnexoEmail(nome, ev.getMIMEType(), is.readAllBytes()));
+            } catch (IOException ex) {
+                Notification.show("Não foi possível ler o ficheiro \"" + nome + "\".")
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        uploadAnexos.addFileRejectedListener(ev -> Notification
+                .show(ev.getErrorMessage(), 4000, Notification.Position.MIDDLE)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR));
+        uploadAnexos.getElement().addEventListener("file-remove",
+                ev -> anexos.remove(ev.getEventData().getString("event.detail.file.name")))
+                .addEventData("event.detail.file.name");
+
+        Span infoAnexos = new Span("Opcional. Até " + MAX_ANEXOS + " ficheiros, máx. "
+                + (MAX_TAMANHO_ANEXOS_BYTES / (1024 * 1024)) + " MB no total.");
+        infoAnexos.getStyle().set("color", "var(--lumo-secondary-text-color)").set("font-size", "0.8em");
+
         Button enviar = new Button("Enviar Agora", ev -> {
             List<String> emails = selecionados.stream()
                     .map(Aluno::getEmail)
@@ -387,10 +429,19 @@ public class TurmaComunicacaoView extends VerticalLayout {
                 return;
             }
 
+            long tamanhoTotal = anexos.values().stream().mapToLong(a -> a.dados().length).sum();
+            if (tamanhoTotal > MAX_TAMANHO_ANEXOS_BYTES) {
+                Notification.show("Os anexos ultrapassam o limite de "
+                        + (MAX_TAMANHO_ANEXOS_BYTES / (1024 * 1024)) + " MB no total. Remova algum ficheiro.",
+                        4000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+
             try {
                 Professor profCc = ccProfessor.getValue() ? professorCorrespondente : null;
                 emailService.enviarEmailParaLista(studioAtual, profCc, emails, assunto.getValue(),
-                        mensagem.getValue());
+                        mensagem.getValue(), new ArrayList<>(anexos.values()));
                 dialog.close();
                 Notification.show("E-mail enviado com sucesso para " + emails.size() + " alunos!")
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -400,7 +451,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
             }
         });
         enviar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        content.add(assunto, mensagem, ccProfessor);
+        content.add(assunto, mensagem, uploadAnexos, infoAnexos, ccProfessor);
         dialog.add(content);
         dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), enviar);
         dialog.open();
