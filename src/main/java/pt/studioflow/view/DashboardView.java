@@ -737,20 +737,17 @@ public class DashboardView extends Div {
                         Predicate<StudioModulo> moduloAtivo) {
                 List<Tarefa> tarefas = new ArrayList<>();
 
-                // 1. Inscrições, renovações e experimentais à espera de resposta
+                // 1. Inscrições e renovações à espera de resposta
                 if (moduloAtivo.test(StudioModulo.INSCRICOES)) {
                         long novas = todosAlunos.stream()
                                         .filter(a -> a.getStatus() == Aluno.AlunoStatus.PENDENTE && !a.isPedidoRenovacao())
                                         .count();
                         long renov = dashboardService.countRenovacoesPendentes(todosAlunos);
-                        long exp = todosAlunos.stream()
-                                        .filter(a -> a.getStatus() == Aluno.AlunoStatus.EXPERIMENTAL).count();
-                        long total = novas + renov + exp;
+                        long total = novas + renov;
                         if (total > 0) {
                                 List<String> partes = new ArrayList<>();
                                 if (novas > 0) partes.add(plural(novas, "inscrição nova", "inscrições novas"));
                                 if (renov > 0) partes.add(plural(renov, "renovação", "renovações"));
-                                if (exp > 0) partes.add(plural(exp, "experimental", "experimentais"));
                                 tarefas.add(new Tarefa(VaadinIcon.USER_CHECK, "warning",
                                                 plural(total, "pedido por validar", "pedidos por validar"),
                                                 String.join(" · ", partes), null, true,

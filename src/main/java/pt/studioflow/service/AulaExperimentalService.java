@@ -95,6 +95,19 @@ public class AulaExperimentalService {
      */
     @Transactional(readOnly = true)
     public List<Sessao> sessoesDisponiveis(Turma turma) {
+        return sessoes(turma, false);
+    }
+
+    /**
+     * Sessões para o professor registar uma aula experimental: inclui as de hoje que
+     * já começaram (o candidato costuma ser registado durante ou depois da aula).
+     */
+    @Transactional(readOnly = true)
+    public List<Sessao> sessoesParaProfessor(Turma turma) {
+        return sessoes(turma, true);
+    }
+
+    private List<Sessao> sessoes(Turma turma, boolean incluirIniciadasHoje) {
         LocalDate hoje = LocalDate.now();
         LocalDateTime agora = LocalDateTime.now();
         List<Aula> aulas = aulaRepository.findByTurma(turma).stream()
@@ -113,7 +126,8 @@ public class AulaExperimentalService {
                 if (a.getDia() != d.getDayOfWeek()) continue;
                 if (a.getDataInicio() != null && d.isBefore(a.getDataInicio())) continue;
                 if (a.getDataFim() != null && d.isAfter(a.getDataFim())) continue;
-                if (d.atTime(a.getHoraInicio()).isBefore(agora)) continue;
+                if (d.atTime(a.getHoraInicio()).isBefore(agora)
+                        && !(incluirIniciadasHoje && d.equals(hoje))) continue;
                 out.add(new Sessao(turma, d, a.getHoraInicio(), a.getHoraFim()));
             }
         }
@@ -127,6 +141,15 @@ public class AulaExperimentalService {
      */
     @Transactional
     public AulaExperimental marcar(Studio studio, Pedido p) {
+        return marcar(studio, p, true);
+    }
+
+    /**
+     * @param avisarProfessores {@code false} quando é o próprio professor a registar
+     *                          (não faz sentido enviar-lhe um email a avisar)
+     */
+    @Transactional
+    public AulaExperimental marcar(Studio studio, Pedido p, boolean avisarProfessores) {
         if (p.nome() == null || p.nome().isBlank()) throw new IllegalArgumentException("Indica o nome.");
         if ((p.telemovel() == null || p.telemovel().isBlank()) && (p.email() == null || p.email().isBlank()))
             throw new IllegalArgumentException("Indica um telemóvel ou email de contacto.");
@@ -178,7 +201,9 @@ public class AulaExperimentalService {
         ae.setObservacoes(limpar(p.observacoes()));
         ae = repository.save(ae);
 
-        avisarProfessores(ae);
+        if (avisarProfessores) {
+            avisarProfessores(ae);
+        }
 
         // Marcações online avisam o estúdio por email (as registadas pela secretaria não).
         if (ae.getOrigem() == AulaExperimental.Origem.ONLINE) {

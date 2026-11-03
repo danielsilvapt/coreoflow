@@ -51,6 +51,8 @@ import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.AlunoTurmaRepository;
 import pt.studioflow.repository.PresencaRepository;
 import pt.studioflow.repository.TurmaRepository;
+import pt.studioflow.model.AulaExperimental;
+import pt.studioflow.service.AulaExperimentalService;
 import pt.studioflow.service.EmailService;
 import pt.studioflow.service.PdfService;
 import pt.studioflow.service.ProfessorTurmasService;
@@ -76,6 +78,7 @@ public class PresencasView extends VerticalLayout {
     private final R2StorageService storageService;
 
     private final EmailService mailService;
+    private final AulaExperimentalService aulaExperimentalService;
 
     private ComboBox<Turma> turmaCombo;
     private ComboBox<YearMonth> mesCombo;
@@ -118,7 +121,8 @@ public class PresencasView extends VerticalLayout {
             ProfessorTurmasService profTurmas,
             PdfService pdfService,
             EmailService mailService,
-            R2StorageService storageService) {
+            R2StorageService storageService,
+            AulaExperimentalService aulaExperimentalService) {
         this.turmaRepository = turmaRepository;
         this.presencaRepository = presencaRepository;
         this.turmaService = turmaService;
@@ -128,6 +132,7 @@ public class PresencasView extends VerticalLayout {
         this.pdfService = pdfService;
         this.mailService = mailService;
         this.storageService = storageService;
+        this.aulaExperimentalService = aulaExperimentalService;
 
         // Alterado para permitir scroll infinito na página
         setSizeFull();
@@ -223,39 +228,62 @@ public class PresencasView extends VerticalLayout {
             return;
         }
 
+        List<AulaExperimentalService.Sessao> sessoes = aulaExperimentalService.sessoesParaProfessor(turmaSelecionada);
+        if (sessoes.isEmpty()) {
+            Notification.show("Esta turma não tem sessões nos próximos dias para marcar a aula experimental.")
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle("Registar Aula Experimental");
 
         VerticalLayout layout = new VerticalLayout();
+        layout.setPadding(false);
         TextField txtNome = new TextField("Nome do Candidato");
         TextField txtTel = new TextField("Telemóvel");
+        TextField txtEmail = new TextField("Email (opcional)");
+        ComboBox<AulaExperimentalService.Sessao> cbSessao = new ComboBox<>("Aula");
+        cbSessao.setItems(sessoes);
+        cbSessao.setItemLabelGenerator(AulaExperimentalService.Sessao::label);
+        cbSessao.setValue(sessoes.get(0));
         txtNome.setWidthFull();
         txtTel.setWidthFull();
-        layout.add(txtNome, txtTel);
+        txtEmail.setWidthFull();
+        cbSessao.setWidthFull();
+        layout.add(txtNome, txtTel, txtEmail, cbSessao);
 
-        Button btnConfirmar = new Button("Adicionar à Turma", e -> {
-            if (txtNome.getValue().trim().isEmpty())
+        Button btnConfirmar = new Button("Registar", e -> {
+            if (txtNome.getValue().trim().isEmpty()) {
+                txtNome.setInvalid(true);
+                txtNome.setErrorMessage("Indique o nome");
                 return;
+            }
+            String quem = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                    .getAuthentication() != null
+                    ? org.springframework.security.core.context.SecurityContextHolder.getContext()
+                            .getAuthentication().getName()
+                    : null;
+            AulaExperimental ae;
+            try {
+                // Fica no menu "Aulas Experimentais" e na turma (presenças), como as marcações da secretaria.
+                ae = aulaExperimentalService.marcar(TenantContext.getCurrentStudio(),
+                        new AulaExperimentalService.Pedido(txtNome.getValue(), txtTel.getValue(), txtEmail.getValue(),
+                                cbSessao.getValue(), AulaExperimental.Origem.PRESENCIAL,
+                                "Registada pelo professor nas Presenças" + (quem != null ? " (" + quem + ")" : "")),
+                        false);
+            } catch (IllegalArgumentException ex) {
+                Notification.show(ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
 
-            Aluno novo = new Aluno();
-            novo.setNomeCompleto(txtNome.getValue());
-            novo.setTelemovel(txtTel.getValue());
-            novo.setStatus(AlunoStatus.EXPERIMENTAL);
-            novo.setAtivo(false);
-            novo.setStudio(TenantContext.getCurrentStudio());
-            novo = alunoRepository.save(novo);
+            if (ae.getAluno() != null) {
+                mailService.enviarEmailNotificacaoExperimental(ae.getAluno(), turmaSelecionada);
+            }
 
-            AlunoTurma at = new AlunoTurma();
-            at.setAluno(novo);
-            at.setTurma(turmaSelecionada);
-            at.setAulasPorSemana(1);
-            alunoTurmaRepository.save(at);
-
-            Date agora = new Date();
-
-            mailService.enviarEmailNotificacaoExperimental(novo, turmaSelecionada);
-
-            Notification.show("Adicionado com sucesso!");
+            Notification.show("Aula experimental registada!")
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             dialog.close();
             carregarTudo();
         });
@@ -264,6 +292,7 @@ public class PresencasView extends VerticalLayout {
         dialog.getFooter().add(new Button("Cancelar", i -> dialog.close()), btnConfirmar);
         dialog.add(layout);
         dialog.open();
+        txtNome.focus();
     }
 
     private void atualizarColunasGrid() {
