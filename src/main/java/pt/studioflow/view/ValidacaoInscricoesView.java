@@ -82,14 +82,12 @@ public class ValidacaoInscricoesView extends VerticalLayout {
 
     private final Grid<Aluno> grid = new Grid<>(Aluno.class, false);
     private final Span totalPendentesLabel = new Span("0");
-    private final Span totalExperimentaisLabel = new Span("0");
     private final Span totalRenovacoesLabel = new Span("0");
     private final ComboBox<String> filtroTipoCombo = new ComboBox<>("Tipo");
     private List<Turma> turmasCache = List.of();
 
     private static final String FILTRO_TODAS = "Todas";
     private static final String FILTRO_INSCRICAO = "Novas Inscrições";
-    private static final String FILTRO_EXPERIMENTAL = "Experimentais";
     private static final String FILTRO_RENOVACAO = "Renovações";
 
     public ValidacaoInscricoesView(AlunoRepository repository,
@@ -123,7 +121,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
 
         addClassName("cf-page");
         H2 titulo = new H2("Validação de Candidaturas");
-        Span subtitulo = new Span("Inscrições, aulas experimentais e renovações à espera de revisão.");
+        Span subtitulo = new Span("Inscrições e renovações à espera de revisão. As aulas experimentais estão no menu Aulas Experimentais.");
         subtitulo.addClassName("cf-page-subtitle");
         Div cabecalho = new Div(new Div(titulo, subtitulo));
         cabecalho.addClassName("cf-page-header");
@@ -134,7 +132,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     }
 
     private Component criarFiltroTipo() {
-        filtroTipoCombo.setItems(FILTRO_TODAS, FILTRO_INSCRICAO, FILTRO_EXPERIMENTAL, FILTRO_RENOVACAO);
+        filtroTipoCombo.setItems(FILTRO_TODAS, FILTRO_INSCRICAO, FILTRO_RENOVACAO);
         filtroTipoCombo.setValue(FILTRO_TODAS);
         filtroTipoCombo.setAllowCustomValue(false);
         filtroTipoCombo.setWidth("240px");
@@ -149,7 +147,6 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     private Component criarStatsCards() {
         return ViewUtils.statsRow(
                 ViewUtils.statCard("Novas Inscrições", totalPendentesLabel, "#1967D2", VaadinIcon.USER_CHECK),
-                ViewUtils.statCard("Aulas Experimentais", totalExperimentaisLabel, "#e67e22", VaadinIcon.MAGIC),
                 ViewUtils.statCard("Renovações", totalRenovacoesLabel, "#8E44AD", VaadinIcon.REFRESH));
     }
 
@@ -823,27 +820,25 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         Studio studio = TenantContext.getCurrentStudio();
         turmasCache = studio != null ? turmaRepository.findAllByStudio(studio) : turmaRepository.findAllComplete();
 
-        List<AlunoStatus> statuses = List.of(AlunoStatus.PENDENTE, AlunoStatus.EXPERIMENTAL);
+        // Experimentais ficam no menu "Aulas Experimentais"; só chegam aqui (como PENDENTE)
+        // quando se marca "Inscreveu-se" na aula experimental.
+        List<AlunoStatus> statuses = List.of(AlunoStatus.PENDENTE);
         List<Aluno> lista = new ArrayList<>(studio != null
                 ? repository.findByStatusWithTurmasByStudio(statuses, studio)
                 : repository.findByStatusWithTurmas(statuses));
         lista.sort(Comparator.comparing(Aluno::getNomeCompleto, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
 
         long renovacoes = lista.stream().filter(Aluno::isPedidoRenovacao).count();
-        long experimentais = lista.stream().filter(a -> a.getStatus() == AlunoStatus.EXPERIMENTAL).count();
         long novasInscricoes = lista.stream()
                 .filter(a -> a.getStatus() == AlunoStatus.PENDENTE && !a.isPedidoRenovacao()).count();
 
         totalPendentesLabel.setText(String.valueOf(novasInscricoes));
-        totalExperimentaisLabel.setText(String.valueOf(experimentais));
         totalRenovacoesLabel.setText(String.valueOf(renovacoes));
 
         String filtro = filtroTipoCombo.getValue();
         List<Aluno> listaFiltrada = switch (filtro == null ? FILTRO_TODAS : filtro) {
             case FILTRO_INSCRICAO -> lista.stream()
                     .filter(a -> a.getStatus() == AlunoStatus.PENDENTE && !a.isPedidoRenovacao()).toList();
-            case FILTRO_EXPERIMENTAL -> lista.stream()
-                    .filter(a -> a.getStatus() == AlunoStatus.EXPERIMENTAL).toList();
             case FILTRO_RENOVACAO -> lista.stream().filter(Aluno::isPedidoRenovacao).toList();
             default -> lista;
         };

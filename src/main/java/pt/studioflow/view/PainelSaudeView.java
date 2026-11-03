@@ -208,8 +208,7 @@ public class PainelSaudeView extends VerticalLayout {
     // =========================================================
     private VerticalLayout criarCardEstudio(Studio studio) {
         long alunosPendentes = alunoRepository.findAllByStudio(studio).stream()
-                .filter(a -> a.getStatus() == Aluno.AlunoStatus.PENDENTE
-                        || a.getStatus() == Aluno.AlunoStatus.EXPERIMENTAL)
+                .filter(a -> a.getStatus() == Aluno.AlunoStatus.PENDENTE)
                 .count();
         long mensalidadesPorEmitir = mensalidadeRepository.findAllByStudio(studio).stream()
                 .filter(m -> m.getEstado() == EstadoMensalidade.POR_EMITIR).count();

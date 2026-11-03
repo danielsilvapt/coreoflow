@@ -163,8 +163,7 @@ public class NotificacoesView extends VerticalLayout {
 
         // 2. Inscrições pendentes de validação
         List<Aluno> inscricoesPendentes = todosAlunos.stream()
-            .filter(a -> a.getStatus() == Aluno.AlunoStatus.PENDENTE
-                      || a.getStatus() == Aluno.AlunoStatus.EXPERIMENTAL)
+            .filter(a -> a.getStatus() == Aluno.AlunoStatus.PENDENTE)
             .collect(Collectors.toList());
 
         // 3. Transferências pendentes (só do estúdio atual)

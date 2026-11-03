@@ -359,8 +359,7 @@ public class MainLayout extends AppLayout {
                 String pendentesInsc = String.valueOf((_studioMain != null
                                 ? alunoRepository.findAllByStudio(_studioMain)
                                 : alunoRepository.findAll()).stream()
-                                .filter(a -> a.getStatus() == Aluno.AlunoStatus.PENDENTE
-                                                || a.getStatus() == Aluno.AlunoStatus.EXPERIMENTAL)
+                                .filter(a -> a.getStatus() == Aluno.AlunoStatus.PENDENTE)
                                 .count());
 
                 String pendentesSala = String.valueOf((_studioMain != null
