@@ -323,6 +323,10 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                             ? " (isento da taxa de inscrição)" : ""),
                     "info"));
         }
+        if (aluno.isPedeDescontoFamiliar() && !aluno.isDescontoFamiliar()) {
+            content.add(criarAviso(VaadinIcon.FAMILY, " Indicou ter familiares inscritos — o desconto de familiares"
+                    + " fica aplicado ao aceitar (pode retirar depois na ficha do aluno)", "info"));
+        }
 
         FormLayout form = new FormLayout();
         form.add(createField("E-mail", aluno.getEmail()), 2);
@@ -492,7 +496,9 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                 .distinct().count();
 
         MensalidadeConfig.ResumoInscricao resumo = mensalidadeConfig.calcularResumo(
-                studio, base, renovacao, false, (int) numModalidades, aluno.getSeguroDesportivo(),
+                studio, base, renovacao,
+                (aluno.isPedeDescontoFamiliar() || aluno.isDescontoFamiliar()) && studio.temDescontoFamiliares(),
+                (int) numModalidades, aluno.getSeguroDesportivo(),
                 mensalidadeConfig.isentoTaxaInscricao(studio, aluno));
 
         Span subtitulo = new Span("Mensalidades estimadas:");
@@ -506,6 +512,9 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         if (resumo.seguro() > 0) {
             box.add(criarLinhaValor("Seguro desportivo", resumo.seguro(), false));
         }
+        if (resumo.descontoFamiliar() > 0) {
+            box.add(criarLinhaValor("Desconto familiares", -resumo.descontoFamiliar(), true));
+        }
         if (resumo.descontoMultiModalidade() > 0) {
             box.add(criarLinhaValor("Desconto +modalidades", -resumo.descontoMultiModalidade(), true));
         }
@@ -514,7 +523,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         }
 
         Span totalMensal = new Span("Total mensal: "
-                + formatarEuro(base - resumo.descontoMultiModalidade()) + "/mês");
+                + formatarEuro(base - resumo.descontoFamiliar() - resumo.descontoMultiModalidade()) + "/mês");
         totalMensal.getStyle().set("font-weight", "700").set("display", "block").set("margin-top", "8px");
         box.add(totalMensal);
 
@@ -606,6 +615,13 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         if (aluno.getDataNascimento() != null) {
             int idade = Period.between(aluno.getDataNascimento(), LocalDate.now()).getYears();
             aluno.setCrianca(idade < 18);
+        }
+
+        // Pedido de desconto de familiares no formulário público: aceitar a inscrição confirma-o,
+        // antes de gerar as mensalidades (a secretaria pode retirá-lo depois na ficha do aluno).
+        Studio studioSessao = TenantContext.getCurrentStudio();
+        if (aluno.isPedeDescontoFamiliar() && studioSessao != null && studioSessao.temDescontoFamiliares()) {
+            aluno.setDescontoFamiliar(true);
         }
 
         aluno.setStatus(AlunoStatus.ATIVO);

@@ -291,6 +291,11 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         jaAluno.setItems(Boolean.TRUE, Boolean.FALSE);
         jaAluno.setVisible(perguntaJaAluno);
 
+        // "Tem familiares inscritos?" — só nos estúdios com desconto de familiares/irmãos configurado.
+        boolean perguntaFamiliar = studioAtual != null && studioAtual.temDescontoFamiliares();
+        Checkbox temFamiliar = new Checkbox();
+        temFamiliar.setVisible(perguntaFamiliar);
+
         // --- 2.5 DADOS DO ENCARREGADO DE EDUCAÇÃO (só quando o aluno é menor) ---
         TextField encarregadoNome = new TextField("Nome do Encarregado de Educação");
         Select<String> encarregadoParentesco = new Select<>();
@@ -334,7 +339,8 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         Runnable atualizarResumo = () -> atualizarResumoInscricao(
                 turmasInteresse.getValue(), dataNascimento.getValue(), socio.getValue(),
-                seguroDesportivo.getValue(), Boolean.TRUE.equals(jaAluno.getValue()));
+                seguroDesportivo.getValue(), Boolean.TRUE.equals(jaAluno.getValue()),
+                perguntaFamiliar && temFamiliar.getValue());
 
         turmasInteresse.addValueChangeListener(event -> {
             Set<Turma> atuais = event.getValue();
@@ -394,6 +400,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         socio.addValueChangeListener(ev -> atualizarResumo.run());
         seguroDesportivo.addValueChangeListener(ev -> atualizarResumo.run());
         jaAluno.addValueChangeListener(ev -> atualizarResumo.run());
+        temFamiliar.addValueChangeListener(ev -> atualizarResumo.run());
 
         // --- 4. BINDER ---
         binder.forField(nomeCompleto).asRequired("Obrigatório").bind(Aluno::getNomeCompleto, Aluno::setNomeCompleto);
@@ -414,6 +421,9 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         if (perguntaJaAluno) {
             binder.forField(jaAluno).asRequired(translationService.t("inscricao.jaAlunoObrigatorio", idiomaAtual))
                     .bind(Aluno::getJaEraAluno, Aluno::setJaEraAluno);
+        }
+        if (perguntaFamiliar) {
+            binder.forField(temFamiliar).bind(Aluno::isPedeDescontoFamiliar, Aluno::setPedeDescontoFamiliar);
         }
         binder.forField(codigoPostal).asRequired("O código postal é obrigatório")
                 .withValidator(cp -> cp.matches("\\d{4}-\\d{3}"), "O código postal deve ter o formato 0000-000")
@@ -448,6 +458,14 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         };
         traduzirJaAluno.run();
 
+        Runnable traduzirFamiliar = () -> {
+            if (studioAtual == null) return;
+            temFamiliar.setLabel(translationService.t("inscricao.familiar", idiomaAtual) + studioAtual.getNome()
+                    + " (" + translationService.t("inscricao.familiarDesconto", idiomaAtual) + " "
+                    + studioAtual.rotuloDescontoFamiliares() + ")");
+        };
+        traduzirFamiliar.run();
+
         CamposSaude camposSaude = new CamposSaude(translationService, idiomaAtual);
         camposSaude.bind(binder);
 
@@ -473,9 +491,10 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
             btnSubmeter.setText(translationService.t("inscricao.submeter", idiomaAtual));
             camposSaude.setIdioma(idiomaAtual);
             traduzirJaAluno.run();
+            traduzirFamiliar.run();
         });
 
-        VerticalLayout card = new VerticalLayout(header, layoutFoto, jaAluno, form, seccaoEncarregado, camposSaude, turmasInteresse,
+        VerticalLayout card = new VerticalLayout(header, layoutFoto, jaAluno, temFamiliar, form, seccaoEncarregado, camposSaude, turmasInteresse,
                 containerFrequencias, resumoPagamento, btnSubmeter);
         card.setMaxWidth("850px");
         card.setWidth("100%");
@@ -529,18 +548,21 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
     }
 
     private void atualizarResumoInscricao(Set<Turma> selecionadas, LocalDate dataNasc, boolean socioVal,
-            String seguro, boolean jaEraAluno) {
+            String seguro, boolean jaEraAluno, boolean temFamiliar) {
         resumoPagamento.removeAll();
         if (selecionadas.isEmpty() || studioAtual == null) return;
 
         MensalidadeConfig.ResumoInscricao resumo = calcularResumo(selecionadas, dataNasc, socioVal, seguro,
-                jaEraAluno);
+                jaEraAluno, temFamiliar);
 
         resumoPagamento.add(
                 linhaResumo("Mensalidade estimada", resumo.mensalidadeBase(), false),
                 linhaResumo(jaEraAluno && studioAtual.isIsentarTaxaAlunosExistentes()
                         ? "Taxa de inscrição (isento — já é aluno)" : "Taxa de inscrição", resumo.taxa(), false),
                 linhaResumo("Desconto +modalidades", -resumo.descontoMultiModalidade(), resumo.descontoMultiModalidade() > 0));
+        if (resumo.descontoFamiliar() > 0) {
+            resumoPagamento.add(linhaResumo("Desconto familiares", -resumo.descontoFamiliar(), true));
+        }
         if (resumo.seguro() > 0) {
             resumoPagamento.add(linhaResumo("Seguro desportivo", resumo.seguro(), false));
         }
@@ -556,7 +578,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
     }
 
     private MensalidadeConfig.ResumoInscricao calcularResumo(Set<Turma> selecionadas, LocalDate dataNasc,
-            boolean socioVal, String seguro, boolean jaEraAluno) {
+            boolean socioVal, String seguro, boolean jaEraAluno, boolean temFamiliar) {
         boolean crianca = dataNasc != null && java.time.Period.between(dataNasc, LocalDate.now()).getYears() < 18;
 
         java.util.Map<Turma, Integer> turmasEFrequencia = new java.util.LinkedHashMap<>();
@@ -571,7 +593,8 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         long numModalidades = selecionadas.stream().map(Turma::getModalidade).map(Modalidade::getId).distinct().count();
 
         return mensalidadeConfig.calcularResumo(
-                studioAtual, mensalidadeBaseTotal, false, false, (int) numModalidades, seguro,
+                studioAtual, mensalidadeBaseTotal, false,
+                temFamiliar && studioAtual.temDescontoFamiliares(), (int) numModalidades, seguro,
                 jaEraAluno && studioAtual.isIsentarTaxaAlunosExistentes());
     }
 
@@ -632,7 +655,8 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
             // Estúdio com Mollie: encaminha logo para o pagamento do 1º pagamento estimado.
             if (studioAtual != null && studioAtual.isMollieAtivo()) {
                 double total = calcularResumo(selecionadas, novo.getDataNascimento(), novo.isSocio(),
-                        novo.getSeguroDesportivo(), Boolean.TRUE.equals(novo.getJaEraAluno())).total();
+                        novo.getSeguroDesportivo(), Boolean.TRUE.equals(novo.getJaEraAluno()),
+                        novo.isPedeDescontoFamiliar()).total();
                 if (total > 0) {
                     try {
                         PagamentoOnlineService.Checkout checkout = pagamentoOnlineService.criarPagamentoPedido(

@@ -49,6 +49,9 @@ public class TranslationService {
         add("inscricao.jaAlunoAjuda", "Já frequenta as aulas e só se está a registar na app: fica isento da taxa de inscrição.",
                 "Already attending classes and just registering in the app: no registration fee.",
                 "Vous suivez déjà les cours et vous vous inscrivez seulement sur l'app : pas de frais d'inscription.");
+        add("inscricao.familiar", "Tenho familiares inscritos no ", "I have family members enrolled at ",
+                "J'ai des membres de ma famille inscrits à ");
+        add("inscricao.familiarDesconto", "desconto de familiares", "family discount", "réduction famille");
 
         // Saúde (inscrição e renovação)
         add("saude.pergunta", "O aluno tem algum problema de saúde?", "Does the student have any health condition?",
