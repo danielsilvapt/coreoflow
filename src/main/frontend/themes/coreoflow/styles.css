@@ -703,7 +703,8 @@ vaadin-button.cf-drawer-logout-btn:hover { background: var(--cf-error-bg); }
 html[theme~='dark'] .brand-line1 { background: linear-gradient(90deg, #dbe4ff 0 56%, var(--cf-teal) 56% 100%); -webkit-background-clip: text; background-clip: text; }
 .brand-line2 { font-size: 10.5px; color: var(--cf-text-tertiary); letter-spacing: 0.02em; }
 
-/* Loader central "Pirueta": bailarina estilizada (en pointe, perna em passé)
+/* Loader central: por omissão "Pirueta" (ballet), alterna com outros estilos (mais abaixo).
+   Bailarina estilizada (en pointe, perna em passé)
    faz plié, relevé e duas piruetas.
    Só se animam transform/opacity. A figura é uma máscara SVG pintada com o
    gradiente da marca, por isso as cores vêm dos tokens (e do modo escuro). */
@@ -734,14 +735,14 @@ html[theme~='dark'] .brand-line1 { background: linear-gradient(90deg, #dbe4ff 0 
   mask: var(--cf-loader-dancer) center / contain no-repeat;
   transform-origin: 50% 96%;
   will-change: transform;
-  animation: cf-pirueta 2.4s ease-in-out infinite;
+  animation: var(--cf-loader-anim, cf-pirueta) var(--cf-loader-dur, 2.4s) var(--cf-loader-ease, ease-in-out) infinite;
 }
 .v-loading-indicator.first::after, .v-loading-indicator.second::after, .v-loading-indicator.third::after {
   content: 'a carregar\2026'; position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, 44px); white-space: nowrap;
   font: 600 13px/1 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif; letter-spacing: 2px;
   color: var(--cf-loader-text); border: none !important;
-  animation: cf-compasso 2.4s ease-in-out infinite;
+  animation: cf-compasso var(--cf-loader-dur, 2.4s) ease-in-out infinite;
 }
 /* plié -> relevé -> 2 voltas -> aterragem; 720deg == 0deg, o ciclo é contínuo */
 @keyframes cf-pirueta {
@@ -754,6 +755,87 @@ html[theme~='dark'] .brand-line1 { background: linear-gradient(90deg, #dbe4ff 0 
 }
 /* o texto marca o tempo: acende no relevé, descansa na aterragem */
 @keyframes cf-compasso { 0%, 100% { opacity: .5; } 22%, 62% { opacity: 1; } }
+
+/* Outros estilos de dança. O LoadingIndicatorInitListener põe <html data-cf-loader="…">
+   e passa ao estilo seguinte sempre que o loader se esconde. Mesma grelha (viewBox
+   0 -8 100 128, chão em y≈115), por isso a sombra do palco serve a todos. */
+
+/* Hip hop: pernas abertas, boné, braço a apontar; groove a marcar o tempo + salto */
+html[data-cf-loader='hiphop'] .v-loading-indicator {
+  --cf-loader-dancer: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 -8 100 128'><g fill='black'><circle cx='50' cy='22' r='6.4'/><path d='M43.4 20 C43.4 11.5 56.6 11.5 56.6 20 Z'/><path d='M44 32 Q50 30 56 32 L54 58 Q50 59.2 46 58 Z'/></g><g fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round'><path d='M55 19 L64.5 20.5' stroke-width='2.6'/><path d='M55.5 33 L66 23 L71 9' stroke-width='3.4'/><path d='M44.5 33 L34 45 L43 52' stroke-width='3.4'/><path d='M47.5 58 L35 82 L31 111' stroke-width='3.9'/><path d='M52.5 58 L65 82 L69 111' stroke-width='3.9'/><path d='M31 111.5 L23.5 113' stroke-width='3.2'/><path d='M69 111.5 L76.5 113' stroke-width='3.2'/></g></svg>");
+  --cf-loader-anim: cf-groove;
+}
+@keyframes cf-groove {
+  0%    { transform: translateY(0)   rotate(0)     scale(1, 1); }
+  12.5% { transform: translateY(5px) rotate(-3deg) scale(1.04, .94); }
+  25%   { transform: translateY(0)   rotate(0)     scale(1, 1); }
+  37.5% { transform: translateY(5px) rotate(3deg)  scale(1.04, .94); }
+  50%   { transform: translateY(0)   rotate(0)     scale(1, 1); }
+  62.5% { transform: translateY(-9px) rotate(0)    scale(.98, 1.04); }
+  75%   { transform: translateY(4px) rotate(0)     scale(1.05, .93); }
+  87.5%, 100% { transform: translateY(0) rotate(0) scale(1, 1); }
+}
+
+/* Danças de salão: par de mãos dadas em arco; valsa a rodar com sobe-e-desce a 3 tempos */
+html[data-cf-loader='salao'] .v-loading-indicator {
+  --cf-loader-dancer: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 -8 100 128'><g fill='black'><circle cx='37' cy='13' r='6.2'/><path d='M31.5 24 Q37 22.4 42.5 24 L41 55 Q37 56.2 33 55 Z'/><circle cx='63' cy='15' r='5.8'/><circle cx='67.5' cy='10.5' r='2.6'/><path d='M58.5 24.5 Q63 23 67.5 24.5 L65.5 45 Q63 46 60.5 45 Z'/><path d='M60.5 44 C57 62 52 92 49 112 Q63 109 79 112 C76 92 70 62 65.5 44 Z'/></g><g fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round'><path d='M42 25.5 L47 15 L50.5 6' stroke-width='3.2'/><path d='M58.5 26 L54 15 L50.5 6' stroke-width='3.2'/><path d='M32 25.5 L25 38 L26.5 50' stroke-width='3.2'/><path d='M67.5 26 L75 36 L73 46' stroke-width='3'/><path d='M35 55 L33.5 112' stroke-width='4'/><path d='M39 55 L42 112' stroke-width='4'/><path d='M33.5 112 L28 113' stroke-width='3'/><path d='M42 112 L47 113' stroke-width='3'/></g></svg>");
+  --cf-loader-anim: cf-valsa;
+  --cf-loader-dur: 3s;
+  --cf-loader-ease: linear;
+}
+@keyframes cf-valsa {
+  0%   { transform: perspective(520px) translateY(2px)  rotateY(0deg); }
+  11%  { transform: perspective(520px) translateY(-4px) rotateY(40deg); }
+  22%  { transform: perspective(520px) translateY(-3px) rotateY(80deg); }
+  33%  { transform: perspective(520px) translateY(2px)  rotateY(120deg); }
+  44%  { transform: perspective(520px) translateY(-4px) rotateY(160deg); }
+  55%  { transform: perspective(520px) translateY(-3px) rotateY(200deg); }
+  66%  { transform: perspective(520px) translateY(2px)  rotateY(240deg); }
+  77%  { transform: perspective(520px) translateY(-4px) rotateY(280deg); }
+  88%  { transform: perspective(520px) translateY(-3px) rotateY(320deg); }
+  100% { transform: perspective(520px) translateY(2px)  rotateY(360deg); }
+}
+
+/* Yoga: árvore (vrksasana), mãos juntas no alto; respiração lenta e equilíbrio */
+html[data-cf-loader='yoga'] .v-loading-indicator {
+  --cf-loader-dancer: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 -8 100 128'><g fill='black'><circle cx='50' cy='22' r='6.4'/><path d='M44.5 33 Q50 31 55.5 33 L53.5 60 Q50 61.2 46.5 60 Z'/></g><g fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round'><path d='M45 34 L37 19 L49 1' stroke-width='3.2'/><path d='M55 34 L63 19 L51 1' stroke-width='3.2'/><path d='M48.5 60 L49 112' stroke-width='4.2'/><path d='M49 112 L56 113' stroke-width='3'/><path d='M52.5 61 L69 77 L51 86' stroke-width='3.8'/></g></svg>");
+  --cf-loader-anim: cf-equilibrio;
+  --cf-loader-dur: 3.6s;
+}
+@keyframes cf-equilibrio {
+  0%, 100% { transform: translateY(0)    rotate(0)     scale(1); }
+  25%      { transform: translateY(-1px) rotate(-2deg) scale(1.02); }
+  50%      { transform: translateY(-3px) rotate(0)     scale(1.04); }
+  75%      { transform: translateY(-1px) rotate(2deg)  scale(1.02); }
+}
+
+/* Flamenco: braço em arco sobre a cabeça, mão na anca, saia de folhos; balanço e sapateado */
+html[data-cf-loader='flamenco'] .v-loading-indicator {
+  --cf-loader-dancer: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 -8 100 128'><g fill='black'><circle cx='50' cy='14' r='6.2'/><circle cx='55.5' cy='9' r='2.8'/><circle cx='44.5' cy='9.5' r='2.2'/><path d='M45 24.5 Q50 22.6 55 24.5 L53 43 Q50 44 47 43 Z'/><path d='M47 42 C40 58 29 78 21 99 Q28 95.5 34 100.5 Q41 95.5 48 101 Q55 95.5 62 101 Q70 95.5 79 99 C71 78 60 58 53 42 Z'/></g><g fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round'><path d='M55 25.5 C65 17 64.5 2 51.5 -3' stroke-width='3.2'/><path d='M45 25.5 L35.5 33 L46 39' stroke-width='3.2'/><path d='M45.5 100 L44.5 112' stroke-width='3.6'/><path d='M55.5 100 L57.5 112' stroke-width='3.6'/><path d='M44.5 112 L39 113' stroke-width='3'/><path d='M57.5 112 L63 113' stroke-width='3'/></g></svg>");
+  --cf-loader-anim: cf-zapateado;
+}
+@keyframes cf-zapateado {
+  0%, 100% { transform: translateY(0)   rotate(0)     scale(1, 1); }
+  15%      { transform: translateY(0)   rotate(-7deg) scale(1, 1); }
+  25%      { transform: translateY(2px) rotate(-7deg) scale(1.03, .97); }
+  32%      { transform: translateY(0)   rotate(-5deg) scale(1, 1); }
+  50%      { transform: translateY(0)   rotate(0)     scale(1, 1); }
+  65%      { transform: translateY(0)   rotate(7deg)  scale(1, 1); }
+  75%      { transform: translateY(2px) rotate(7deg)  scale(1.03, .97); }
+  82%      { transform: translateY(0)   rotate(5deg)  scale(1, 1); }
+}
+
+/* Contemporâneo: grand jeté (pernas em espargata no ar); o salto sobe e pousa */
+html[data-cf-loader='contemporaneo'] .v-loading-indicator {
+  --cf-loader-dancer: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 -8 100 128'><g fill='black'><circle cx='54' cy='28' r='6.2'/><path d='M48 39 Q54 37 60 39 L57 61 Q53.5 62 50.5 61 Z'/></g><g fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round'><path d='M59.5 40 L71 31 L83 23' stroke-width='3.2'/><path d='M48.5 40 L37 33 L25 28' stroke-width='3.2'/><path d='M56 61 L74 64 L94 61' stroke-width='3.9'/><path d='M51 61 L33 69 L9 74' stroke-width='3.9'/><path d='M94 61 L98 59.5' stroke-width='2.6'/><path d='M9 74 L4.5 76.5' stroke-width='2.6'/></g></svg>");
+  --cf-loader-anim: cf-jete;
+  --cf-loader-dur: 1.8s;
+}
+@keyframes cf-jete {
+  0%, 100% { transform: translate(-4px, 8px)   rotate(7deg)  scale(.96); }
+  45%      { transform: translate(0, -16px)    rotate(-3deg) scale(1.04); }
+  55%      { transform: translate(1px, -16px)  rotate(-4deg) scale(1.04); }
+}
 html[theme~='dark'] .v-loading-indicator {
   --cf-loader-paint: linear-gradient(170deg, #dbe4ff 0%, #dbe4ff 46%, var(--cf-teal) 68%, var(--cf-mint) 100%);
   --cf-loader-veil: rgba(11, 17, 32, 0.66);
