@@ -121,8 +121,18 @@ public class EmailService {
                 mailSender.send(mimeMessage);
         }
 
+        /** Documento anexado a um email (nome do ficheiro, tipo MIME e conteúdo). */
+        public record AnexoEmail(String nome, String mimeType, byte[] dados) {
+        }
+
         public void enviarEmailParaLista(Studio studio, Professor professorCorrespondente, List<String> destinatarios,
                         String assunto, String corpoMensagem)
+                        throws Exception {
+                enviarEmailParaLista(studio, professorCorrespondente, destinatarios, assunto, corpoMensagem, List.of());
+        }
+
+        public void enviarEmailParaLista(Studio studio, Professor professorCorrespondente, List<String> destinatarios,
+                        String assunto, String corpoMensagem, List<AnexoEmail> anexos)
                         throws Exception {
                 if (envioBloqueado(studio)) return;
                 MimeMessage mimeMessage = mailSender.createMimeMessage();
@@ -149,6 +159,16 @@ public class EmailService {
                 // assinatura comum da plataforma.
                 String conteudoCompleto = corpoMensagem.replace("\n", "<br>") + assinatura.html(studio);
                 helper.setText(conteudoCompleto, true); // O 'true' indica que é HTML
+
+                if (anexos != null) {
+                        for (AnexoEmail anexo : anexos) {
+                                String tipo = anexo.mimeType() != null && !anexo.mimeType().isBlank()
+                                                ? anexo.mimeType()
+                                                : "application/octet-stream";
+                                helper.addAttachment(anexo.nome(),
+                                                new org.springframework.core.io.ByteArrayResource(anexo.dados()), tipo);
+                        }
+                }
 
                 mailSender.send(mimeMessage);
         }
