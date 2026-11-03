@@ -381,6 +381,7 @@ public class MainLayout extends AppLayout {
                                         pedidosPorResolver > 0 ? String.valueOf(pedidosPorResolver) : null));
                         tabs.add(criarTab("Acessos", VaadinIcon.EYE, "#8E44AD", AcessosView.class, null));
                         tabs.add(criarTab("Logs & Erros", VaadinIcon.FILE_TEXT_O, "#E74C3C", LogsView.class, null));
+                        tabs.add(criarTab("Base de Dados", VaadinIcon.DATABASE, "#2C3E50", ExploradorBdView.class, null));
                         tabs.add(criarTab("Configurações", VaadinIcon.COG, "#607D8B", ConfiguracoesPlataformaView.class, null));
                         tabs.add(criarHeaderMenu("Comercial"));
                         long leadsAtivos = leadRepository.findAll().stream()
