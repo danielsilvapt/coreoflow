@@ -491,6 +491,22 @@ public class Studio {
     public Double getDescontoFamiliaresPercentagem() { return descontoFamiliaresPercentagem; }
     public void setDescontoFamiliaresPercentagem(Double v) { this.descontoFamiliaresPercentagem = v; }
 
+    /** O estúdio tem desconto de familiares/irmãos configurado (em % ou em €). */
+    public boolean temDescontoFamiliares() {
+        return (descontoFamiliaresPercentagem != null && descontoFamiliaresPercentagem > 0)
+                || (descontoFamiliaresEuros != null && descontoFamiliaresEuros > 0);
+    }
+
+    /** Descrição curta do desconto de familiares, ex. "10%" ou "5,00 €". */
+    public String rotuloDescontoFamiliares() {
+        if (descontoFamiliaresPercentagem != null && descontoFamiliaresPercentagem > 0) {
+            double p = descontoFamiliaresPercentagem;
+            return (p == Math.floor(p) ? String.valueOf((long) p) : String.valueOf(p)) + "%";
+        }
+        double e = descontoFamiliaresEuros != null ? descontoFamiliaresEuros : 0.0;
+        return String.format(java.util.Locale.forLanguageTag("pt-PT"), "%.2f €", e);
+    }
+
     public Double getDescontoDirecaoPercentagem() { return descontoDirecaoPercentagem; }
     public void setDescontoDirecaoPercentagem(Double v) { this.descontoDirecaoPercentagem = v; }
 
