@@ -38,16 +38,16 @@ public class ContaPortalService {
     }
 
     /**
-     * Garante que o email tem conta no portal e devolve o link de ativação.
-     * Se a conta já estiver ativa (já definiu palavra-passe) devolve vazio — não
-     * mexe nela, nem no estúdio a que pertence.
+     * Garante que o email tem conta no portal e devolve sempre o link para definir
+     * a palavra-passe (usado no email de boas-vindas). Numa conta já ativa a
+     * palavra-passe atual continua a funcionar até ser definida uma nova; a conta
+     * passa para o estúdio onde o aluno se acabou de inscrever.
      */
     @Transactional
     public Optional<String> prepararAtivacao(String email, String nome, Studio studio, int diasValidade) {
         if (email == null || email.isBlank() || studio == null) return Optional.empty();
         String normalizado = email.trim().toLowerCase();
         ContaPortal conta = contaRepo.findByEmailIgnoreCase(normalizado).orElseGet(ContaPortal::new);
-        if (conta.isAtivo()) return Optional.empty();
         conta.setEmail(normalizado);
         if (nome != null && !nome.isBlank()) conta.setNome(nome);
         conta.setStudio(studio);
@@ -63,6 +63,9 @@ public class ContaPortalService {
     /** Cria (se preciso) a conta e envia o convite por email. Não faz nada se já estiver ativa. */
     @Transactional
     public boolean convidarSeNecessario(String email, String nome, Studio studio, int diasValidade) {
+        if (email == null || contaRepo.findByEmailIgnoreCase(email.trim()).map(ContaPortal::isAtivo).orElse(false)) {
+            return false;
+        }
         Optional<String> link = prepararAtivacao(email, nome, studio, diasValidade);
         link.ifPresent(l -> emailService.enviarConvitePortal(email.trim().toLowerCase(), studio, l));
         return link.isPresent();
