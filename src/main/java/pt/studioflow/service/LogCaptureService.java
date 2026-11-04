@@ -59,6 +59,14 @@ public class LogCaptureService {
      */
     private static final java.util.Set<String> LOGGERS_SEM_ALERTA = java.util.Set.of(
             "com.vaadin.flow.shared.BrowserDetails");
+    /**
+     * Fragmentos de stacktrace/mensagem de erros inofensivos de loggers genéricos (onde
+     * filtrar o logger inteiro esconderia erros reais). "Unexpected message id from the
+     * client": o browser reenviou um pedido UIDL (rede instável / retry) e ficou um id à
+     * frente; o Vaadin resincroniza a UI sozinho, não há nada a corrigir na app.
+     */
+    private static final List<String> ERROS_SEM_ALERTA = List.of(
+            "Unexpected message id from the client");
 
     public LogCaptureService(LogEntryRepository repo, SuporteService suporteService) {
         this.repo = repo;
@@ -116,10 +124,21 @@ public class LogCaptureService {
         }
 
         for (LogEntry e : lote) {
-            if ("ERROR".equals(e.getNivel()) && !LOGGERS_SEM_ALERTA.contains(e.getLogger())) {
+            if ("ERROR".equals(e.getNivel()) && !LOGGERS_SEM_ALERTA.contains(e.getLogger())
+                    && !isErroConhecidoInofensivo(e)) {
                 avaliarAlerta(e);
             }
         }
+    }
+
+    private static boolean isErroConhecidoInofensivo(LogEntry e) {
+        for (String f : ERROS_SEM_ALERTA) {
+            if ((e.getMensagem() != null && e.getMensagem().contains(f))
+                    || (e.getStacktrace() != null && e.getStacktrace().contains(f))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

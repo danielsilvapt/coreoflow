@@ -118,16 +118,27 @@ public class NotificacoesView extends VerticalLayout {
     }
 
     private Optional<Professor> getProfessorLogado() {
+        // Procura só no estúdio atual e tolera duplicados: findByEmail/findByNome são
+        // globais e rebentam (IncorrectResultSizeDataAccessException) quando o mesmo
+        // professor existe em mais de um estúdio.
         return authService.getCurrentUser()
             .flatMap(u -> {
-                // Tenta por email primeiro, depois por firstName
-                Optional<Professor> byEmail = u.getEmail() != null
-                    ? professorRepository.findByEmail(u.getEmail())
-                    : Optional.empty();
-                if (byEmail.isPresent()) return byEmail;
-                return u.getFirstName() != null
-                    ? professorRepository.findByNome(u.getFirstName())
-                    : Optional.empty();
+                Studio studio = TenantContext.getCurrentStudio();
+                List<Professor> profs = studio != null
+                    ? professorRepository.findAllByStudio(studio)
+                    : professorRepository.findAll();
+                String email = u.getEmail() != null ? u.getEmail().trim() : "";
+                if (!email.isEmpty()) {
+                    Optional<Professor> byEmail = profs.stream()
+                        .filter(p -> p.getEmail() != null && p.getEmail().trim().equalsIgnoreCase(email))
+                        .findFirst();
+                    if (byEmail.isPresent()) return byEmail;
+                }
+                String nome = u.getFirstName() != null ? u.getFirstName().trim() : "";
+                if (nome.isEmpty()) return Optional.empty();
+                return profs.stream()
+                    .filter(p -> p.getNome() != null && p.getNome().trim().equalsIgnoreCase(nome))
+                    .findFirst();
             });
     }
 
@@ -307,7 +318,7 @@ public class NotificacoesView extends VerticalLayout {
         if (studio != null && studio.hasModulo(pt.studioflow.model.StudioModulo.AULAS_AVULSO)) {
             var comprasRecentes = compraCreditoService.listarRecentesDoStudio(studio, 7);
             conteudo.add(criarCard("Compras de Aula Avulsa/Pack (últimos 7 dias)", comprasRecentes.size(), "#F39C12", VaadinIcon.TICKET,
-                comprasRecentes.stream().map(c -> c.getAluno().getNomeCompleto() + " — " + c.getNomePack()
+                comprasRecentes.stream().map(c -> (c.getAluno() != null ? c.getAluno().getNomeCompleto() : "—") + " — " + c.getNomePack()
                         + (c.getMetodoPagamento() == pt.studioflow.model.MetodoPagamentoCredito.MANUAL
                                 && c.getEstadoPagamento() == pt.studioflow.model.EstadoPagamentoCredito.PENDENTE
                                 ? " (pagar no estúdio)" : " (" + c.getEstadoPagamento() + ")"))
@@ -407,7 +418,8 @@ public class NotificacoesView extends VerticalLayout {
                 return turmas.stream()
                     .flatMap(t -> presencaRepository.findByTurmaAndDataBetween(t, hoje.minusDays(7), hoje).stream())
                     .filter(pr -> pr.getOrigem() == pt.studioflow.model.OrigemPresenca.CREDITO_AVULSO)
-                    .map(pr -> pr.getAluno().getNomeCompleto() + " — " + pr.getTurma().getDescricao()
+                    .filter(pr -> pr.getAluno() != null)
+                    .map(pr -> pr.getAluno().getNomeCompleto() + " — " + (pr.getTurma() != null ? pr.getTurma().getDescricao() : "—")
                         + " (" + pt.studioflow.util.DataUtil.formatar(pr.getData()) + ")")
                     .collect(Collectors.toList());
             }).orElse(List.of());
