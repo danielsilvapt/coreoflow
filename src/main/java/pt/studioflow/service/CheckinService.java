@@ -114,6 +114,90 @@ public class CheckinService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Aula de hoje vista pelo kiosk: horário, professor efetivo e a janela de checkin
+     * (abre = início − janelaAntesMin, fecha = início + janelaDepoisMin). Os nomes são
+     * resolvidos dentro da transação para a vista não tocar em relações LAZY.
+     */
+    public static class AulaHojeKiosk {
+        public final Turma turma;
+        public final LocalDateTime inicio;
+        /** Fim da aula; quando a aula não tem hora de fim registada assume-se 1h. */
+        public final LocalDateTime fim;
+        public final boolean temHoraFim;
+        public final LocalDateTime checkinAbre;
+        public final LocalDateTime checkinFecha;
+        public final String professorNome;
+        public final String salaNome;
+        public final String modalidadeNome;
+
+        public AulaHojeKiosk(Turma turma, LocalDateTime inicio, LocalDateTime fim, boolean temHoraFim,
+                LocalDateTime checkinAbre, LocalDateTime checkinFecha, String professorNome, String salaNome,
+                String modalidadeNome) {
+            this.turma = turma;
+            this.inicio = inicio;
+            this.fim = fim;
+            this.temHoraFim = temHoraFim;
+            this.checkinAbre = checkinAbre;
+            this.checkinFecha = checkinFecha;
+            this.professorNome = professorNome;
+            this.salaNome = salaNome;
+            this.modalidadeNome = modalidadeNome;
+        }
+
+        /** Checkin aberto agora — mesmo critério de {@link #listarTurmasNaJanelaAgora}. */
+        public boolean checkinAberto(LocalDateTime agora) {
+            return !agora.isBefore(checkinAbre) && !agora.isAfter(checkinFecha);
+        }
+
+        public boolean aDecorrer(LocalDateTime agora) {
+            return !agora.isBefore(inicio) && agora.isBefore(fim);
+        }
+
+        public boolean terminada(LocalDateTime agora) {
+            return !agora.isBefore(fim) && agora.isAfter(checkinFecha);
+        }
+    }
+
+    /**
+     * Todas as aulas de hoje das turmas ativas do estúdio (uso no kiosk PRESENÇA), ordenadas
+     * por hora de início, com a janela de checkin já calculada. Só leitura; não altera o
+     * critério de {@link #listarTurmasNaJanelaAgora} nem do registo de checkin.
+     */
+    @Transactional(readOnly = true)
+    public List<AulaHojeKiosk> listarAulasDeHoje(Studio studio, LocalDateTime agora) {
+        int antes = studio.getCheckinJanelaAntesMin();
+        int depois = studio.getCheckinJanelaDepoisMin();
+        DayOfWeek hoje = agora.getDayOfWeek();
+        LocalDate data = agora.toLocalDate();
+
+        List<AulaHojeKiosk> resultado = new ArrayList<>();
+        for (Turma turma : turmaRepository.findByStudioAndAtivoTrue(studio)) {
+            if (turma.getAulas() == null) continue;
+            for (Aula aula : turma.getAulas()) {
+                if (aula.getDia() != hoje || aula.getHoraInicio() == null) continue;
+                if (aula.getDataInicio() != null && data.isBefore(aula.getDataInicio())) continue;
+                if (aula.getDataFim() != null && data.isAfter(aula.getDataFim())) continue;
+
+                LocalDateTime inicio = LocalDateTime.of(data, aula.getHoraInicio());
+                boolean temHoraFim = aula.getHoraFim() != null && aula.getHoraFim().isAfter(aula.getHoraInicio());
+                LocalDateTime fim = temHoraFim ? LocalDateTime.of(data, aula.getHoraFim()) : inicio.plusHours(1);
+
+                var professor = aula.getProfessorEfetivo();
+                String professorNome = professor != null ? professor.getNome() : null;
+                String salaNome = aula.getSala() != null ? aula.getSala().getNome() : null;
+                String modalidadeNome = turma.getModalidade() != null ? turma.getModalidade().getDescricao() : null;
+
+                resultado.add(new AulaHojeKiosk(turma, inicio, fim, temHoraFim,
+                        inicio.minusMinutes(antes), inicio.plusMinutes(depois),
+                        professorNome, salaNome, modalidadeNome));
+            }
+        }
+        resultado.sort(java.util.Comparator.comparing((AulaHojeKiosk a) -> a.inicio)
+                .thenComparing(a -> a.turma.getDescricao(), String.CASE_INSENSITIVE_ORDER));
+        return resultado;
+    }
+
     /** Alunos não matriculados na turma mas com crédito avulso/pack válido e elegível para ela (uso no kiosk PRESENÇA). */
     @Transactional(readOnly = true)
     public List<Aluno> listarAvulsosElegiveisParaTurma(Turma turma) {
