@@ -23,10 +23,15 @@ public class SecurityConfig extends VaadinWebSecurity {
     private final CustomUserDetailsService userDetailsService;
     private final DaoAuthenticationProvider authenticationProvider;
     private final AuditoriaService auditoriaService;
+    private final String rememberMeKey;
 
     public SecurityConfig(CustomUserDetailsService userDetailsService,
                           DaoAuthenticationProvider authenticationProvider,
-                          AuditoriaService auditoriaService) {
+                          AuditoriaService auditoriaService,
+                          @org.springframework.beans.factory.annotation.Value(
+                                  "${app.remember-me.key:cf-kiosk-7c1e9b4a2f5d48e6a0b3d9c2e8f17a64}")
+                          String rememberMeKey) {
+        this.rememberMeKey = rememberMeKey;
         this.userDetailsService = userDetailsService;
         this.authenticationProvider = authenticationProvider;
         this.auditoriaService = auditoriaService;
@@ -118,6 +123,11 @@ public class SecurityConfig extends VaadinWebSecurity {
                 };
         http.formLogin(form -> form.successHandler(successHandler).failureHandler(failureHandler));
 
+        // Kiosk PRESENÇA: cookie de 90 dias para voltar a entrar sozinho depois de um
+        // deploy ou de a sessão expirar (ver KioskRememberMeServices).
+        KioskRememberMeServices kioskRememberMe = new KioskRememberMeServices(rememberMeKey, userDetailsService);
+        http.rememberMe(rm -> rm.key(rememberMeKey).rememberMeServices(kioskRememberMe));
+
 
         http.logout(logout -> logout
                 .logoutUrl("/logout")
@@ -129,7 +139,7 @@ public class SecurityConfig extends VaadinWebSecurity {
                 .logoutSuccessUrl("/login")
                 .invalidateHttpSession(true)
                 .clearAuthentication(true)
-                .deleteCookies("JSESSIONID"));
+                .deleteCookies("JSESSIONID", KioskRememberMeServices.COOKIE));
 
         http.csrf(csrf -> csrf.ignoringRequestMatchers("/logout"));
     }
