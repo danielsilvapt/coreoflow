@@ -59,7 +59,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
                 LoginI18n i18n = LoginI18n.createDefault();
                 i18n.getForm().setTitle("");
                 i18n.getForm().setUsername("Email ou utilizador");
-                i18n.getForm().setForgotPassword("Primeiro acesso / Esqueci-me da palavra-passe");
+                i18n.getForm().setForgotPassword("Esqueci-me da palavra-passe");
                 i18n.getForm().setPassword("Palavra-passe");
                 i18n.getForm().setSubmit("Aceder ao Portal");
                 login.setI18n(i18n);
@@ -96,10 +96,10 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
                 }
         }
 
-        /** Diálogo "Primeiro acesso / Esqueci-me": envia o link de definição de palavra-passe do portal. */
+        /** Diálogo "Esqueci-me da palavra-passe": envia o link de definição de palavra-passe do portal. */
         private void abrirPedidoAcesso() {
                 Dialog dialog = new Dialog();
-                dialog.setHeaderTitle("Definir palavra-passe");
+                dialog.setHeaderTitle("Esqueci-me da palavra-passe");
 
                 Span info = new Span("Indica o email registado na ficha de inscrição. Vais receber um link "
                                 + "para definires a palavra-passe de acesso ao portal.");
