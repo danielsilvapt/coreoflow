@@ -538,6 +538,7 @@ public class EmailService {
                                                 + "funcionar, copia este endereço para o navegador:<br>" + linkAtivacao + "<br>"
                                                 + "Depois entra em <a href='" + baseUrl + "'>" + portal + "</a> com o email <b>"
                                                 + escapeHtml(aluno.getEmail().trim().toLowerCase()) + "</b> e a palavra-passe que definires. "
+                                                + "Se já tens palavra-passe, podes continuar a usá-la. "
                                                 + "Se o link expirar, usa \"Esqueci-me da palavra-passe\" no ecrã de entrada.</p>";
                         } else {
                                 blocoPortal = "<p>No portal em <a href='" + baseUrl + "'>" + portal + "</a> podes acompanhar "
