@@ -25,17 +25,15 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 import pt.studioflow.model.Aluno;
-import pt.studioflow.model.ContaPortal;
 import pt.studioflow.model.Modalidade;
 import pt.studioflow.model.OrigemCompraCredito;
 import pt.studioflow.model.PackAula;
 import pt.studioflow.model.Studio;
 import pt.studioflow.repository.AlunoRepository;
-import pt.studioflow.repository.ContaPortalRepository;
 import pt.studioflow.repository.ModalidadeRepository;
 import pt.studioflow.repository.StudioRepository;
 import pt.studioflow.service.CompraCreditoService;
-import pt.studioflow.service.EmailService;
+import pt.studioflow.service.ContaPortalService;
 import pt.studioflow.service.PackAulaService;
 
 /**
@@ -53,8 +51,7 @@ public class AulaAvulsaCompraView extends VerticalLayout implements BeforeEnterO
     private final PackAulaService packAulaService;
     private final AlunoRepository alunoRepository;
     private final CompraCreditoService compraCreditoService;
-    private final ContaPortalRepository contaPortalRepository;
-    private final EmailService emailService;
+    private final ContaPortalService contaPortalService;
 
     @org.springframework.beans.factory.annotation.Value("${app.base-url:https://app.coreoflow.me}")
     private String baseUrl;
@@ -65,15 +62,13 @@ public class AulaAvulsaCompraView extends VerticalLayout implements BeforeEnterO
 
     public AulaAvulsaCompraView(StudioRepository studioRepository, ModalidadeRepository modalidadeRepository,
             PackAulaService packAulaService, AlunoRepository alunoRepository,
-            CompraCreditoService compraCreditoService, ContaPortalRepository contaPortalRepository,
-            EmailService emailService) {
+            CompraCreditoService compraCreditoService, ContaPortalService contaPortalService) {
         this.studioRepository = studioRepository;
         this.modalidadeRepository = modalidadeRepository;
         this.packAulaService = packAulaService;
         this.alunoRepository = alunoRepository;
         this.compraCreditoService = compraCreditoService;
-        this.contaPortalRepository = contaPortalRepository;
-        this.emailService = emailService;
+        this.contaPortalService = contaPortalService;
     }
 
     @Override
@@ -245,15 +240,7 @@ public class AulaAvulsaCompraView extends VerticalLayout implements BeforeEnterO
      * consiga fazer login e o self-checkin das aulas que comprou.
      */
     private void provisionarAcessoPortal(String email, String nome) {
-        ContaPortal conta = contaPortalRepository.findByEmailIgnoreCase(email).orElseGet(ContaPortal::new);
-        if (conta.isAtivo()) return; // já tem acesso, não reenvia convite
-        conta.setEmail(email);
-        conta.setNome(nome);
-        conta.setStudio(studioAtual);
-        conta.setTokenAtivacao(java.util.UUID.randomUUID().toString().replace("-", ""));
-        conta.setTokenExpiraEm(java.time.LocalDateTime.now().plusDays(30));
-        contaPortalRepository.save(conta);
-        emailService.enviarConvitePortal(email, studioAtual, baseUrl + "/portal-ativar?token=" + conta.getTokenAtivacao());
+        contaPortalService.convidarSeNecessario(email, nome, studioAtual, 30);
     }
 
     private void mostrarConfirmacao(boolean viaMollie) {

@@ -473,6 +473,17 @@ public class EmailService {
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
         public void enviarBoasVindasAluno(Aluno aluno, Studio studio, java.util.List<TurmaInscrita> turmas,
                         double totalMensal) {
+                enviarBoasVindasAluno(aluno, studio, turmas, totalMensal, null);
+        }
+
+        /**
+         * Igual a {@link #enviarBoasVindasAluno(Aluno, Studio, java.util.List, double)}, mas quando
+         * {@code linkAtivacao} não é null inclui o botão "Definir palavra-passe" para o primeiro
+         * acesso ao portal (conta criada na validação da inscrição).
+         */
+        @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
+        public void enviarBoasVindasAluno(Aluno aluno, Studio studio, java.util.List<TurmaInscrita> turmas,
+                        double totalMensal, String linkAtivacao) {
                 if (aluno == null || aluno.getEmail() == null || aluno.getEmail().isBlank()) return;
                 if (turmas == null || turmas.isEmpty()) return;
                 if (envioBloqueado(studio)) return;
@@ -515,6 +526,26 @@ public class EmailService {
 
                         String portal = baseUrl.replaceFirst("^https?://", "");
 
+                        String blocoPortal;
+                        if (linkAtivacao != null) {
+                                blocoPortal = "<p>No portal podes acompanhar presenças, mensalidades, avaliações, "
+                                                + "contratos e os vídeos das aulas. Para o primeiro acesso, define a tua "
+                                                + "palavra-passe:</p>"
+                                                + "<p style='margin:20px 0;'><a href='" + linkAtivacao
+                                                + "' style='background:#4A90E2;color:#fff;padding:12px 24px;text-decoration:none;"
+                                                + "border-radius:6px;display:inline-block;font-weight:bold;'>Definir palavra-passe</a></p>"
+                                                + "<p style='font-size:13px;color:#888;'>O link é válido por 7 dias. Se o botão não "
+                                                + "funcionar, copia este endereço para o navegador:<br>" + linkAtivacao + "<br>"
+                                                + "Depois entra em <a href='" + baseUrl + "'>" + portal + "</a> com o email <b>"
+                                                + escapeHtml(aluno.getEmail().trim().toLowerCase()) + "</b> e a palavra-passe que definires. "
+                                                + "Se o link expirar, usa \"Esqueci-me da palavra-passe\" no ecrã de entrada.</p>";
+                        } else {
+                                blocoPortal = "<p>No portal em <a href='" + baseUrl + "'>" + portal + "</a> podes acompanhar "
+                                                + "presenças, mensalidades, avaliações, contratos e os vídeos das aulas "
+                                                + "(entra com o teu email <b>" + escapeHtml(aluno.getEmail().trim().toLowerCase())
+                                                + "</b>; se não souberes a palavra-passe, usa \"Esqueci-me da palavra-passe\").</p>";
+                        }
+
                         String html = "<div style='font-family:Arial,Helvetica,sans-serif;color:#333;max-width:600px;'>"
                                         + "<p>Olá " + primeiroNome + ",</p>"
                                         + "<p>É com muito gosto que te damos as boas-vindas ao <b>" + nomeEstudio
@@ -526,8 +557,7 @@ public class EmailService {
                                         + "<th style='padding:10px 8px;text-align:left;'>Horário</th>"
                                         + "<th style='padding:10px 8px;text-align:right;'>Mensalidade</th>"
                                         + "</tr></thead><tbody>" + linhas + totalRow + "</tbody></table>"
-                                        + "<p>No portal em <a href='" + baseUrl + "'>" + portal + "</a> podes acompanhar "
-                                        + "presenças, mensalidades, avaliações, contratos e os vídeos das aulas.</p>"
+                                        + blocoPortal
                                         + "<p>Se tiveres qualquer dúvida, é só responderes a este email &mdash; estamos cá para ajudar.</p>"
                                         + "<p>Até já!</p>"
                                         + "</div>";
