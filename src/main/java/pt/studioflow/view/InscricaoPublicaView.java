@@ -323,7 +323,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         // --- 3. SELEÇÃO DE TURMAS ---
         MultiSelectComboBox<Turma> turmasInteresse = new MultiSelectComboBox<>("Escolha as Turmas");
         turmasInteresse.setItems(turmasElegiveis(null));
-        turmasInteresse.setItemLabelGenerator(t -> t.getModalidade().getDescricao() + " - " + t.getDescricao());
+        turmasInteresse.setItemLabelGenerator(Turma::getDescricao);
         turmasInteresse.setHelperText("Indica a data de nascimento para veres só as turmas com idade compatível");
         turmasInteresse.setWidthFull();
 
