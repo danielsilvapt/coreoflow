@@ -84,10 +84,12 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
     @Autowired
     private final VendusApiService vendusService;
     private final R2StorageService storageService;
+    private final pt.studioflow.service.AlunoRemocaoService alunoRemocaoService;
 
     public AlunoView(AlunoRepository alunoRepository, MensalidadeRepository mensalidadeRepository,
             VendusApiService vendusService, AlunoTurmaRepository alunoTurmaRepository,
-            R2StorageService storageService) {
+            R2StorageService storageService, pt.studioflow.service.AlunoRemocaoService alunoRemocaoService) {
+        this.alunoRemocaoService = alunoRemocaoService;
         this.alunoRepository = alunoRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
         this.mensalidadeRepository = mensalidadeRepository;
@@ -395,6 +397,10 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
     }
 
     private void confirmarEliminacao(Aluno aluno) {
+        if (aluno.getStatus() == Aluno.AlunoStatus.INATIVO) {
+            confirmarEliminacaoDefinitiva(aluno);
+            return;
+        }
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle("Desativar aluno");
         dialog.add(new Div(
@@ -418,6 +424,49 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
         confirm.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY);
         dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), confirm);
         dialog.open();
+    }
+
+    /** Aluno já inativo: eliminação definitiva de todos os registos (pede confirmação escrita). */
+    private void confirmarEliminacaoDefinitiva(Aluno aluno) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Eliminar aluno definitivamente");
+
+        Span aviso = new Span("Vais eliminar " + aluno.getNomeCompleto() + " e TODOS os seus registos: "
+                + "turmas, presenças, avaliações, contratos, mensalidades e pagamentos, compras de créditos, "
+                + "encomendas, eventos, inquéritos, subsídios, foto e acesso ao portal. "
+                + "Esta ação não pode ser desfeita. As faturas já emitidas no programa de faturação não são afetadas.");
+        aviso.getStyle().set("color", "var(--lumo-error-text-color)");
+
+        TextField confirmacao = new TextField("Escreve ELIMINAR para confirmar");
+        confirmacao.setWidthFull();
+
+        VerticalLayout corpo = new VerticalLayout(aviso, confirmacao);
+        corpo.setPadding(false);
+        corpo.setMaxWidth("440px");
+        dialog.add(corpo);
+
+        Button confirm = new Button("Eliminar definitivamente", e -> {
+            if (!"ELIMINAR".equals(confirmacao.getValue() == null ? "" : confirmacao.getValue().trim().toUpperCase())) {
+                confirmacao.setInvalid(true);
+                confirmacao.setErrorMessage("Escreve ELIMINAR");
+                return;
+            }
+            try {
+                alunoRemocaoService.eliminarDefinitivamente(aluno.getId());
+                cacheDividas.remove(aluno.getId());
+                updateList();
+                Notification.show(aluno.getNomeCompleto() + " foi eliminado definitivamente.")
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } catch (Exception ex) {
+                Notification.show("Não foi possível eliminar o aluno: " + ex.getMessage())
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        confirm.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY);
+        dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), confirm);
+        dialog.open();
+        confirmacao.focus();
     }
 
     private void abrirFormAluno(Aluno aluno) {

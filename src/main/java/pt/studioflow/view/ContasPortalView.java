@@ -23,13 +23,11 @@ import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.ContaPortalRepository;
 import pt.studioflow.service.EmailService;
 
-import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -46,12 +44,15 @@ public class ContasPortalView extends VerticalLayout {
     private final ContaPortalRepository contaPortalRepository;
     private final EmailService emailService;
     private final String baseUrl;
+    private final pt.studioflow.service.ContaPortalService contaPortalService;
 
     private final Grid<Linha> grid = new Grid<>(Linha.class, false);
     private final TextField filtro = new TextField();
 
     public ContasPortalView(AlunoRepository alunoRepository, ContaPortalRepository contaPortalRepository,
-            EmailService emailService, @Value("${app.base-url:https://app.coreoflow.me}") String baseUrl) {
+            EmailService emailService, @Value("${app.base-url:https://app.coreoflow.me}") String baseUrl,
+            pt.studioflow.service.ContaPortalService contaPortalService) {
+        this.contaPortalService = contaPortalService;
         this.alunoRepository = alunoRepository;
         this.contaPortalRepository = contaPortalRepository;
         this.emailService = emailService;
@@ -115,19 +116,7 @@ public class ContasPortalView extends VerticalLayout {
             Notification.show("Sem estúdio ativo na sessão.").addThemeVariants(NotificationVariant.LUMO_ERROR);
             return;
         }
-        ContaPortal conta = l.conta != null ? l.conta
-                : contaPortalRepository.findByEmailIgnoreCase(l.email()).orElseGet(ContaPortal::new);
-        conta.setEmail(l.email());
-        conta.setNome(l.nomes());
-        conta.setStudio(studio);
-        conta.setTokenAtivacao(UUID.randomUUID().toString().replace("-", ""));
-        conta.setTokenExpiraEm(LocalDateTime.now().plusDays(7));
-        // Numa reposição de password mantém-se ativo=true (a password antiga continua
-        // a funcionar até definir a nova); num primeiro convite fica false.
-        contaPortalRepository.save(conta);
-
-        emailService.enviarConvitePortal(conta.getEmail(), studio,
-                baseUrl + "/portal-ativar?token=" + conta.getTokenAtivacao());
+        ContaPortal conta = contaPortalService.enviarConvite(l.email(), l.nomes(), studio, 7);
 
         if (!studio.isEnviarEmails()) {
             Notification.show("Conta criada, mas o envio de emails está desativado para este estúdio (contacta o suporte).")
