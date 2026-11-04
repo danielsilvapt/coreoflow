@@ -79,6 +79,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     private final pt.studioflow.repository.PagamentoOnlineRepository pagamentoOnlineRepository;
     private final MensalidadeConfig mensalidadeConfig;
     private final EmailService emailService;
+    private final pt.studioflow.service.ContaPortalService contaPortalService;
 
     private final Grid<Aluno> grid = new Grid<>(Aluno.class, false);
     private final Span totalPendentesLabel = new Span("0");
@@ -100,6 +101,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
             MensalidadeService mensalidadeService,
             MensalidadeConfig mensalidadeConfig,
             EmailService emailService,
+            pt.studioflow.service.ContaPortalService contaPortalService,
             PagamentoOnlineService pagamentoOnlineService,
             pt.studioflow.repository.PagamentoOnlineRepository pagamentoOnlineRepository) {
         this.repository = repository;
@@ -112,6 +114,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         this.mensalidadeService = mensalidadeService;
         this.mensalidadeConfig = mensalidadeConfig;
         this.emailService = emailService;
+        this.contaPortalService = contaPortalService;
         this.pagamentoOnlineService = pagamentoOnlineService;
         this.pagamentoOnlineRepository = pagamentoOnlineRepository;
 
@@ -742,8 +745,23 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         try {
             Studio studio = TenantContext.getCurrentStudio();
             Aluno completo = repository.findByIdWithTurmas(aluno.getId()).orElse(aluno);
+
+            // Acesso ao portal: cria a conta (se ainda não existir/estiver ativa) e gera o
+            // link para definir a palavra-passe, que segue no email de boas-vindas.
+            String linkAtivacao = null;
+            try {
+                linkAtivacao = contaPortalService.prepararAtivacao(completo.getEmail(),
+                        completo.getNomeCompleto(), studio, 7).orElse(null);
+            } catch (Exception e) {
+                System.err.println("Erro ao criar acesso ao portal para " + completo.getEmail() + ": " + e.getMessage());
+            }
+
             List<AlunoTurma> associacoes = completo.getTurmas();
             if (associacoes == null || associacoes.isEmpty()) {
+                // Sem turmas não há email de boas-vindas — envia só o convite do portal.
+                if (linkAtivacao != null) {
+                    emailService.enviarConvitePortal(completo.getEmail().trim().toLowerCase(), studio, linkAtivacao);
+                }
                 return;
             }
 
@@ -769,7 +787,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                 linhas.add(new EmailService.TurmaInscrita(nome, professor, horario, valor));
             }
 
-            emailService.enviarBoasVindasAluno(completo, studio, linhas, total);
+            emailService.enviarBoasVindasAluno(completo, studio, linhas, total, linkAtivacao);
         } catch (Exception e) {
             System.err.println("Erro ao enviar email de boas-vindas a " + aluno.getNomeCompleto()
                     + ": " + e.getMessage());

@@ -61,6 +61,9 @@ public interface AlunoRepository extends JpaRepository<Aluno, Long> {
 
     Aluno findByEmail(String email);
 
+    /** Todos os alunos (de qualquer estúdio) com este email — usado no pedido de acesso ao portal. */
+    List<Aluno> findAllByEmailIgnoreCase(String email);
+
     @Query(value = "SELECT localidade FROM aluno WHERE codigo_postal = :cp LIMIT 1", nativeQuery = true)
     String findLocalidadeByCodPostal(@Param("cp") String cp);
 

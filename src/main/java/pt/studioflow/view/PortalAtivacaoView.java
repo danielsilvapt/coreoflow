@@ -66,7 +66,7 @@ public class PortalAtivacaoView extends VerticalLayout implements BeforeEnterObs
         Optional<ContaPortal> contaOpt = token == null ? Optional.empty() : contaRepo.findByTokenAtivacao(token);
         if (contaOpt.isEmpty() || !contaOpt.get().tokenValido(token)) {
             card.add(new H2("Link inválido ou expirado"));
-            Span msg = new Span("Pede um novo convite à secretaria do teu estúdio.");
+            Span msg = new Span("Pede um novo link em \"Esqueci-me da palavra-passe\" no ecrã de entrada, ou contacta a secretaria do teu estúdio.");
             msg.getStyle().set("color", "#666");
             Anchor login = new Anchor("/login", "Ir para o login");
             card.add(msg, login);
