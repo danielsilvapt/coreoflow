@@ -3,6 +3,7 @@ package pt.studioflow.repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.repository.Query;
@@ -26,6 +27,8 @@ public interface CompraCreditoRepository extends JpaRepository<CompraCredito, Lo
             "AND (c.validadeAte IS NULL OR c.validadeAte >= CURRENT_DATE)")
     List<CompraCredito> findCreditosValidosDoAluno(@Param("aluno") Aluno aluno);
 
+    // Carrega o aluno: é lido fora de sessão (NotificacoesView) — evita LazyInitializationException.
+    @EntityGraph(attributePaths = "aluno")
     List<CompraCredito> findByStudioAndDataCompraAfterOrderByDataCompraDesc(Studio studio, LocalDateTime desde);
 
     List<CompraCredito> findByStudio(Studio studio);
