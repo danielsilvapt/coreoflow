@@ -699,8 +699,10 @@ public class SalaScheduleView extends VerticalLayout {
                 }
 
                 java.util.List<Aula> aulasDaColuna = aulas.stream()
-                        .filter(a -> a.getDia().equals(dia) && a.getSala() != null
-                                && a.getSala().getId().equals(sala.getId())
+                        // sala efetiva: aulas sem sala própria herdam a da turma (como no dashboard),
+                        // senão ficavam invisíveis aqui e acabavam duplicadas
+                        .filter(a -> a.getDia().equals(dia) && a.getSalaEfetiva() != null
+                                && a.getSalaEfetiva().getId().equals(sala.getId())
                                 && a.getHoraInicio() != null && a.getHoraFim() != null)
                         .sorted(java.util.Comparator.comparing(Aula::getHoraInicio))
                         .collect(Collectors.toList());
@@ -865,7 +867,7 @@ public class SalaScheduleView extends VerticalLayout {
                 .ofPattern("EEEE, d 'de' MMMM", new java.util.Locale("pt", "PT"));
         String horas = a.getHoraInicio() + (a.getHoraFim() != null ? " – " + a.getHoraFim() : "");
         Span sub = new Span(capitalizarPt(data.format(fmt)) + "  ·  " + horas
-                + (a.getSala() != null ? "  ·  " + a.getSala().getNome() : ""));
+                + (a.getSalaEfetiva() != null ? "  ·  " + a.getSalaEfetiva().getNome() : ""));
         sub.getStyle().set("font-size", "0.85rem").set("color", "var(--cf-text-tertiary)").set("font-weight", "600");
 
         TextArea planeamento = new TextArea("📝 Plano da aula");
