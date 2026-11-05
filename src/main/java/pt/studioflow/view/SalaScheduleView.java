@@ -98,6 +98,7 @@ public class SalaScheduleView extends VerticalLayout {
 
     /** Professor associado ao utilizador (null se admin ou não resolvido). */
     private Professor professorLogado;
+    private final pt.studioflow.service.ProfessorTurmasService professorTurmasService;
 
     private final int HORA_INICIO_MINUTOS = 7 * 60 + 30; // grelha começa às 07:30
     private final double HORA_INICIO = HORA_INICIO_MINUTOS / 60.0;
@@ -119,7 +120,10 @@ public class SalaScheduleView extends VerticalLayout {
             ProfessorRepository professorRepository, TurmaService turmaService, AlunoRepository alunoRepository,
             EmailService emailService, UserRepository userRepository, OcorrenciaAulaRepository ocorrenciaAulaRepository,
             VideoAulaRepository videoAulaRepository, R2StorageService storageService,
-            SumarioAulaRepository sumarioAulaRepository, InterrupcaoLetivaRepository interrupcaoRepository) {
+            SumarioAulaRepository sumarioAulaRepository, InterrupcaoLetivaRepository interrupcaoRepository,
+            pt.studioflow.service.ProfessorTurmasService professorTurmasService) {
+
+        this.professorTurmasService = professorTurmasService;
 
         this.salaRepository = salaRepository;
         this.turmaRepository = turmaRepository;
@@ -410,13 +414,7 @@ public class SalaScheduleView extends VerticalLayout {
 
     private Professor resolverProfessorLogado() {
         try {
-            String userLogado = VaadinServletRequest.getCurrent().getHttpServletRequest()
-                    .getUserPrincipal().getName();
-            String primeiro = resolverPrimeiroNomeUserLogado(userLogado);
-            return getProfessoresDoStudio().stream()
-                    .filter(p -> p.getNome() != null && !p.getNome().isBlank())
-                    .filter(p -> normalizarTxt(p.getNome()).contains(normalizarTxt(primeiro)))
-                    .findFirst().orElse(null);
+            return professorTurmasService.professorDoUtilizador(TenantContext.getCurrentStudio()).orElse(null);
         } catch (Exception e) {
             return null;
         }
@@ -428,26 +426,6 @@ public class SalaScheduleView extends VerticalLayout {
         }
         return t.getTodosProfessores().stream()
                 .anyMatch(p -> p != null && professorLogado.getId().equals(p.getId()));
-    }
-
-    private static String normalizarTxt(String t) {
-        return t == null ? ""
-                : java.text.Normalizer.normalize(t, java.text.Normalizer.Form.NFD)
-                        .replaceAll("\\p{M}", "").toLowerCase().trim();
-    }
-
-    /**
-     * Resolve o primeiro nome do utilizador logado a partir do campo firstName na BD
-     * (mesma lógica usada no resto da app), em vez de assumir que o username/principal
-     * (que pode vir como "slug:username") corresponde ao primeiro nome.
-     */
-    private String resolverPrimeiroNomeUserLogado(String userLogado) {
-        String firstName = userRepository.findByPrincipalName(userLogado).map(User::getFirstName).orElse(null);
-        if (firstName != null && !firstName.isBlank()) {
-            return firstName.trim().split("\\s+")[0].toLowerCase();
-        }
-        String semSlug = userLogado.contains(":") ? userLogado.split(":", 2)[1] : userLogado;
-        return semSlug.split("[\\.\\s_]")[0].toLowerCase();
     }
 
     private List<Aluno> getAlunosDoStudio() {
@@ -1130,16 +1108,9 @@ public class SalaScheduleView extends VerticalLayout {
         layout.setSpacing(true);
 
         String userLogado = VaadinServletRequest.getCurrent().getHttpServletRequest().getUserPrincipal().getName();
-        String primeiroNomeUser = resolverPrimeiroNomeUserLogado(userLogado);
 
-        Professor profLogado = getProfessoresDoStudio().stream()
-                .filter(p -> p.getNome() != null && !p.getNome().trim().isEmpty())
-                .filter(p -> {
-                    String nomeProfDB = p.getNome().split(" ")[0].toLowerCase();
-                    return primeiroNomeUser.contains(nomeProfDB);
-                })
-                .findFirst()
-                .orElse(null);
+        Professor profLogado = professorTurmasService
+                .professorDoUtilizador(TenantContext.getCurrentStudio()).orElse(null);
 
         final Professor professorFinal;
 
@@ -1687,16 +1658,9 @@ public class SalaScheduleView extends VerticalLayout {
         layout.setSpacing(true);
 
         String userLogado = VaadinServletRequest.getCurrent().getHttpServletRequest().getUserPrincipal().getName();
-        String primeiroNomeUser = resolverPrimeiroNomeUserLogado(userLogado);
 
-        Professor profLogado = getProfessoresDoStudio().stream()
-                .filter(p -> p.getNome() != null && !p.getNome().trim().isEmpty())
-                .filter(p -> {
-                    String nomeProfDB = p.getNome().split(" ")[0].toLowerCase();
-                    return primeiroNomeUser.contains(nomeProfDB);
-                })
-                .findFirst()
-                .orElse(null);
+        Professor profLogado = professorTurmasService
+                .professorDoUtilizador(TenantContext.getCurrentStudio()).orElse(null);
 
         final Professor professorFinal;
 
