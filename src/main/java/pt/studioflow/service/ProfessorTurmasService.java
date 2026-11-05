@@ -1,7 +1,9 @@
 package pt.studioflow.service;
 
 import java.text.Normalizer;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -14,6 +16,7 @@ import pt.studioflow.model.Professor;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
 import pt.studioflow.model.User;
+import pt.studioflow.repository.ProfessorRepository;
 import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.repository.UserRepository;
 
@@ -23,18 +26,22 @@ import pt.studioflow.repository.UserRepository;
  *
  * <p>O ADMIN vê tudo; um PROF (sem ADMIN) fica restrito às suas turmas. A
  * associação professor↔utilizador é feita por <b>email</b> ({@code User.email ==
- * Professor.email}) e, em fallback, por <b>palavra exata</b> do primeiro nome —
- * nunca por {@code contains}, para "Ana" não abrir as turmas da "Mariana".
+ * Professor.email}) e, em fallback, por <b>palavra exata</b> do primeiro nome
+ * desde que identifique um único professor — nunca por {@code contains}, para
+ * "Ana" não abrir as turmas da "Mariana" nem da "Ana Maria Costa".
  */
 @Component
 public class ProfessorTurmasService {
 
     private final UserRepository userRepo;
     private final TurmaRepository turmaRepo;
+    private final ProfessorRepository professorRepo;
 
-    public ProfessorTurmasService(UserRepository userRepo, TurmaRepository turmaRepo) {
+    public ProfessorTurmasService(UserRepository userRepo, TurmaRepository turmaRepo,
+            ProfessorRepository professorRepo) {
         this.userRepo = userRepo;
         this.turmaRepo = turmaRepo;
+        this.professorRepo = professorRepo;
     }
 
     /** true se o utilizador atual tem ROLE_ADMIN. */
@@ -53,24 +60,75 @@ public class ProfessorTurmasService {
     }
 
     /**
+     * O {@link Professor} correspondente ao utilizador com sessão iniciada.
+     *
+     * <p>1) {@code User.email == Professor.email} — se houver, é esse e só esse
+     * (o fallback por nome nunca acrescenta outros professores);
+     * 2) fallback por nome: o {@code User.firstName} tem de ser igual ao nome
+     * completo do professor ou a uma palavra exata dele, e só conta se houver
+     * <b>um único</b> professor nessas condições — "Ana" com "Ana Rodrigues" e
+     * "Ana Maria Costa" no estúdio não resolve para nenhuma.
+     */
+    public Optional<Professor> professorDoUtilizador(Studio studio) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        User u = auth == null ? null : userRepo.findByPrincipalName(auth.getName()).orElse(null);
+        if (u == null) return Optional.empty();
+        List<Professor> profs = studio != null ? professorRepo.findAllByStudio(studio) : professorRepo.findAll();
+
+        String emailUser = u.getEmail() != null ? u.getEmail().trim() : "";
+        if (!emailUser.isBlank()) {
+            Optional<Professor> porEmail = profs.stream()
+                    .filter(p -> p.getEmail() != null && p.getEmail().trim().equalsIgnoreCase(emailUser))
+                    .findFirst();
+            if (porEmail.isPresent()) return porEmail;
+        }
+
+        String primeiroNome = normalizar(u.getFirstName());
+        if (primeiroNome.isBlank()) return Optional.empty();
+        List<Professor> candidatos = profs.stream()
+                .filter(p -> p.getNome() != null)
+                .filter(p -> {
+                    String nome = normalizar(p.getNome());
+                    return nome.equals(primeiroNome) || Arrays.asList(nome.split("\\s+")).contains(primeiroNome);
+                })
+                .collect(Collectors.toList());
+        return candidatos.size() == 1 ? Optional.of(candidatos.get(0)) : Optional.empty();
+    }
+
+    /**
+     * true se um nome de professor gravado como texto (marcações de sala,
+     * registo de horas) pertence a {@code prof}: nome igual (sem acentos/caixa)
+     * ou o username do utilizador (há registos antigos gravados assim, com ou
+     * sem prefixo {@code slug:}). Nunca por {@code contains}.
+     */
+    public static boolean nomeGravadoCorresponde(String gravado, Professor prof, String username) {
+        String g = normalizar(gravado);
+        if (g.isBlank()) return false;
+        if (prof != null && g.equals(normalizar(prof.getNome()))) return true;
+        if (username != null && !username.isBlank()) {
+            String user = normalizar(username.contains(":") ? username.split(":", 2)[1] : username);
+            String gSemSlug = g.contains(":") ? g.split(":", 2)[1] : g;
+            return gSemSlug.equals(user);
+        }
+        return false;
+    }
+
+    /**
      * Turmas do estúdio em que o utilizador atual leciona: professor principal,
      * co-professor, ou professor de pelo menos uma {@link Aula} da turma (dia
      * específico de uma turma partilhada) — dá acesso à turma inteira, como já
      * acontece com os co-professores.
      */
     public List<Turma> turmasDoUtilizador(Studio studio) {
+        Professor prof = professorDoUtilizador(studio).orElse(null);
+        if (prof == null) return List.of();
+        Long id = prof.getId();
         List<Turma> todas = studio != null ? turmaRepo.findAllByStudio(studio) : turmaRepo.findAllComplete();
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        User u = auth == null ? null : userRepo.findByPrincipalName(auth.getName()).orElse(null);
-        String emailUser = u != null && u.getEmail() != null ? u.getEmail().trim().toLowerCase() : "";
-        String primeiroNome = normalizar(u != null ? u.getFirstName() : "");
-
         return todas.stream()
-                .filter(t -> t.getTodosProfessores().stream().anyMatch(p -> corresponde(p, emailUser, primeiroNome))
+                .filter(t -> t.getTodosProfessores().stream().anyMatch(p -> p != null && id.equals(p.getId()))
                         || (t.getAulas() != null && t.getAulas().stream()
                                 .map(Aula::getProfessorEfetivo)
-                                .anyMatch(p -> corresponde(p, emailUser, primeiroNome))))
+                                .anyMatch(p -> p != null && id.equals(p.getId()))))
                 .collect(Collectors.toList());
     }
 
@@ -90,20 +148,7 @@ public class ProfessorTurmasService {
         return turmasDoUtilizador(studio);
     }
 
-    private boolean corresponde(Professor p, String emailUser, String primeiroNome) {
-        if (p == null) return false;
-        if (!emailUser.isBlank() && p.getEmail() != null
-                && p.getEmail().trim().equalsIgnoreCase(emailUser)) {
-            return true;
-        }
-        if (primeiroNome.isBlank() || p.getNome() == null) return false;
-        for (String token : normalizar(p.getNome()).split("\\s+")) {
-            if (token.equals(primeiroNome)) return true;
-        }
-        return false;
-    }
-
-    private static String normalizar(String t) {
+    static String normalizar(String t) {
         return t == null ? ""
                 : Normalizer.normalize(t, Normalizer.Form.NFD)
                         .replaceAll("\\p{M}", "").toLowerCase().trim();
