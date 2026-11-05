@@ -183,7 +183,13 @@ public class DashboardView extends Div {
 
                 String login = SecurityContextHolder.getContext().getAuthentication().getName();
                 String firstNameBD = userRepository.findByPrincipalName(login).map(User::getFirstName).orElse("");
-                String busca = normalizar(firstNameBD);
+                // Professor do utilizador resolvido por email (fallback: nome único) —
+                // nunca por nome.contains(primeiroNome): "Ana" apanhava a "Ana Maria Costa".
+                final Professor profEu = isProf
+                                ? professorTurmasService.professorDoUtilizador(studio).orElse(null) : null;
+                final Long profEuId = profEu != null ? profEu.getId() : null;
+                final Predicate<String> ehMeu = nome -> profEu != null
+                                && pt.studioflow.service.ProfessorTurmasService.nomeGravadoCorresponde(nome, profEu, login);
 
                 // --- ADMIN: dashboard do estúdio ---
                 if (isAdmin) {
@@ -209,15 +215,14 @@ public class DashboardView extends Div {
                         if (isProf) {
                                 todasAulas.stream()
                                                 .filter(a -> a.getDia() == hoje.getDayOfWeek())
-                                                .filter(a -> a.getTurma() != null && a.getTurma().getProfessor() != null
-                                                                && normalizar(a.getTurma().getProfessor().getNome())
-                                                                                .contains(busca))
+                                                .filter(a -> a.getTurma() != null && profEuId != null
+                                                                && a.getProfessorEfetivo() != null
+                                                                && profEuId.equals(a.getProfessorEfetivo().getId()))
                                                 .forEach(a -> agenda.add(a.getHoraInicio() + "|"
                                                                 + a.getTurma().getDescricao() + "|var(--cf-success)"));
 
                                 todasAsPrivadasDeHoje.stream()
-                                                .filter(ms -> ms.getProfessor() != null
-                                                                && normalizar(ms.getProfessor()).contains(busca))
+                                                .filter(ms -> ehMeu.test(ms.getProfessor()))
                                                 .forEach(ms -> {
                                                         String nomesAlunos = extrairNomesCurtos(ms.getAlunos());
                                                         agenda.add(ms.getHoraInicio() + "|Aula "
@@ -257,7 +262,7 @@ public class DashboardView extends Div {
                                 List<MarcacaoSala> pendentes = (studio != null
                                                 ? marcacaoSalaRepository.findByStudioAndStatus(studio, "PENDENTE")
                                                 : marcacaoSalaRepository.findAll()).stream()
-                                                .filter(m -> normalizar(m.getProfessor()).contains(busca))
+                                                .filter(m -> ehMeu.test(m.getProfessor()))
                                                 .collect(Collectors.toList());
                                 VerticalLayout vP = new VerticalLayout();
                                 vP.setPadding(false);
@@ -276,14 +281,14 @@ public class DashboardView extends Div {
                                                 ? registoHorasRepository.findAllByStudio(studio)
                                                 : registoHorasRepository.findAll();
                                 double hReg = registosMes.stream()
-                                                .filter(r -> normalizar(r.getProfessor()).contains(busca)
+                                                .filter(r -> ehMeu.test(r.getProfessor())
                                                                 && r.getMesNumero() == mesAtual.getMonthValue()
                                                                 && !"ENSAIO".equalsIgnoreCase(r.getTipoAtividade()))
                                                 .mapToDouble(r -> pt.studioflow.util.HorasUtil.faturaveis(r.getInicio(), r.getFim()))
                                                 .sum();
 
                                 double hEns = registosMes.stream()
-                                                .filter(r -> normalizar(r.getProfessor()).contains(busca)
+                                                .filter(r -> ehMeu.test(r.getProfessor())
                                                                 && r.getMesNumero() == mesAtual.getMonthValue()
                                                                 && "ENSAIO".equalsIgnoreCase(r.getTipoAtividade()))
                                                 .mapToDouble(r -> pt.studioflow.util.HorasUtil.faturaveis(r.getInicio(), r.getFim()))
@@ -293,7 +298,7 @@ public class DashboardView extends Div {
                                                 ? marcacaoSalaRepository.findAllByStudio(studio)
                                                 : marcacaoSalaRepository.findAll();
                                 double hPriv = marcacoesMes.stream()
-                                                .filter(m -> normalizar(m.getProfessor()).contains(busca)
+                                                .filter(m -> ehMeu.test(m.getProfessor())
                                                                 && m.getData().getMonthValue() == mesAtual
                                                                                 .getMonthValue()
                                                                 && "PRIVADA".equalsIgnoreCase(m.getTipo()))
@@ -321,11 +326,7 @@ public class DashboardView extends Div {
                                 vA.add(vTotal);
 
                                 // --- Valor estimado a receber (conforme modo de remuneração efetivo) ---
-                                Professor profLogado = (studio != null
-                                                ? professorRepository.findAllByStudio(studio)
-                                                : professorRepository.findAll()).stream()
-                                                .filter(p -> normalizar(p.getNome()).contains(busca))
-                                                .findFirst().orElse(null);
+                                Professor profLogado = profEu;
                                 if (profLogado != null) {
                                         List<Turma> turmasProf = turmas.stream()
                                                         .filter(t -> t.getProfessor() != null
@@ -363,14 +364,14 @@ public class DashboardView extends Div {
                                 // e com pelo menos uma presença registada numa turma do professor
                                 final int META_BONUS_ALUNOS = studio.getMetaBonusAlunos();
                                 Set<Long> idsTurmasProfBI = turmas.stream().filter(t -> t.getProfessor() != null
-                                                        && normalizar(t.getProfessor().getNome()).contains(busca))
+                                                        && t.getProfessor().getId().equals(profEuId))
                                                 .map(Turma::getId).collect(Collectors.toSet());
                                 Set<Long> alunosComPresencaProf = todasPresencas.stream()
                                                 .filter(p -> p.isPresente() && p.getAluno() != null && p.getTurma() != null
                                                         && idsTurmasProfBI.contains(p.getTurma().getId()))
                                                 .map(p -> p.getAluno().getId()).collect(Collectors.toSet());
                                 int tAlunos = (int) turmas.stream().filter(t -> t.getProfessor() != null
-                                                && normalizar(t.getProfessor().getNome()).contains(busca))
+                                                && t.getProfessor().getId().equals(profEuId))
                                                 .flatMap(t -> alunoTurmaRepository.findByTurma(t).stream())
                                                 .map(AlunoTurma::getAluno)
                                                 .filter(a -> a != null && a.isAtivo()

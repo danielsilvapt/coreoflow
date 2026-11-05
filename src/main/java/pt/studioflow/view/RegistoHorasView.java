@@ -65,6 +65,7 @@ public class RegistoHorasView extends VerticalLayout {
     private final TurmaRepository turmaRepository;
     private final RelatorioHorasService relatorioService;
     private final UserRepository userRepository;
+    private final pt.studioflow.service.ProfessorTurmasService professorTurmasService;
 
     private Grid<RegistoHoras> grid;
     private List<RegistoHoras> registos;
@@ -95,7 +96,9 @@ public class RegistoHorasView extends VerticalLayout {
             TurmaRepository turmaRepository,
             ProfessorRepository professorRepository,
             RelatorioHorasService relatorioService,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            pt.studioflow.service.ProfessorTurmasService professorTurmasService) {
+        this.professorTurmasService = professorTurmasService;
         this.registoHorasRepository = registoHorasRepository;
         this.turmaRepository = turmaRepository;
         this.professorRepository = professorRepository;
@@ -255,7 +258,7 @@ public class RegistoHorasView extends VerticalLayout {
                 registos.remove(r);
                 aplicarFiltros();
             });
-            boolean pode = isAdmin() || normalizar(r.getProfessor()).contains(normalizar(getFirstNameFromDatabase()));
+            boolean pode = isAdmin() || ehMeu(r.getProfessor());
             edit.setEnabled(pode);
             del.setEnabled(pode);
             return new HorizontalLayout(edit, del);
@@ -469,10 +472,9 @@ public class RegistoHorasView extends VerticalLayout {
         String pName = (professorFiltro.getValue() != null) ? professorFiltro.getValue().getNome() : "";
         String m = mesFiltro.getValue();
         String a = anoFiltro.getValue();
-        String me = normalizar(getFirstNameFromDatabase());
         List<RegistoHoras> filtrados = registos.stream()
                 .filter(r -> isAdmin() ? (pName.isEmpty() || r.getProfessor().equals(pName))
-                        : normalizar(r.getProfessor()).contains(me))
+                        : ehMeu(r.getProfessor()))
                 .filter(r -> m == null || r.getMes().equalsIgnoreCase(m))
                 .filter(r -> a == null || String.valueOf(r.getAno()).equals(a))
                 .sorted(Comparator.comparing(RegistoHoras::getInicio).reversed())
@@ -496,15 +498,28 @@ public class RegistoHorasView extends VerticalLayout {
         anoFiltro.setValue(String.valueOf(now.getYear()));
         List<Professor> ps = getProfessoresDoStudio();
         professorFiltro.setItems(ps);
-        ps.stream().filter(x -> normalizar(x.getNome()).contains(normalizar(getFirstNameFromDatabase()))).findFirst()
+        meuProfessor().flatMap(eu -> ps.stream().filter(x -> x.getId().equals(eu.getId())).findFirst())
                 .ifPresent(professorFiltro::setValue);
         aplicarFiltros();
     }
 
-    private String getFirstNameFromDatabase() {
-        Object p = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String l = (p instanceof UserDetails) ? ((UserDetails) p).getUsername() : p.toString();
-        return userRepository.findByPrincipalName(l).map(User::getFirstName).orElse("");
+    /** Professor do utilizador logado (email; fallback nome único) — nunca por contains. */
+    private java.util.Optional<Professor> meuProfessorCache;
+
+    private java.util.Optional<Professor> meuProfessor() {
+        if (meuProfessorCache == null) {
+            meuProfessorCache = professorTurmasService
+                    .professorDoUtilizador(pt.studioflow.config.TenantContext.getCurrentStudio());
+        }
+        return meuProfessorCache;
+    }
+
+    /** true se o registo (professor gravado como texto) é do utilizador logado. */
+    private boolean ehMeu(String professorGravado) {
+        Professor eu = meuProfessor().orElse(null);
+        String login = SecurityContextHolder.getContext().getAuthentication().getName();
+        return eu != null && pt.studioflow.service.ProfessorTurmasService
+                .nomeGravadoCorresponde(professorGravado, eu, login);
     }
 
     private String normalizar(String t) {
@@ -548,7 +563,7 @@ public class RegistoHorasView extends VerticalLayout {
         tipoComboDialog.clear();
         List<Professor> ps = getProfessoresDoStudio();
         profComboDialog.setItems(ps);
-        ps.stream().filter(x -> normalizar(x.getNome()).contains(normalizar(getFirstNameFromDatabase()))).findFirst()
+        meuProfessor().flatMap(eu -> ps.stream().filter(x -> x.getId().equals(eu.getId())).findFirst())
                 .ifPresent(profComboDialog::setValue);
         registoDialog.open();
     }
