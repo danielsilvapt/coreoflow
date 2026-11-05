@@ -50,6 +50,12 @@ public class Aula {
         return sala;
     }
 
+    /** Sala onde esta aula efetivamente decorre: a sua própria, ou a sala da turma. */
+    public Sala getSalaEfetiva() {
+        if (sala != null) return sala;
+        return turma != null ? turma.getSala() : null;
+    }
+
     public void setSala(Sala sala) {
         this.sala = sala;
     }

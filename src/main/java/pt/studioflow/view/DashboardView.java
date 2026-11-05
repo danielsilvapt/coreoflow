@@ -952,7 +952,7 @@ public class DashboardView extends Div {
                                 } else if (a.getProfessorEfetivo() != null) {
                                         meta.add(a.getProfessorEfetivo().getNome());
                                 }
-                                Sala sala = a.getSala() != null ? a.getSala() : t.getSala();
+                                Sala sala = a.getSalaEfetiva();
                                 if (sala != null && sala.getNome() != null) meta.add(sala.getNome());
                                 int inscritos = inscritosPorTurma.getOrDefault(t.getId(), 0);
                                 meta.add(plural(inscritos, "aluno", "alunos"));
