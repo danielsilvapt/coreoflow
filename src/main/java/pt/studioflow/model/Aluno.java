@@ -52,7 +52,7 @@ public class Aluno {
     @Column(name = "email")
     private String email;
 
-    @Column(name = "morada")
+    @Column(name = "morada", columnDefinition = "TEXT")
     private String morada;
 
     @Column(name = "codigo_postal")
