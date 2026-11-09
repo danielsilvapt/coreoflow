@@ -19,6 +19,9 @@ import java.time.Year;
 @Component
 public class MensalidadeConfig {
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private pt.studioflow.repository.StudioRepository studioRepository;
+
     /**
      * Dia do mês em que a mensalidade vence, conforme configurado no estúdio, ou
      * {@code null} se o estúdio não tem vencimento automático definido — nesse
@@ -142,9 +145,27 @@ public class MensalidadeConfig {
         if (turma.getMensalidadeNaoSocio() != null) {
             return turma.getMensalidadeNaoSocio();
         }
-        double adicional = turma.getStudio() != null && turma.getStudio().getMensalidadeNaoSocioAdicional() != null
-                ? turma.getStudio().getMensalidadeNaoSocioAdicional() : 0.0;
+        Studio studioTurma = studioAcessivel(turma);
+        double adicional = studioTurma != null && studioTurma.getMensalidadeNaoSocioAdicional() != null
+                ? studioTurma.getMensalidadeNaoSocioAdicional() : 0.0;
         return turma.getMensalidadeSocio() + adicional;
+    }
+
+    /**
+     * Estúdio da turma sem arriscar LazyInitializationException: a turma vem
+     * muitas vezes de uma vista Vaadin (detached), com o estúdio ainda como
+     * proxy por inicializar. Nesse caso usa o estúdio do tenant atual.
+     */
+    private Studio studioAcessivel(Turma turma) {
+        Studio s = turma.getStudio();
+        if (s == null || org.hibernate.Hibernate.isInitialized(s)) {
+            return s;
+        }
+        Studio atual = TenantContext.getCurrentStudio();
+        if (atual != null && atual.getId() != null && atual.getId().equals(s.getId())) {
+            return atual;
+        }
+        return studioRepository != null ? studioRepository.findById(s.getId()).orElse(null) : null;
     }
 
     private static final java.util.Set<Month> MESES_MEIO_MENSALIDADE =
