@@ -299,6 +299,15 @@ public class Turma {
         return aulas;
     }
 
+    /** Dias da semana distintos em que a turma tem aula marcada no mapa de salas. */
+    @Transient
+    public List<java.time.DayOfWeek> getDiasAula() {
+        if (aulas == null) {
+            return List.of();
+        }
+        return aulas.stream().map(Aula::getDia).filter(java.util.Objects::nonNull).distinct().sorted().toList();
+    }
+
     public void setAulas(List<Aula> aulas) {
         this.aulas = aulas;
     }

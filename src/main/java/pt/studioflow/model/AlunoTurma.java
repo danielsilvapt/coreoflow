@@ -39,6 +39,22 @@ public class AlunoTurma {
     @Column(name = "sem_mensalidade")
     private Boolean semMensalidade = false;
 
+    /**
+     * Só usado quando aulasPorSemana == 1 numa turma com aulas em 2+ dias distintos
+     * no mapa de salas - indica qual dos dias o aluno escolheu frequentar.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dia_semana_escolhido")
+    private java.time.DayOfWeek diaSemanaEscolhido;
+
+    public java.time.DayOfWeek getDiaSemanaEscolhido() {
+        return diaSemanaEscolhido;
+    }
+
+    public void setDiaSemanaEscolhido(java.time.DayOfWeek diaSemanaEscolhido) {
+        this.diaSemanaEscolhido = diaSemanaEscolhido;
+    }
+
     public int getAulasPorSemana() {
         return aulasPorSemana;
     }
