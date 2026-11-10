@@ -1,7 +1,11 @@
 package pt.studioflow.view;
 
+import java.time.DayOfWeek;
+import java.time.format.TextStyle;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -49,7 +53,7 @@ public class TurmaAlunosView extends VerticalLayout {
     private ComboBox<Turma> turmaCombo;
     private TextField searchAluno;
     private Grid<Aluno> gridDisponiveis;
-    private Grid<Aluno> gridTurma;
+    private Grid<AlunoTurma> gridTurma;
 
     // Frequência da turma segundo o mapa de salas (1x/2x), usada como valor
     // inicial de cada cartão; o que se escolher num cartão fica por aluno, para o
@@ -163,7 +167,8 @@ public class TurmaAlunosView extends VerticalLayout {
                 com.vaadin.flow.component.grid.GridVariant.LUMO_NO_ROW_BORDERS);
         gridTurma.addClassName("grid-modern");
 
-        gridTurma.addComponentColumn(aluno -> {
+        gridTurma.addComponentColumn(at -> {
+            Aluno aluno = at.getAluno();
             HorizontalLayout card = new HorizontalLayout();
             card.addClassName("aluno-card");
 
@@ -178,18 +183,21 @@ public class TurmaAlunosView extends VerticalLayout {
                     "Fatura");
             fatura.getStyle().set("margin-left", "auto").set("font-size", "0.8em");
             fatura.setTooltipText("Desliga para inscrições só de presenças (não gera mensalidade), ex.: pré-competição");
-            AlunoTurma at = turmaCombo.getValue() != null
-                    ? alunoTurmaRepository.findByAlunoAndTurma(aluno, turmaCombo.getValue()).orElse(null)
-                    : null;
-            fatura.setValue(at == null || !at.isSemMensalidade());
+            fatura.setValue(!at.isSemMensalidade());
             fatura.addValueChangeListener(e -> alternarFaturacao(aluno, e.getValue()));
 
-            Button remove = ViewUtils.botaoEliminar(e -> removerAluno(aluno));
-
-            card.add(avatar, nome, fatura, remove);
+            card.add(avatar, nome, fatura);
             card.setAlignItems(Alignment.CENTER);
             return card;
-        });
+        }).setHeader("Aluno").setFlexGrow(1);
+
+        // Dia escolhido - editável diretamente quando o aluno frequenta 1x numa turma
+        // com aulas em 2+ dias distintos (evita ter de remover e voltar a afetar)
+        gridTurma.addComponentColumn(this::criarCampoDia)
+                .setHeader("Dia").setFlexGrow(0).setWidth("170px");
+
+        gridTurma.addComponentColumn(at -> ViewUtils.botaoEliminar(e -> removerAluno(at.getAluno())))
+                .setFlexGrow(0).setWidth("80px");
 
         // Configurar Receção (Drop)
         gridTurma.setDropMode(GridDropMode.ON_GRID);
@@ -240,7 +248,46 @@ public class TurmaAlunosView extends VerticalLayout {
         return card;
     }
 
-    private VerticalLayout criarCardSection(String titulo, VaadinIcon icon, Grid<Aluno> grid, String cor) {
+    private com.vaadin.flow.component.Component criarCampoDia(AlunoTurma at) {
+        Turma turma = turmaCombo.getValue();
+        List<DayOfWeek> diasTurma = turma != null ? turma.getDiasAula() : List.of();
+
+        if (at.getAulasPorSemana() != 1 || diasTurma.size() < 2) {
+            String txt = at.getAulasPorSemana() == 1 && diasTurma.size() == 1
+                    ? nomeDia(diasTurma.get(0))
+                    : Turma.rotuloFrequencia(at.getAulasPorSemana());
+            Span s = new Span(txt);
+            s.getStyle().set("color", "var(--lumo-secondary-text-color)").set("font-size", "0.9em");
+            return s;
+        }
+
+        ComboBox<DayOfWeek> dia = new ComboBox<>();
+        dia.setItems(diasTurma);
+        dia.setItemLabelGenerator(this::nomeDia);
+        dia.setPlaceholder("Escolher dia");
+        dia.setWidthFull();
+        dia.addThemeName("small");
+        dia.setAriaLabel("Dia da semana de " + at.getAluno().getNomeCompleto());
+        dia.setValue(diasTurma.contains(at.getDiaSemanaEscolhido()) ? at.getDiaSemanaEscolhido() : null);
+        dia.addValueChangeListener(e -> {
+            if (!e.isFromClient()) {
+                return;
+            }
+            at.setDiaSemanaEscolhido(e.getValue());
+            alunoTurmaRepository.save(at);
+            Notification.show(e.getValue() == null ? "Dia removido."
+                    : "Dia atualizado para " + nomeDia(e.getValue()) + ".")
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        });
+        return dia;
+    }
+
+    private String nomeDia(DayOfWeek d) {
+        String s = d.getDisplayName(TextStyle.FULL, new Locale("pt", "PT"));
+        return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    private VerticalLayout criarCardSection(String titulo, VaadinIcon icon, Grid<?> grid, String cor) {
         VerticalLayout container = new VerticalLayout();
         container.addClassName("section-container");
         container.setSizeFull();
@@ -275,14 +322,18 @@ public class TurmaAlunosView extends VerticalLayout {
         }
         frequenciaTurma = alunoTurmaService.aulasPorSemanaDaTurma(turma);
         String filtro = searchAluno.getValue() == null ? "" : searchAluno.getValue().toLowerCase();
-        List<Aluno> naTurma = alunoTurmaRepository.findByTurma(turma).stream().map(AlunoTurma::getAluno)
+        List<AlunoTurma> matriculas = alunoTurmaRepository.findByTurma(turma);
+        List<Aluno> naTurma = matriculas.stream().map(AlunoTurma::getAluno)
                 .collect(Collectors.toList());
         pt.studioflow.model.Studio _studio = pt.studioflow.config.TenantContext.getCurrentStudio();
         List<Aluno> disponiveis = (_studio != null ? alunoRepository.findAllByStudio(_studio) : alunoRepository.findAll()).stream()
                 .filter(a -> a.getNomeCompleto().toLowerCase().contains(filtro))
                 .filter(a -> !naTurma.contains(a)).collect(Collectors.toList());
         gridDisponiveis.setItems(disponiveis);
-        gridTurma.setItems(naTurma);
+        gridTurma.setItems(matriculas.stream()
+                .sorted(Comparator.comparing((AlunoTurma at) -> at.getAluno().getNomeCompleto(),
+                        String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList()));
     }
 
     private void adicionarAluno(Aluno aluno, int aulas) {
