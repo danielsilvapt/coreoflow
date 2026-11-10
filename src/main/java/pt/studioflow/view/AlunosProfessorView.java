@@ -2,6 +2,7 @@ package pt.studioflow.view;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,7 @@ import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Turma;
+import pt.studioflow.repository.AlunoTurmaRepository;
 import pt.studioflow.service.ProfessorTurmasService;
 import pt.studioflow.service.R2StorageService;
 import pt.studioflow.service.TurmaService;
@@ -50,6 +52,7 @@ public class AlunosProfessorView extends VerticalLayout {
     private final ProfessorTurmasService profTurmas;
     private final TurmaService turmaService;
     private final R2StorageService storageService;
+    private final AlunoTurmaRepository alunoTurmaRepository;
 
     private Grid<AlunoDTO> grid;
     private ListDataProvider<AlunoDTO> dataProvider;
@@ -58,10 +61,12 @@ public class AlunosProfessorView extends VerticalLayout {
     @Autowired
     public AlunosProfessorView(ProfessorTurmasService profTurmas,
             TurmaService turmaService,
-            R2StorageService storageService) {
+            R2StorageService storageService,
+            AlunoTurmaRepository alunoTurmaRepository) {
         this.profTurmas = profTurmas;
         this.turmaService = turmaService;
         this.storageService = storageService;
+        this.alunoTurmaRepository = alunoTurmaRepository;
 
         setSizeFull();
         setPadding(false);
@@ -90,6 +95,10 @@ public class AlunosProfessorView extends VerticalLayout {
 
         Grid.Column<AlunoDTO> colTurmas = grid.addColumn(dto -> dto.getNomesTurmas())
                 .setHeader("Turmas").setSortable(true).setKey("turmas").setAutoWidth(true);
+
+        // Dia escolhido pelos alunos que vão só 1x/semana a turmas com aulas em 2+ dias
+        Grid.Column<AlunoDTO> colDia = grid.addColumn(AlunoDTO::getDiasEscolhidos)
+                .setHeader("Dia (1x/semana)").setSortable(true).setKey("dia").setAutoWidth(true);
 
         Grid.Column<AlunoDTO> colNascimento = grid
                 .addColumn(dto -> dto.getAluno().getDataNascimento() == null ? "-"
@@ -131,6 +140,7 @@ public class AlunosProfessorView extends VerticalLayout {
         HeaderRow filterRow = grid.appendHeaderRow();
         configurarCampoFiltro(colAluno, filterRow, "Nome...");
         configurarFiltroComboTurma(colTurmas, filterRow); // Filtro ComboBox
+        configurarCampoFiltro(colDia, filterRow, "Dia...");
         configurarCampoFiltro(colNascimento, filterRow, "Data...");
         configurarCampoFiltro(colIdade, filterRow, "Ex: >18");
         configurarCampoFiltro(colTlm, filterRow, "Tlm...");
@@ -190,6 +200,7 @@ public class AlunosProfessorView extends VerticalLayout {
                 boolean corresponde = switch (filtro.getKey()) {
                     case "aluno" -> dto.getAluno().getNomeCompleto().toLowerCase().contains(termo);
                     case "turmas" -> dto.getNomesTurmas().toLowerCase().contains(termo);
+                    case "dia" -> dto.getDiasEscolhidos().toLowerCase().contains(termo);
                     case "nascimento" -> dto.getAluno().getDataNascimento() != null &&
                             dto.getAluno().getDataNascimento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                                     .contains(termo);
@@ -228,7 +239,13 @@ public class AlunosProfessorView extends VerticalLayout {
         List<Turma> turmasDoProf = profTurmas.turmasVisiveis(TenantContext.getCurrentStudio());
 
         Map<Aluno, Set<String>> alunoTurmasMap = new HashMap<>();
+        Map<Long, Map<String, String>> alunoDiasMap = new HashMap<>();
         for (Turma t : turmasDoProf) {
+            alunoTurmaRepository.findByTurma(t).stream()
+                    .filter(at -> at.getAluno() != null && at.getAulasPorSemana() == 1
+                            && at.getDiaSemanaEscolhido() != null)
+                    .forEach(at -> alunoDiasMap.computeIfAbsent(at.getAluno().getId(), k -> new TreeMap<>())
+                            .put(t.getDescricao(), nomeDia(at.getDiaSemanaEscolhido())));
             // Alunos em aula experimental não aparecem na lista do professor
             turmaService.getAlunosDaTurma(t).stream()
                     .filter(aluno -> aluno.getStatus() != Aluno.AlunoStatus.EXPERIMENTAL)
@@ -236,7 +253,8 @@ public class AlunosProfessorView extends VerticalLayout {
         }
 
         List<AlunoDTO> dtos = alunoTurmasMap.entrySet().stream()
-                .map(entry -> new AlunoDTO(entry.getKey(), String.join(", ", entry.getValue())))
+                .map(entry -> new AlunoDTO(entry.getKey(), String.join(", ", entry.getValue()),
+                        formatarDias(alunoDiasMap.get(entry.getKey().getId()), entry.getValue())))
                 .collect(Collectors.toList());
 
         dataProvider = new ListDataProvider<>(dtos);
@@ -247,13 +265,41 @@ public class AlunosProfessorView extends VerticalLayout {
         grid.setDataProvider(dataProvider);
     }
 
+    /**
+     * Se o aluno só tem uma turma com o professor, mostra apenas o dia; com várias,
+     * identifica a turma a que cada dia se refere ("Turma: Dia").
+     */
+    private String formatarDias(Map<String, String> dias, Set<String> turmasDoAluno) {
+        if (dias == null)
+            return "-";
+        Map<String, String> visiveis = new TreeMap<>(dias);
+        visiveis.keySet().retainAll(turmasDoAluno);
+        if (visiveis.isEmpty())
+            return "-";
+        if (turmasDoAluno.size() == 1)
+            return visiveis.values().iterator().next();
+        return visiveis.entrySet().stream().map(e -> e.getKey() + ": " + e.getValue())
+                .collect(Collectors.joining(", "));
+    }
+
+    private String nomeDia(java.time.DayOfWeek d) {
+        String s = d.getDisplayName(TextStyle.FULL, new Locale("pt", "PT"));
+        return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
     public static class AlunoDTO {
         private final Aluno aluno;
         private final String nomesTurmas;
+        private final String diasEscolhidos;
 
-        public AlunoDTO(Aluno aluno, String nomesTurmas) {
+        public AlunoDTO(Aluno aluno, String nomesTurmas, String diasEscolhidos) {
             this.aluno = aluno;
             this.nomesTurmas = nomesTurmas;
+            this.diasEscolhidos = diasEscolhidos;
+        }
+
+        public String getDiasEscolhidos() {
+            return diasEscolhidos;
         }
 
         public Aluno getAluno() {
