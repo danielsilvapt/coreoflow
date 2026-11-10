@@ -1852,6 +1852,23 @@ html .cf-portal-block { margin: var(--lumo-space-m) var(--lumo-space-m) 0; width
 /* Presenças */
 vaadin-grid::part(dia-aula) { background-color: var(--cf-primary-soft) !important; color: var(--lumo-primary-text-color) !important; font-weight: 700; }
 vaadin-grid::part(fim-de-semana) { background-color: var(--cf-surface-sunken) !important; color: var(--lumo-disabled-text-color); }
+/* Dia de aula a que este aluno não vem (vai 1x/semana e escolheu outro dia) */
+vaadin-grid::part(dia-aula-nao-vem) {
+  background: repeating-linear-gradient(-45deg, var(--lumo-contrast-5pct) 0 4px, transparent 4px 8px) !important;
+  color: var(--lumo-secondary-text-color);
+}
+.cf-pres-dia-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--cf-primary-soft);
+  color: var(--lumo-primary-text-color);
+  font-size: var(--lumo-font-size-xxs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cf-pres-card--nao-vem:not(.cf-pres-card--presente) { opacity: 0.55; }
+.cf-pres-aviso { font-size: var(--lumo-font-size-xs); color: var(--lumo-secondary-text-color); }
 html .chart-card {
   background: var(--cf-surface);
   border-radius: var(--lumo-border-radius-l);
