@@ -3,11 +3,13 @@ package pt.studioflow.view;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -96,6 +98,10 @@ public class PresencasView extends VerticalLayout {
     private Span contadorDia;
     private boolean modoCardsDia = false;
     private final Map<Long, Boolean> estadoDia = new HashMap<>();
+
+    // Alunos que vão só 1x/semana a uma turma com aulas em 2+ dias: id do aluno ->
+    // dia escolhido. Quem não está aqui vem a todos os dias de aula da turma.
+    private final Map<Long, DayOfWeek> diaEscolhidoPorAluno = new HashMap<>();
     private int totalAlunosDia = 0;
 
     // Modo "Todos": galeria de cards com o gráfico de presenças do mês
@@ -310,6 +316,13 @@ public class PresencasView extends VerticalLayout {
                 s.addClassName("cf-tone-warning");
                 s.setText(s.getText() + " (Exp.)");
             }
+            DayOfWeek diaEscolhido = diaEscolhidoPorAluno.get(ap.getAluno().getId());
+            if (diaEscolhido != null) {
+                Span tag = new Span("1x · " + traduzirDia(diaEscolhido));
+                tag.addClassName("cf-pres-dia-tag");
+                tag.getElement().setAttribute("title", "Vem só 1x por semana: " + traduzirDia(diaEscolhido));
+                s.add(tag);
+            }
             return s;
         })).setHeader("Aluno").setFrozen(true).setWidth("180px").setFlexGrow(0);
 
@@ -337,8 +350,9 @@ public class PresencasView extends VerticalLayout {
                 return cb;
             }).setHeader(headerLayout).setWidth("65px").setFlexGrow(0)
                     .setPartNameGenerator(item -> {
+                        // Verde só nos dias em que o aluno vem (quem vai 1x só no dia escolhido)
                         if (temAula)
-                            return "dia-aula";
+                            return vemNoDia(item.getAluno(), dow) ? "dia-aula" : "dia-aula-nao-vem";
                         if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY)
                             return "fim-de-semana";
                         return null;
@@ -376,6 +390,7 @@ public class PresencasView extends VerticalLayout {
         turmaSelecionada = turmaRepository.findByIdCompleto(turmaCombo.getValue().getId());
         mesSelecionado = mesCombo.getValue();
         carregarPresencasCache();
+        carregarDiasEscolhidos();
         atualizarColunasGrid();
         atualizarGrafico();
         aplicarVistaTurma();
@@ -522,6 +537,17 @@ public class PresencasView extends VerticalLayout {
         });
 
         card.add(avatar, nome, estado);
+
+        DayOfWeek diaEscolhido = diaEscolhidoPorAluno.get(aluno.getId());
+        if (diaEscolhido != null && diaPicker.getValue() != null
+                && !vemNoDia(aluno, diaPicker.getValue().getDayOfWeek())) {
+            card.addClassName("cf-pres-card--nao-vem");
+            String nomeDia = diaEscolhido.getDisplayName(TextStyle.FULL, new Locale("pt", "PT"));
+            boolean fimDeSemana = diaEscolhido == DayOfWeek.SATURDAY || diaEscolhido == DayOfWeek.SUNDAY;
+            Span aviso = new Span("Vem só " + (fimDeSemana ? "ao " : "à ") + nomeDia);
+            aviso.addClassName("cf-pres-aviso");
+            card.add(aviso);
+        }
         return card;
     }
 
@@ -768,6 +794,25 @@ public class PresencasView extends VerticalLayout {
         // Render inicial: por defeito entra no modo "Todos". Feito no onAttach
         // para o Chart.js e o DOM já estarem disponíveis ao correr o executeJs.
         carregarTudo();
+    }
+
+    private void carregarDiasEscolhidos() {
+        diaEscolhidoPorAluno.clear();
+        if (turmaSelecionada == null)
+            return;
+        List<DayOfWeek> dias = turmaSelecionada.getDiasAula();
+        if (dias.size() < 2)
+            return;
+        alunoTurmaRepository.findByTurma(turmaSelecionada).stream()
+                .filter(at -> at.getAluno() != null && at.getAulasPorSemana() == 1
+                        && at.getDiaSemanaEscolhido() != null && dias.contains(at.getDiaSemanaEscolhido()))
+                .forEach(at -> diaEscolhidoPorAluno.put(at.getAluno().getId(), at.getDiaSemanaEscolhido()));
+    }
+
+    /** O aluno vem à aula neste dia da semana? (quem vai 1x só vem no dia escolhido) */
+    private boolean vemNoDia(Aluno aluno, DayOfWeek dow) {
+        DayOfWeek escolhido = diaEscolhidoPorAluno.get(aluno.getId());
+        return escolhido == null || escolhido == dow;
     }
 
     private String traduzirDia(DayOfWeek d) {
