@@ -429,7 +429,8 @@ public class RegistoHorasView extends VerticalLayout {
 
     private void carregarTurmasDialog(Professor prof) {
         List<String> t = getTurmasDoStudio().stream()
-                .filter(x -> (x.getProfessor() != null && x.getProfessor().getId().equals(prof.getId()))
+                .filter(x -> x.getTodosProfessores().stream()
+                                .anyMatch(p -> p != null && p.getId().equals(prof.getId()))
                         || (x.getAulas() != null && x.getAulas().stream()
                                 .map(Aula::getProfessorEfetivo)
                                 .anyMatch(p -> p != null && p.getId().equals(prof.getId()))))
