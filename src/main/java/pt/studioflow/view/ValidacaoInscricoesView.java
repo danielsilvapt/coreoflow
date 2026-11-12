@@ -348,16 +348,26 @@ public class ValidacaoInscricoesView extends VerticalLayout {
             content.add(createField("Problemas de saúde", "Nenhum"));
         }
 
-        if (aluno.getTurmas() != null && !aluno.getTurmas().isEmpty()) {
+        // O candidato pode ter-se enganado na turma: "Alterar turmas" reescreve a escolha
+        // (texto de interesses) antes de ativar, e o resumo financeiro é recalculado.
+        Button btnAlterarTurmas = new Button("Alterar turmas", VaadinIcon.EXCHANGE.create(),
+                e -> abrirDialogAlterarTurmas(aluno, dialog));
+        btnAlterarTurmas.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+
+        if (moradaFull.contains("[")) {
+            content.add(new Hr(), cabecalhoComAcao(isRenovacao ? "Turmas Pedidas" : "Preferências de Aula",
+                    btnAlterarTurmas));
+            String interesses = moradaFull.substring(moradaFull.indexOf("[") + 1, moradaFull.indexOf("]"));
+            content.add(criarBadgesInteresses(interesses));
+        } else if (aluno.getTurmas() != null && !aluno.getTurmas().isEmpty()) {
             content.add(new Hr(), new H3("Turma Vinculada"));
             HorizontalLayout badges = new HorizontalLayout();
             badges.setSpacing(true);
             aluno.getTurmas().forEach(at -> badges.add(criarBadgeTurma(at.getTurma(), true)));
             content.add(badges);
-        } else if (moradaFull.contains("[")) {
-            content.add(new Hr(), new H3("Preferências de Aula"));
-            String interesses = moradaFull.substring(moradaFull.indexOf("[") + 1, moradaFull.indexOf("]"));
-            content.add(criarBadgesInteresses(interesses));
+        } else {
+            content.add(new Hr(), cabecalhoComAcao("Preferências de Aula", btnAlterarTurmas),
+                    new Span("Nenhuma turma escolhida."));
         }
 
         content.add(new Hr(), criarResumoFinanceiro(aluno));
@@ -409,6 +419,112 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         dialog.getFooter().add(btnRejeitar, new Button("Cancelar", i -> dialog.close()), btnVerDados,
                 btnValidarDados, btnAtivar);
         dialog.add(content);
+        dialog.open();
+    }
+
+    private Component cabecalhoComAcao(String titulo, Button acao) {
+        H3 h3 = new H3(titulo);
+        h3.getStyle().set("margin", "0");
+        HorizontalLayout linha = new HorizontalLayout(h3, acao);
+        linha.setWidthFull();
+        linha.setAlignItems(Alignment.CENTER);
+        linha.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
+        return linha;
+    }
+
+    // Interesses atuais do pedido: turma → aulas/semana (mesmo formato que o formulário
+    // público e a renovação gravam: "<Modalidade> <Turma> (N vez(es) / semana)").
+    private Map<Long, Integer> interessesAtuais(Aluno aluno) {
+        Map<Long, Integer> atuais = new java.util.HashMap<>();
+        for (LinhaMensalidade l : linhasDosInteresses(aluno)) {
+            atuais.put(l.turma().getId(), l.aulasPorSemana());
+        }
+        return atuais;
+    }
+
+    private void abrirDialogAlterarTurmas(Aluno aluno, Dialog dialogFicha) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Alterar turmas — " + aluno.getNomeCompleto());
+        dialog.setWidth("520px");
+
+        Map<Long, Integer> atuais = interessesAtuais(aluno);
+        List<Turma> turmas = turmasCache.stream()
+                .filter(t -> t.getModalidade() != null)
+                .filter(t -> t.isAtivo() || atuais.containsKey(t.getId()))
+                .sorted(Comparator.comparing((Turma t) -> t.getModalidade().getDescricao(),
+                        String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(Turma::getDescricao, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        VerticalLayout lista = new VerticalLayout();
+        lista.setPadding(false);
+        lista.setSpacing(false);
+        Map<Turma, com.vaadin.flow.component.checkbox.Checkbox> checks = new java.util.LinkedHashMap<>();
+        Map<Turma, ComboBox<Integer>> frequencias = new java.util.HashMap<>();
+
+        for (Turma t : turmas) {
+            com.vaadin.flow.component.checkbox.Checkbox cb = new com.vaadin.flow.component.checkbox.Checkbox(
+                    t.getModalidade().getDescricao() + " - " + t.getDescricao());
+            cb.setValue(atuais.containsKey(t.getId()));
+
+            ComboBox<Integer> freq = new ComboBox<>();
+            List<Integer> disponiveis = new ArrayList<>(t.getFrequenciasDisponiveis());
+            Integer atual = atuais.get(t.getId());
+            if (atual != null && !disponiveis.contains(atual)) {
+                disponiveis.add(atual);
+                Collections.sort(disponiveis);
+            }
+            freq.setItems(disponiveis);
+            freq.setItemLabelGenerator(Turma::rotuloFrequencia);
+            freq.setValue(atual != null ? atual : disponiveis.get(0));
+            freq.setAllowCustomValue(false);
+            freq.setWidth("170px");
+            freq.addThemeVariants(com.vaadin.flow.component.combobox.ComboBoxVariant.LUMO_SMALL);
+            freq.setEnabled(cb.getValue());
+            cb.addValueChangeListener(ev -> freq.setEnabled(ev.getValue()));
+
+            HorizontalLayout linha = new HorizontalLayout(cb, freq);
+            linha.setWidthFull();
+            linha.setAlignItems(Alignment.CENTER);
+            linha.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
+            lista.add(linha);
+            checks.put(t, cb);
+            frequencias.put(t, freq);
+        }
+        if (turmas.isEmpty()) {
+            lista.add(new Span("Não há turmas disponíveis neste estúdio."));
+        }
+        dialog.add(lista);
+
+        Button btnGuardar = new Button("Guardar", VaadinIcon.CHECK.create(), e -> {
+            List<String> itens = new ArrayList<>();
+            checks.forEach((t, cb) -> {
+                if (cb.getValue()) {
+                    Integer f = frequencias.get(t).getValue();
+                    itens.add(t.getModalidade().getDescricao() + " " + t.getDescricao()
+                            + " (" + Turma.rotuloFrequencia(f != null ? f : 1) + ")");
+                }
+            });
+            if (itens.isEmpty()) {
+                Notification.show("Selecione pelo menos uma turma.")
+                        .addThemeVariants(NotificationVariant.LUMO_WARNING);
+                return;
+            }
+            String morada = aluno.getMorada() != null ? aluno.getMorada() : "";
+            String moradaLimpa = morada.contains("[") ? morada.substring(0, morada.indexOf("[")).trim() : morada;
+            aluno.setMorada(moradaLimpa + " [Interesses: " + String.join(", ", itens) + "]");
+            repository.save(aluno);
+
+            dialog.close();
+            dialogFicha.close();
+            atualizarGrid();
+            Notification.show("Turmas de " + aluno.getNomeCompleto() + " atualizadas.")
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            abrirDialogDetalhes(aluno);
+        });
+        btnGuardar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), btnGuardar);
         dialog.open();
     }
 
@@ -563,6 +679,10 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                     .toList();
         }
 
+        return linhasDosInteresses(aluno);
+    }
+
+    private List<LinhaMensalidade> linhasDosInteresses(Aluno aluno) {
         String morada = aluno.getMorada();
         if (morada == null || !morada.contains("[")) {
             return List.of();
