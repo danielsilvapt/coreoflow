@@ -80,6 +80,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     private final MensalidadeConfig mensalidadeConfig;
     private final EmailService emailService;
     private final pt.studioflow.service.ContaPortalService contaPortalService;
+    private final pt.studioflow.service.AlunoTurmaService alunoTurmaService;
 
     private final Grid<Aluno> grid = new Grid<>(Aluno.class, false);
     private final Span totalPendentesLabel = new Span("0");
@@ -103,7 +104,8 @@ public class ValidacaoInscricoesView extends VerticalLayout {
             EmailService emailService,
             pt.studioflow.service.ContaPortalService contaPortalService,
             PagamentoOnlineService pagamentoOnlineService,
-            pt.studioflow.repository.PagamentoOnlineRepository pagamentoOnlineRepository) {
+            pt.studioflow.repository.PagamentoOnlineRepository pagamentoOnlineRepository,
+            pt.studioflow.service.AlunoTurmaService alunoTurmaService) {
         this.repository = repository;
         this.turmaRepository = turmaRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
@@ -117,6 +119,7 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         this.contaPortalService = contaPortalService;
         this.pagamentoOnlineService = pagamentoOnlineService;
         this.pagamentoOnlineRepository = pagamentoOnlineRepository;
+        this.alunoTurmaService = alunoTurmaService;
 
         setSizeFull();
         setPadding(true);
@@ -668,7 +671,13 @@ public class ValidacaoInscricoesView extends VerticalLayout {
     // Turmas + frequência a considerar para a estimativa: usa as associações AlunoTurma já
     // existentes quando há; caso contrário, casa o texto livre de interesses (morada) com as
     // turmas reais, à semelhança de criarBadgesInteresses.
+    // O pedido (texto de interesses) tem prioridade: numa renovação as associações
+    // AlunoTurma ainda são as do período anterior e ao ativar passam a ser as pedidas.
     private List<LinhaMensalidade> obterLinhasParaResumoMensalidade(Aluno aluno) {
+        List<LinhaMensalidade> pedidas = linhasDosInteresses(aluno);
+        if (!pedidas.isEmpty()) {
+            return pedidas;
+        }
         if (aluno.getTurmas() != null && !aluno.getTurmas().isEmpty()) {
             Map<Long, Turma> turmasCompletas = turmasCache.stream()
                     .collect(Collectors.toMap(Turma::getId, t -> t, (a, b) -> a));
@@ -679,11 +688,14 @@ public class ValidacaoInscricoesView extends VerticalLayout {
                     .toList();
         }
 
-        return linhasDosInteresses(aluno);
+        return List.of();
     }
 
     private List<LinhaMensalidade> linhasDosInteresses(Aluno aluno) {
-        String morada = aluno.getMorada();
+        return linhasDosInteresses(aluno.getMorada());
+    }
+
+    private List<LinhaMensalidade> linhasDosInteresses(String morada) {
         if (morada == null || !morada.contains("[")) {
             return List.of();
         }
@@ -755,6 +767,9 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         }
         repository.save(aluno);
 
+        if (sincronizarTurmasComPedido(aluno, notasComInteresses)) {
+            aluno = repository.findByIdWithTurmas(aluno.getId()).orElse(aluno);
+        }
         vincularTurmasEFinanceiro(aluno, notasComInteresses, isRenovacao);
 
         Studio studioAtual = TenantContext.getCurrentStudio();
@@ -779,6 +794,50 @@ public class ValidacaoInscricoesView extends VerticalLayout {
         Notification.show((isRenovacao ? "Renovação de " : "Aluno ") + aluno.getNomeCompleto()
                 + (isRenovacao ? " confirmada!" : " ativado!"))
                 .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    }
+
+    /**
+     * Torna as turmas do aluno iguais às do pedido (já com eventuais correções da
+     * secretaria): remove as que deixaram de constar — apagando as mensalidades futuras
+     * por emitir, como na ficha do aluno —, acerta a frequência das que se mantêm e cria
+     * as novas. Tudo antes de gerar mensalidades, para o pacote ser calculado com o
+     * conjunto final de turmas. Inscrições "sem mensalidade" (só presenças, atribuídas
+     * pela secretaria) mantêm-se. Sem nenhuma turma reconhecida no pedido não mexe em nada.
+     *
+     * @return true se alterou alguma associação
+     */
+    private boolean sincronizarTurmasComPedido(Aluno aluno, String notas) {
+        List<LinhaMensalidade> pedidas = linhasDosInteresses(notas);
+        if (pedidas.isEmpty()) {
+            return false;
+        }
+        Map<Long, LinhaMensalidade> porTurma = new java.util.LinkedHashMap<>();
+        pedidas.forEach(l -> porTurma.merge(l.turma().getId(), l,
+                (a, b) -> new LinhaMensalidade(a.turma(), a.aulasPorSemana() + b.aulasPorSemana())));
+
+        boolean alterou = false;
+        for (AlunoTurma at : alunoTurmaRepository.findByAluno(aluno)) {
+            LinhaMensalidade pedida = porTurma.remove(at.getTurma().getId());
+            if (pedida == null) {
+                if (!at.isSemMensalidade()) {
+                    alunoTurmaService.remover(aluno, at.getTurma());
+                    alterou = true;
+                }
+            } else if (at.getAulasPorSemana() != pedida.aulasPorSemana()) {
+                at.setAulasPorSemana(pedida.aulasPorSemana());
+                alunoTurmaRepository.save(at);
+                alterou = true;
+            }
+        }
+        for (LinhaMensalidade nova : porTurma.values()) {
+            AlunoTurma at = new AlunoTurma();
+            at.setAluno(aluno);
+            at.setTurma(nova.turma());
+            at.setAulasPorSemana(nova.aulasPorSemana());
+            alunoTurmaRepository.save(at);
+            alterou = true;
+        }
+        return alterou;
     }
 
     private void vincularTurmasEFinanceiro(Aluno aluno, String notas, boolean renovacao) {
