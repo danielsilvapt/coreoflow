@@ -379,6 +379,8 @@ public class TurmaAlunosView extends VerticalLayout {
             } else {
                 mensalidadeRepository.deleteByAlunoAndTurmaAndEstado(aluno, turma,
                         pt.studioflow.model.EstadoMensalidade.POR_EMITIR);
+                mensalidadeService.recalcularPacote(aluno, pt.studioflow.config.TenantContext.getCurrentStudio(),
+                        pt.studioflow.service.MensalidadeService.inicioPeriodoLetivo(java.time.LocalDate.now()));
                 Notification.show("Inscrição só para presenças — mensalidades por emitir removidas.")
                         .addThemeVariants(NotificationVariant.LUMO_CONTRAST);
             }
