@@ -148,4 +148,79 @@ class MensalidadePacotePagoTest {
         assertThat(mensalidadeRepository.findById(outra.getId()).get().getEstado())
                 .isEqualTo(EstadoMensalidade.FATURADO);
     }
+
+    private Turma turmaNa(Modalidade mod, String codigo) {
+        Turma t = new Turma();
+        t.setCodigo(codigo);
+        t.setDescricao("Turma " + codigo);
+        t.setModalidade(mod);
+        t.setStudio(studio);
+        t.setAtivo(true);
+        return turmaRepository.save(t);
+    }
+
+    private void inscrever(Turma t) {
+        pt.studioflow.model.AlunoTurma at = new pt.studioflow.model.AlunoTurma();
+        at.setAluno(aluno);
+        at.setTurma(t);
+        at.setAulasPorSemana(1);
+        alunoTurmaRepository.save(at);
+    }
+
+    private double totalDoMes(java.time.YearMonth ym) {
+        return mensalidadeRepository.findByAluno(aluno).stream()
+                .filter(m -> m.getAno() == ym.getYear() && m.getMes() == ym.getMonth())
+                .mapToDouble(Mensalidade::getValor).sum();
+    }
+
+    @Test
+    void modeloModalidades_turmaNovaRecalculaAsTurmasQueOAlunoJaTinha() {
+        preparar("pacote-mod", "MODALIDADES");
+        studio.setMeiaMensalidadeAutomatica(false);
+        studio = studioRepository.save(studio);
+        Modalidade barre = new Modalidade();
+        barre.setDescricao("Barre");
+        barre.setStudio(studio);
+        barre = modalidadeRepository.save(barre);
+        Turma ballet = turmaNa(modalidade, "BL");
+        Turma barre1 = turmaNa(barre, "BR1");
+        Turma barre2 = turmaNa(barre, "BR2");
+        java.time.YearMonth agora = MensalidadeService.inicioPeriodoLetivo(java.time.LocalDate.now());
+
+        inscrever(barre1);
+        mensalidadeService.gerarMensalidadesParaAluno(aluno, barre1);
+        assertThat(totalDoMes(agora)).isEqualTo(25.0); // aula fixa
+
+        inscrever(barre2);
+        mensalidadeService.gerarMensalidadesParaAluno(aluno, barre2);
+        assertThat(totalDoMes(agora)).isEqualTo(40.0); // 1 modalidade, 2 aulas
+
+        inscrever(ballet);
+        mensalidadeService.gerarMensalidadesParaAluno(aluno, ballet);
+        assertThat(totalDoMes(agora)).isEqualTo(50.0); // 2 modalidades
+        assertThat(totalDoMes(agora.plusMonths(1))).isEqualTo(50.0);
+    }
+
+    @Test
+    void recalcularPacote_naoMexeEmMesesJaPagos() {
+        preparar("pacote-pago", "MODALIDADES");
+        studio.setMeiaMensalidadeAutomatica(false);
+        studio = studioRepository.save(studio);
+        Turma a = turmaNa(modalidade, "A");
+        Turma b = turmaNa(modalidade, "B");
+        inscrever(a);
+        inscrever(b);
+        java.time.YearMonth agora = MensalidadeService.inicioPeriodoLetivo(java.time.LocalDate.now());
+        Mensalidade paga = mensalidade(a, agora.getMonth(), EstadoMensalidade.PAGO);
+        paga.setAno(agora.getYear());
+        mensalidadeRepository.save(paga);
+        Mensalidade porEmitir = mensalidade(b, agora.getMonth(), EstadoMensalidade.POR_EMITIR);
+        porEmitir.setAno(agora.getYear());
+        mensalidadeRepository.save(porEmitir);
+
+        mensalidadeService.recalcularPacote(aluno, studio, agora);
+
+        assertThat(mensalidadeRepository.findById(paga.getId()).get().getValor()).isEqualTo(21.5);
+        assertThat(mensalidadeRepository.findById(porEmitir.getId()).get().getValor()).isEqualTo(21.5);
+    }
 }
