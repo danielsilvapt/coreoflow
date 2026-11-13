@@ -290,6 +290,23 @@ public class MensalidadeConfig {
         return Math.max(0.0, valor - euros);
     }
 
+    /** Valor depois de aplicar o desconto {@code tipo} do estúdio (sem desconto, devolve o valor tal como está). */
+    public double aplicarDesconto(Studio studio, double valorBase, pt.studioflow.model.TipoDesconto tipo) {
+        if (tipo == null) {
+            return valorBase;
+        }
+        return switch (tipo) {
+            case DESCONTO_FAMILIARES -> aplicarDescontoFamiliar(studio, valorBase);
+            case DESCONTO_MAIS_DE_UMA_MODALIDADE -> valorBase * (1 - percentagem(studio.getDescontoMaisModalidadesPercentagem()) / 100.0);
+            case DESCONTO_ELEMENTO_DIRECAO -> valorBase * (1 - percentagem(studio.getDescontoDirecaoPercentagem()) / 100.0);
+            case DESCONTO_MAIS_65 -> valorBase * (1 - percentagem(studio.getDescontoMais65Percentagem()) / 100.0);
+        };
+    }
+
+    private static double percentagem(Number pct) {
+        return pct != null ? pct.doubleValue() : 0.0;
+    }
+
     /** Aluno que respondeu "Já é aluno" num estúdio que isenta esses alunos da taxa de inscrição. */
     public boolean isentoTaxaInscricao(Studio studio, Aluno aluno) {
         return studio != null && studio.isIsentarTaxaAlunosExistentes()

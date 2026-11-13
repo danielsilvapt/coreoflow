@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(AlunoTurmaService.class)
+@Import({ AlunoTurmaService.class, MensalidadeService.class, pt.studioflow.config.MensalidadeConfig.class })
 class AlunoTurmaServiceTest {
 
     @Autowired private StudioRepository studioRepository;

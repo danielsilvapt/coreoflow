@@ -25,15 +25,18 @@ public class AlunoTurmaService {
     private final ListaEsperaRepository listaEsperaRepository;
     private final MensalidadeRepository mensalidadeRepository;
     private final AulaRepository aulaRepository;
+    private final MensalidadeService mensalidadeService;
 
     public AlunoTurmaService(AlunoTurmaRepository repository,
                               ListaEsperaRepository listaEsperaRepository,
                               MensalidadeRepository mensalidadeRepository,
-                              AulaRepository aulaRepository) {
+                              AulaRepository aulaRepository,
+                              MensalidadeService mensalidadeService) {
         this.repository = repository;
         this.listaEsperaRepository = listaEsperaRepository;
         this.mensalidadeRepository = mensalidadeRepository;
         this.aulaRepository = aulaRepository;
+        this.mensalidadeService = mensalidadeService;
     }
 
     /**
@@ -73,6 +76,11 @@ public class AlunoTurmaService {
     public void remover(Aluno aluno, Turma turma) {
         apagarMensalidadesFuturasPorEmitir(aluno, turma);
         repository.deleteByAlunoAndTurma(aluno, turma);
+        // Modelos por pacote: as turmas que ficam passam a valer o pacote mais pequeno
+        // a partir do próximo mês (o corrente mantém-se, tal como a sua mensalidade).
+        pt.studioflow.model.Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
+        mensalidadeService.recalcularPacote(aluno, studio != null ? studio : aluno.getStudio(),
+                java.time.YearMonth.now().plusMonths(1));
         notificarProximoNaEspera(turma);
     }
 

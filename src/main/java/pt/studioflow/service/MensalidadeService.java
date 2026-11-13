@@ -127,8 +127,9 @@ public class MensalidadeService {
      * Setembro/Dezembro/Julho — e reparte esse valor por cada turma,
      * proporcionalmente ao seu peso semanal — assim a receita/remuneração por
      * turma continua a fazer sentido apesar do valor ser um pacote único.
-     * Não recalcula mensalidades já geradas noutras turmas (mesma limitação do
-     * modelo PADRAO: a mudança só se reflete nos meses ainda por gerar).
+     * No fim recalcula as partes por emitir de todas as turmas do pacote, para que
+     * uma turma nova (ou uma frequência alterada) mude também o valor das turmas
+     * que o aluno já tinha.
      */
     private void gerarMensalidadesModeloPacote(Aluno aluno, pt.studioflow.model.Studio studio) {
         List<AlunoTurma> inscricoes = inscricoesNoPacote(aluno);
@@ -154,6 +155,77 @@ public class MensalidadeService {
                 return Math.round(pacote * fracao * 100.0) / 100.0;
             }, familiar ? TipoDesconto.DESCONTO_FAMILIARES : null);
         }
+        recalcularPacote(aluno, studio, inicioPeriodoLetivo(LocalDate.now()));
+    }
+
+    /**
+     * Modelos por pacote: volta a calcular, a partir de {@code desde}, o valor das
+     * partes do pacote mensal do aluno segundo as inscrições atuais, e reparte-o
+     * pelas turmas proporcionalmente às aulas/semana (os cêntimos que sobram vão
+     * para a última parte, para o total bater certo com o pacote). Mantém o
+     * desconto que cada mês já tem.
+     * <p>
+     * Só mexe num mês se todas as partes estiverem {@code POR_EMITIR} e
+     * corresponderem exatamente às turmas do pacote — um mês já faturado/pago, ou
+     * com partes de turmas de que o aluno saiu (o mês corrente fica intacto ao
+     * remover uma turma), não se altera. Noutros modelos não faz nada.
+     *
+     * @return número de mensalidades cujo valor mudou
+     */
+    @Transactional
+    public int recalcularPacote(Aluno aluno, pt.studioflow.model.Studio studio, java.time.YearMonth desde) {
+        if (studio == null || !studio.isModeloPacote()) {
+            return 0;
+        }
+        List<AlunoTurma> inscricoes = inscricoesNoPacote(aluno);
+        java.util.Map<Turma, Integer> turmasEFrequencia = frequencias(inscricoes);
+        java.util.Map<Long, Integer> freqPorTurma = new java.util.HashMap<>();
+        turmasEFrequencia.forEach((t, f) -> freqPorTurma.put(t.getId(), f));
+        int totalAulas = freqPorTurma.values().stream().mapToInt(Integer::intValue).sum();
+        if (totalAulas <= 0) {
+            return 0;
+        }
+
+        java.util.Map<java.time.YearMonth, List<Mensalidade>> porMes = new java.util.TreeMap<>();
+        for (Mensalidade m : mensalidadeRepository.findByAluno(aluno)) {
+            java.time.YearMonth ym = java.time.YearMonth.of(m.getAno(), m.getMes());
+            if (ym.isBefore(desde) || config.valorProprioDaTurma(m.getTurma(), aluno.isSocio()) != null) {
+                continue; // meses passados e cobranças à parte (mensalidade própria) ficam como estão
+            }
+            porMes.computeIfAbsent(ym, k -> new ArrayList<>()).add(m);
+        }
+
+        List<Mensalidade> alteradas = new ArrayList<>();
+        porMes.forEach((ym, partes) -> {
+            boolean todasPorEmitir = partes.stream().allMatch(m -> m.getEstado() == EstadoMensalidade.POR_EMITIR);
+            java.util.Set<Long> turmasDoMes = new java.util.HashSet<>();
+            partes.forEach(m -> turmasDoMes.add(m.getTurma().getId()));
+            if (!todasPorEmitir || partes.size() != freqPorTurma.size() || !turmasDoMes.equals(freqPorTurma.keySet())) {
+                return;
+            }
+            TipoDesconto desconto = partes.stream().map(Mensalidade::getDesconto)
+                    .filter(java.util.Objects::nonNull).findFirst().orElse(null);
+            double pacote = config.valorPacote(studio, turmasEFrequencia, config.isMesMeioMensalidade(ym.getMonth()));
+            pacote = Math.round(config.aplicarDesconto(studio, pacote, desconto) * 100.0) / 100.0;
+
+            partes.sort(java.util.Comparator.comparing(Mensalidade::getId));
+            double acumulado = 0.0;
+            for (int i = 0; i < partes.size(); i++) {
+                Mensalidade m = partes.get(i);
+                double valor = i < partes.size() - 1
+                        ? Math.round(pacote * freqPorTurma.get(m.getTurma().getId()) / totalAulas * 100.0) / 100.0
+                        : Math.round((pacote - acumulado) * 100.0) / 100.0;
+                acumulado += valor;
+                if (Math.abs(m.getValor() - valor) > 0.004) {
+                    m.setValor(valor);
+                    alteradas.add(m);
+                }
+            }
+        });
+        if (!alteradas.isEmpty()) {
+            mensalidadeRepository.saveAll(alteradas);
+        }
+        return alteradas.size();
     }
 
     /** Inscrições do aluno que entram no pacote mensal (sem mensalidade própria nem isentas). */
