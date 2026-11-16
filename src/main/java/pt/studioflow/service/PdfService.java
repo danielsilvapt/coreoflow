@@ -16,7 +16,6 @@ import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
 import com.lowagie.text.FontFactory;
-import com.lowagie.text.Image;
 import com.lowagie.text.ListItem;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
@@ -27,10 +26,19 @@ import com.lowagie.text.pdf.PdfWriter;
 
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Convite;
+import pt.studioflow.model.Studio;
 import pt.studioflow.model.Turma;
+import pt.studioflow.config.TenantContext;
+import pt.studioflow.util.PdfLogo;
 
 @Service
 public class PdfService {
+
+    /** Estúdio da sessão (totalmente carregado); se não houver, o da entidade. */
+    private static Studio studioDe(Studio daEntidade) {
+        Studio atual = TenantContext.getCurrentStudio();
+        return atual != null ? atual : daEntidade;
+    }
 
     public void escreverFichaEvento(Convite convite,
             List<Turma> turmas, // Este é o nome correto do parâmetro
@@ -42,17 +50,8 @@ public class PdfService {
             PdfWriter.getInstance(document, out);
             document.open();
 
-            // 1. Logotipo
-            try {
-                Image img = Image.getInstance(getClass().getResource("/static/images/logo-studio.png"));
-                img.scaleToFit(120, 120);
-                img.setAlignment(Element.ALIGN_CENTER);
-                document.add(img);
-            } catch (Exception e) {
-                Paragraph brand = new Paragraph("ÓBIDOS DANCE", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 20));
-                brand.setAlignment(Element.ALIGN_CENTER);
-                document.add(brand);
-            }
+            // 1. Logotipo / nome do estúdio
+            PdfLogo.adicionar(document, studioDe(convite.getStudio()), 120, 20);
 
             // 2. Título e Info Geral
             Font fTitulo = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
@@ -109,17 +108,8 @@ public class PdfService {
             PdfWriter.getInstance(document, out);
             document.open();
 
-            // 1. Logótipo (reaproveitando a tua lógica existente)
-            try {
-                Image img = Image.getInstance(getClass().getResource("/static/images/logo-studio.png"));
-                img.scaleToFit(100, 100);
-                img.setAlignment(Element.ALIGN_CENTER);
-                document.add(img);
-            } catch (Exception e) {
-                Paragraph brand = new Paragraph("ÓBIDOS DANCE", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16));
-                brand.setAlignment(Element.ALIGN_CENTER);
-                document.add(brand);
-            }
+            // 1. Logotipo / nome do estúdio
+            PdfLogo.adicionar(document, studioDe(turma.getStudio()), 100, 16);
 
             // 2. Cabeçalho
             Font fTitulo = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16);

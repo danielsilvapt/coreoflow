@@ -42,7 +42,7 @@ public class GoogleDriveService {
                                 .setAccessToken(response.getAccessToken());
 
                 return new Drive.Builder(httpTransport, jsonFactory, credential)
-                                .setApplicationName("Obidos Dance")
+                                .setApplicationName("CoreoFlow")
                                 .build();
         }
 

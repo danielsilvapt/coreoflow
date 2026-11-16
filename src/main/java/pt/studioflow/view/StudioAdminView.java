@@ -289,7 +289,7 @@ public class StudioAdminView extends VerticalLayout {
 
         TextField slug = new TextField("Slug (login)");
         slug.setValue(studio.getSlug() != null ? studio.getSlug() : "");
-        slug.setHelperText("Ex: obidosdance — usado no formato slug:username para login");
+        slug.setHelperText("Ex: meuestudio — usado no formato slug:username para login");
         slug.setRequired(true);
 
         TextField email = new TextField("Email de Contacto");
