@@ -73,7 +73,6 @@ import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.core.io.ClassPathResource;
 
 @PageTitle("Relatórios | CoreoFlow")
 @Route(value = "relatorios", layout = MainLayout.class)
@@ -449,20 +448,10 @@ public class RelatoriosView extends VerticalLayout {
         }
 
         private void adicionarLogo(Document doc) throws Exception {
-                try {
-                        // Busca o ficheiro dentro da pasta resources
-                        ClassPathResource res = new ClassPathResource("static/images/logo-studio.png");
-                        byte[] bytes = res.getInputStream().readAllBytes();
-
-                        Image logo = Image.getInstance(bytes);
-                        logo.scaleToFit(80, 80);
-                        logo.setAlignment(Element.ALIGN_CENTER);
-                        logo.setSpacingAfter(15);
-                        doc.add(logo);
-                } catch (Exception e) {
-                        // Seu fallback para texto caso a imagem falhe
-                        System.out.println("Logo não encontrada, usando fallback de texto.");
-                }
+                pt.studioflow.util.PdfLogo.adicionar(doc, TenantContext.getCurrentStudio(), 80, 14);
+                Paragraph espaco = new Paragraph(" ");
+                espaco.setSpacingAfter(5);
+                doc.add(espaco);
         }
 
         private StreamResource gerarPDFGenerico(String titulo, Color color, String[] h, List<String[]> rows) {
