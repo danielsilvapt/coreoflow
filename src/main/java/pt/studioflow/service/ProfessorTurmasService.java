@@ -1,7 +1,6 @@
 package pt.studioflow.service;
 
 import java.text.Normalizer;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -10,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import pt.studioflow.model.Aula;
 import pt.studioflow.model.Professor;
@@ -25,10 +25,10 @@ import pt.studioflow.repository.UserRepository;
  * áreas partilhadas entre ADMIN e PROF (vídeos das aulas, avaliações, …).
  *
  * <p>O ADMIN vê tudo; um PROF (sem ADMIN) fica restrito às suas turmas. A
- * associação professor↔utilizador é feita por <b>email</b> ({@code User.email ==
- * Professor.email}) e, em fallback, por <b>palavra exata</b> do primeiro nome
- * desde que identifique um único professor — nunca por {@code contains}, para
- * "Ana" não abrir as turmas da "Mariana" nem da "Ana Maria Costa".
+ * associação professor↔utilizador é a FK explícita {@code professores.user_id}
+ * (definida em Professores → "Utilizador (login)"). Enquanto um professor não
+ * estiver ligado, aceita-se o email ({@code User.email == Professor.email}, um
+ * único professor sem conta) e a ligação fica gravada. <b>Nunca pelo nome.</b>
  */
 @Component
 public class ProfessorTurmasService {
@@ -59,40 +59,52 @@ public class ProfessorTurmasService {
         return prof && !isAdmin();
     }
 
-    /**
-     * O {@link Professor} correspondente ao utilizador com sessão iniciada.
-     *
-     * <p>1) {@code User.email == Professor.email} — se houver, é esse e só esse
-     * (o fallback por nome nunca acrescenta outros professores);
-     * 2) fallback por nome: o {@code User.firstName} tem de ser igual ao nome
-     * completo do professor ou a uma palavra exata dele, e só conta se houver
-     * <b>um único</b> professor nessas condições — "Ana" com "Ana Rodrigues" e
-     * "Ana Maria Costa" no estúdio não resolve para nenhuma.
-     */
-    public Optional<Professor> professorDoUtilizador(Studio studio) {
+    /** O {@link User} com sessão iniciada (ou null). */
+    public User utilizadorAtual() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        User u = auth == null ? null : userRepo.findByPrincipalName(auth.getName()).orElse(null);
-        if (u == null) return Optional.empty();
-        List<Professor> profs = studio != null ? professorRepo.findAllByStudio(studio) : professorRepo.findAll();
+        return auth == null ? null : userRepo.findByPrincipalName(auth.getName()).orElse(null);
+    }
+
+    /** O {@link Professor} correspondente ao utilizador com sessão iniciada. */
+    public Optional<Professor> professorDoUtilizador(Studio studio) {
+        return professorDe(utilizadorAtual(), studio);
+    }
+
+    /**
+     * O {@link Professor} ligado a {@code u} neste estúdio.
+     *
+     * <p>1) FK {@code professores.user_id}; 2) se ainda não houver ligação, o
+     * professor do estúdio <b>sem conta</b> com o mesmo email — só se for único —
+     * e a ligação é gravada para as vezes seguintes.
+     */
+    @Transactional
+    public Optional<Professor> professorDe(User u, Studio studio) {
+        if (u == null || u.getId() == null) return Optional.empty();
+
+        Optional<Professor> ligado = professorRepo.findByUser(u)
+                .filter(p -> mesmoEstudio(p, studio));
+        if (ligado.isPresent()) return ligado;
 
         String emailUser = u.getEmail() != null ? u.getEmail().trim() : "";
-        if (!emailUser.isBlank()) {
-            Optional<Professor> porEmail = profs.stream()
-                    .filter(p -> p.getEmail() != null && p.getEmail().trim().equalsIgnoreCase(emailUser))
-                    .findFirst();
-            if (porEmail.isPresent()) return porEmail;
-        }
-
-        String primeiroNome = normalizar(u.getFirstName());
-        if (primeiroNome.isBlank()) return Optional.empty();
-        List<Professor> candidatos = profs.stream()
-                .filter(p -> p.getNome() != null)
-                .filter(p -> {
-                    String nome = normalizar(p.getNome());
-                    return nome.equals(primeiroNome) || Arrays.asList(nome.split("\\s+")).contains(primeiroNome);
-                })
+        if (emailUser.isBlank()) return Optional.empty();
+        List<Professor> profs = studio != null ? professorRepo.findAllByStudio(studio) : professorRepo.findAll();
+        List<Professor> porEmail = profs.stream()
+                .filter(p -> p.getUser() == null)
+                .filter(p -> p.getEmail() != null && p.getEmail().trim().equalsIgnoreCase(emailUser))
                 .collect(Collectors.toList());
-        return candidatos.size() == 1 ? Optional.of(candidatos.get(0)) : Optional.empty();
+        if (porEmail.size() != 1) return Optional.empty();
+        Professor p = porEmail.get(0);
+        // Só liga se o utilizador ainda não estiver ligado a outro professor (unique).
+        if (professorRepo.findByUser(u).isEmpty()) {
+            p.setUser(u);
+            professorRepo.save(p);
+        }
+        return Optional.of(p);
+    }
+
+    private static boolean mesmoEstudio(Professor p, Studio studio) {
+        if (studio == null || studio.getId() == null) return true;
+        return p.getStudio() != null && studio.getId().equals(p.getStudio().getId());
     }
 
     /**
