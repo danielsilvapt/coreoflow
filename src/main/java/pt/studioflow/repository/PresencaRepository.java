@@ -49,4 +49,10 @@ public interface PresencaRepository extends JpaRepository<Presenca, Long> {
     default boolean existsByAlunoAndDataBetweenAndPresenteTrue(Aluno aluno, LocalDate inicio, LocalDate fim) {
         return existsByAlunoAndPresenteAndDataBetween(aluno, true, inicio, fim);
     }
+
+    /** Aulas avulsas/pack utilizadas (presenças que consumiram crédito), com tudo carregado para a UI. */
+    @Query("SELECT p FROM Presenca p JOIN FETCH p.aluno JOIN FETCH p.turma JOIN FETCH p.compraCredito c " +
+           "WHERE c.studio = :studio AND p.presente = true AND (:desde IS NULL OR p.data >= :desde) " +
+           "ORDER BY p.data DESC, p.horaRegisto DESC")
+    List<Presenca> avulsasUtilizadas(@Param("studio") Studio studio, @Param("desde") java.time.LocalDate desde);
 }
