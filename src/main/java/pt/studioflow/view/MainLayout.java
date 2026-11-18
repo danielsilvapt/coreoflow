@@ -436,6 +436,9 @@ public class MainLayout extends AppLayout {
                 // --- PRESENCA: só o kiosk de checkin ---
                 if (isPresenca) {
                         tabs.add(criarTab("Checkin", VaadinIcon.CHECK_SQUARE_O, "#27AE60", CheckinKioskView.class, null));
+                        Studio studioPresenca = TenantContext.getCurrentStudio();
+                        if (studioPresenca == null || studioPresenca.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS))
+                                tabs.add(criarTab("Presenças", VaadinIcon.TASKS, "#2980B9", PresencasView.class, null));
                 }
 
                 // Helper: verifica módulo do estúdio atual
