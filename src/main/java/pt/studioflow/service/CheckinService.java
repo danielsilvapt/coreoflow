@@ -261,7 +261,12 @@ public class CheckinService {
 
     /** Desfaz um checkin (kiosk/portal, correção de engano) — devolve o crédito consumido, se algum. */
     @Transactional
-    public void cancelarCheckin(Presenca presenca) {
+    public void cancelarCheckin(Presenca presencaRecebida) {
+        // A presença chega da UI (fora de sessão) com o crédito como proxy LAZY: recarrega-a
+        // aqui para conseguir devolver o crédito (senão LazyInitializationException nos avulsos).
+        Presenca presenca = presencaRecebida.getId() != null
+                ? presencaRepository.findById(presencaRecebida.getId()).orElse(presencaRecebida)
+                : presencaRecebida;
         if (presenca.getCompraCredito() != null) {
             CompraCredito credito = presenca.getCompraCredito();
             credito.setCreditosRestantes(credito.getCreditosRestantes() + 1);
