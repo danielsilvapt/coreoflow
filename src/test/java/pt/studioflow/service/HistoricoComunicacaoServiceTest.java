@@ -101,6 +101,16 @@ class HistoricoComunicacaoServiceTest {
     }
 
     @Test
+    void aceitaNomesDeEventosEmSnakeECamelCase() {
+        assertThat(HistoricoComunicacaoService.mapearEvento("soft_bounce")).isEqualTo(EstadoEntrega.DEVOLVIDO_TEMP);
+        assertThat(HistoricoComunicacaoService.mapearEvento("softBounces")).isEqualTo(EstadoEntrega.DEVOLVIDO_TEMP);
+        assertThat(HistoricoComunicacaoService.mapearEvento("hardBounces")).isEqualTo(EstadoEntrega.DEVOLVIDO);
+        assertThat(HistoricoComunicacaoService.mapearEvento("loadedByProxy")).isEqualTo(EstadoEntrega.ABERTO);
+        assertThat(HistoricoComunicacaoService.mapearEvento("invalid_email")).isEqualTo(EstadoEntrega.INVALIDO);
+        assertThat(HistoricoComunicacaoService.mapearEvento("requests")).isNull();
+    }
+
+    @Test
     void ignoraEventosDeEmailsQueNaoSaoComunicacoes() throws Exception {
         assertThat(service.processarEventoBrevo(
                 evento("delivered", "admin@estudio.pt", "<desconhecido@x>", "Nova inscrição", null))).isFalse();
