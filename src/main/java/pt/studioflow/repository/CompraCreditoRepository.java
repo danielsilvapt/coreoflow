@@ -35,4 +35,9 @@ public interface CompraCreditoRepository extends JpaRepository<CompraCredito, Lo
 
     @Transactional
     void deleteByAluno(Aluno aluno);
+
+    /** Histórico de compras do estúdio (com aluno/pack/modalidade já carregados, para a UI). */
+    @Query("SELECT c FROM CompraCredito c JOIN FETCH c.aluno LEFT JOIN FETCH c.packAula LEFT JOIN FETCH c.modalidade " +
+           "WHERE c.studio = :studio AND (:desde IS NULL OR c.dataCompra >= :desde) ORDER BY c.dataCompra DESC")
+    List<CompraCredito> historicoDoStudio(@Param("studio") Studio studio, @Param("desde") LocalDateTime desde);
 }

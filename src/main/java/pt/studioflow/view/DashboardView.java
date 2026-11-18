@@ -66,7 +66,7 @@ public class DashboardView extends Div {
         private static final DateTimeFormatter DIA_LONGO = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", PT);
         private static final DateTimeFormatter DIA_MES = DateTimeFormatter.ofPattern("d 'de' MMMM", PT);
         /** Aluno ativo sem presenças há mais do que estes dias conta como "em risco". */
-        private static final int DIAS_SEM_PRESENCA_RISCO = 15;
+        private static final int DIAS_SEM_PRESENCA_RISCO = pt.studioflow.service.AlunosEmRisco.DIAS_SEM_PRESENCA;
         /** Linhas mostradas nos rankings do dashboard (o resto fica no "Ver todas"). */
         private static final int TOP_RANKING = 5;
 
@@ -417,8 +417,10 @@ public class DashboardView extends Div {
                 // --- Dados partilhados (calculados uma só vez) ---
                 Map<Long, Integer> inscritosPorTurma = new HashMap<>();
                 Map<Long, Set<Long>> alunosPorTurma = new HashMap<>();
+                List<AlunoTurma> todasMatriculas = new ArrayList<>();
                 for (Turma t : turmas) {
                         List<AlunoTurma> ats = alunoTurmaRepository.findByTurma(t);
+                        todasMatriculas.addAll(ats);
                         inscritosPorTurma.put(t.getId(), ats.size());
                         alunosPorTurma.put(t.getId(), ats.stream()
                                         .filter(at -> at.getAluno() != null)
@@ -426,19 +428,11 @@ public class DashboardView extends Div {
                                         .collect(Collectors.toSet()));
                 }
 
-                Map<Long, LocalDate> ultimaPresenca = new HashMap<>();
-                for (Presenca p : todasPresencas) {
-                        if (p.getAluno() != null && p.getData() != null) {
-                                ultimaPresenca.merge(p.getAluno().getId(), p.getData(),
-                                                (a, b) -> a.isAfter(b) ? a : b);
-                        }
-                }
-
-                LocalDate limiteRisco = hoje.minusDays(DIAS_SEM_PRESENCA_RISCO);
-                List<Aluno> alunosRisco = todosAlunos.stream().filter(Aluno::isAtivo).filter(a -> {
-                        LocalDate ultima = ultimaPresenca.get(a.getId());
-                        return ultima == null || ultima.isBefore(limiteRisco);
-                }).toList();
+                // Critério partilhado com Notificações e CRM (ver AlunosEmRisco).
+                Map<Long, LocalDate> ultimaPresenca = pt.studioflow.service.AlunosEmRisco
+                                .ultimaPresencaEfetiva(todasPresencas);
+                List<Aluno> alunosRisco = pt.studioflow.service.AlunosEmRisco.calcular(todosAlunos,
+                                todasMatriculas, todasPresencas, hoje, DIAS_SEM_PRESENCA_RISCO);
 
                 List<Aluno> segurosExpirados = todosAlunos.stream().filter(Aluno::isAtivo)
                                 .filter(a -> a.getDataExpiracaoSeguro() != null
