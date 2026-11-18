@@ -32,6 +32,7 @@ import pt.studioflow.model.Professor;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.Transferencia;
 import pt.studioflow.model.User;
+import pt.studioflow.service.AlunosEmRisco;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.MarcacaoSalaRepository;
 import pt.studioflow.repository.MensalidadeRepository;
@@ -218,15 +219,10 @@ public class NotificacoesView extends VerticalLayout {
             .collect(Collectors.toList());
 
         // 8. Alunos em risco (sem presença há 15+ dias)
-        LocalDate corte = hoje.minusDays(15);
-        List<Aluno> emRisco = todosAlunos.stream()
-            .filter(Aluno::isAtivo)
-            .filter(a -> {
-                var ultima = presencaRepository.findByAlunoId(a.getId()).stream()
-                    .map(p -> p.getData()).filter(d -> d != null)
-                    .max(LocalDate::compareTo);
-                return ultima.map(d -> d.isBefore(corte)).orElse(true);
-            }).collect(Collectors.toList());
+        List<Aluno> emRisco = AlunosEmRisco.calcular(todosAlunos,
+            studio != null ? alunoTurmaRepository.findAllByAlunoStudio(studio) : alunoTurmaRepository.findAll(),
+            studio != null ? presencaRepository.findAllByAlunoStudio(studio) : presencaRepository.findAll(),
+            hoje, AlunosEmRisco.DIAS_SEM_PRESENCA);
 
         // 9. Aniversários hoje e esta semana
         List<Aluno> aniversariosHoje = todosAlunos.stream()
@@ -351,20 +347,17 @@ public class NotificacoesView extends VerticalLayout {
                 nomeProfessor, mesAtual.getYear(), mesAtual.getMonthValue()).size()
             : 0;
 
-        LocalDate corte = hoje.minusDays(10);
+        // Mesmo critério do admin (AlunosEmRisco), restrito às turmas do professor e a 10 dias.
         List<String> alunosEmRisco = profOpt.map(p -> {
-            var turmas = turmaRepository.findByProfessorAndStudio(p, TenantContext.getCurrentStudio());
-            return turmas.stream()
+            Studio st = TenantContext.getCurrentStudio();
+            var matriculas = turmaRepository.findByProfessorAndStudio(p, st).stream()
                 .flatMap(t -> alunoTurmaRepository.findByTurma(t).stream())
-                .map(at -> at.getAluno())
-                .filter(a -> a != null && a.isAtivo())
-                .filter(a -> {
-                    var ultima = presencaRepository.findByAlunoId(a.getId()).stream()
-                        .map(pr -> pr.getData()).filter(d -> d != null)
-                        .max(LocalDate::compareTo);
-                    return ultima.map(d -> d.isBefore(corte)).orElse(true);
-                })
-                .map(a -> a.getNomeCompleto()).distinct().collect(Collectors.toList());
+                .toList();
+            var alunos = matriculas.stream().map(at -> at.getAluno())
+                .filter(a -> a != null).distinct().toList();
+            var presencas = st != null ? presencaRepository.findAllByAlunoStudio(st) : presencaRepository.findAll();
+            return AlunosEmRisco.calcular(alunos, matriculas, presencas, hoje, 10).stream()
+                .map(Aluno::getNomeCompleto).distinct().collect(Collectors.toList());
         }).orElse(List.of());
 
         List<String> aniversariosHoje = profOpt.map(p -> {

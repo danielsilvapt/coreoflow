@@ -23,6 +23,9 @@ public interface AlunoTurmaRepository extends JpaRepository<AlunoTurma, Long> {
 
     List<AlunoTurma> findByAluno(Aluno aluno);
 
+    @Query("SELECT at FROM AlunoTurma at WHERE at.aluno.studio = :studio")
+    List<AlunoTurma> findAllByAlunoStudio(@Param("studio") pt.studioflow.model.Studio studio);
+
     Optional<AlunoTurma> findByAlunoAndTurma(Aluno aluno, Turma turma);
 
     @Modifying

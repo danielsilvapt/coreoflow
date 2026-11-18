@@ -28,6 +28,7 @@ import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.model.Aluno;
+import pt.studioflow.service.AlunosEmRisco;
 import pt.studioflow.model.Presenca;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.PresencaRepository;
@@ -39,9 +40,12 @@ public class CRMView extends VerticalLayout {
 
     private final AlunoRepository alunoRepository;
     private final PresencaRepository presencaRepository;
+    private final pt.studioflow.repository.AlunoTurmaRepository alunoTurmaRepository;
     private final VerticalLayout containerConteudo = new VerticalLayout();
 
-    public CRMView(AlunoRepository alunoRepository, PresencaRepository presencaRepository) {
+    public CRMView(AlunoRepository alunoRepository, PresencaRepository presencaRepository,
+            pt.studioflow.repository.AlunoTurmaRepository alunoTurmaRepository) {
+        this.alunoTurmaRepository = alunoTurmaRepository;
         this.alunoRepository = alunoRepository;
         this.presencaRepository = presencaRepository;
 
@@ -178,20 +182,15 @@ public class CRMView extends VerticalLayout {
     private void mostrarAlunosEmRisco() {
         containerConteudo.add(new H3("Alunos Ausentes (> 15 dias)"));
 
-        LocalDate limite = LocalDate.now().minusDays(15);
         pt.studioflow.model.Studio _sRisco = pt.studioflow.config.TenantContext.getCurrentStudio();
         List<Presenca> todasPresencas = _sRisco != null
                 ? presencaRepository.findAllByAlunoStudio(_sRisco)
                 : presencaRepository.findAll();
-
-        List<Aluno> listaRisco = (_sRisco != null ? alunoRepository.findAllByStudio(_sRisco) : alunoRepository.findAll()).stream()
-                .filter(Aluno::isAtivo)
-                .filter(a -> {
-                    Optional<LocalDate> ultima = todasPresencas.stream()
-                            .filter(p -> p.getAluno().getId().equals(a.getId()))
-                            .map(Presenca::getData).max(LocalDate::compareTo);
-                    return ultima.map(d -> d.isBefore(limite)).orElse(true);
-                }).collect(Collectors.toList());
+        List<Aluno> listaRisco = AlunosEmRisco.calcular(
+                _sRisco != null ? alunoRepository.findAllByStudio(_sRisco) : alunoRepository.findAll(),
+                _sRisco != null ? alunoTurmaRepository.findAllByAlunoStudio(_sRisco) : alunoTurmaRepository.findAll(),
+                todasPresencas, LocalDate.now(), AlunosEmRisco.DIAS_SEM_PRESENCA);
+        java.util.Map<Long, LocalDate> ultimas = AlunosEmRisco.ultimaPresencaEfetiva(todasPresencas);
 
         Grid<Aluno> grid = new Grid<>(Aluno.class, false);
         grid.setItems(listaRisco);
@@ -209,11 +208,10 @@ public class CRMView extends VerticalLayout {
 
         grid.addColumn(Aluno::getNomeCompleto).setHeader("Aluno").setAutoWidth(true);
         grid.addColumn(a -> {
-            return todasPresencas.stream()
-                    .filter(p -> p.getAluno().getId().equals(a.getId()))
-                    .map(Presenca::getData).max(LocalDate::compareTo)
-                    .map(Object::toString).orElse("Nunca apareceu");
-        }).setHeader("Última Aula").setSortable(true);
+            LocalDate u = ultimas.get(a.getId());
+            return u != null ? pt.studioflow.util.DataUtil.formatar(u) : "Nunca apareceu";
+        }).setHeader("Última Aula").setSortable(true)
+                .setComparator(a -> ultimas.getOrDefault(a.getId(), LocalDate.MIN));
 
         grid.setSizeFull();
         containerConteudo.add(grid);
