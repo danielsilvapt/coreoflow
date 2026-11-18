@@ -203,7 +203,10 @@ public class CheckinService {
     public List<Aluno> listarAvulsosElegiveisParaTurma(Turma turma) {
         return compraCreditoRepository.findByStudio(turma.getStudio()).stream()
                 .filter(c -> c.isElegivelParaTurma(turma))
-                .map(CompraCredito::getAluno)
+                // O aluno da compra é LAZY: carrega-o aqui, dentro da transação, senão o
+                // kiosk rebenta (LazyInitializationException) ao ordenar o roster pelo nome.
+                .map(c -> (Aluno) org.hibernate.Hibernate.unproxy(c.getAluno()))
+                .filter(java.util.Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
     }
