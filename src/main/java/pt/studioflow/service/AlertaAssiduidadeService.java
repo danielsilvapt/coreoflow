@@ -5,13 +5,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Professor;
@@ -30,6 +30,10 @@ public class AlertaAssiduidadeService {
     private JavaMailSender mailSender;
     @Autowired
     private EmailGate emailGate;
+
+    // Remetente verificado no Brevo — sem From o envio é rejeitado ("sender not valid").
+    @Value("${app.mail.from:noreply@coreoflow.me}")
+    private String mailFrom;
 
     @Scheduled(cron = "0 0 9 * * MON")
     // TESTE
@@ -50,7 +54,7 @@ public class AlertaAssiduidadeService {
             if (!veioNaUltimaSemana && !aluno.getTurmas().isEmpty()) {
                 for (AlunoTurma at : aluno.getTurmas()) {
                     Professor prof = at.getTurma().getProfessor();
-                    if (prof != null && prof.getEmail() != null) {
+                    if (prof != null && prof.getEmail() != null && !prof.getEmail().isBlank()) {
                         // Usamos Set para garantir que o aluno entre apenas uma vez por professor
                         ausenciasPorProfessor.computeIfAbsent(prof, k -> new HashSet<>()).add(aluno);
                     }
@@ -75,8 +79,16 @@ public class AlertaAssiduidadeService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
+            helper.setFrom(mailFrom, "CoreoFlow");
             helper.setTo(professor.getEmail());
-            helper.setCc("noreply@coreoflow.app");
+            // Cópia e respostas para o email de contacto do estúdio do professor.
+            String emailEstudio = professor.getStudio() != null ? professor.getStudio().getEmailContacto() : null;
+            if (emailEstudio != null && !emailEstudio.isBlank()) {
+                helper.setReplyTo(emailEstudio);
+                if (!emailEstudio.equalsIgnoreCase(professor.getEmail())) {
+                    helper.setCc(emailEstudio);
+                }
+            }
             helper.setSubject("CoreoFlow - Relatório Semanal de Ausências");
 
             StringBuilder html = new StringBuilder();
@@ -94,7 +106,7 @@ public class AlertaAssiduidadeService {
                 // Filtramos apenas as turmas deste aluno que pertencem a este professor
                 // específico
                 String nomesTurmas = aluno.getTurmas().stream()
-                        .filter(at -> at.getTurma().getProfessor().equals(professor))
+                        .filter(at -> at.getTurma() != null && professor.equals(at.getTurma().getProfessor()))
                         .map(at -> at.getTurma().getDescricao())
                         .collect(Collectors.joining(", "));
 
@@ -113,7 +125,9 @@ public class AlertaAssiduidadeService {
             helper.setText(html.toString(), true);
             mailSender.send(message);
 
-        } catch (MessagingException e) {
+        } catch (Exception e) {
+            // Exception (e não só MessagingException): uma MailException do SMTP não pode
+            // interromper o envio aos restantes professores.
             System.err.println("Erro ao enviar email para " + professor.getNome() + ": " + e.getMessage());
         }
     }

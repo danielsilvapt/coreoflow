@@ -26,6 +26,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** Todos os utilizadores de um studio */
     List<User> findAllByStudio(Studio studio);
 
+    /** Existe algum utilizador do estúdio com este perfil (ex.: "PRESENCA" = kiosk de checkin configurado). */
+    boolean existsByStudioAndRole(Studio studio, String role);
+
     /** Procurar por email dentro de um studio */
     Optional<User> findByEmailAndStudio(String email, Studio studio);
 

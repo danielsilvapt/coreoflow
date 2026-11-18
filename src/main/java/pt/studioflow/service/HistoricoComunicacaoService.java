@@ -151,15 +151,18 @@ public class HistoricoComunicacaoService {
         if (evento == null) {
             return null;
         }
-        return switch (evento.trim().toLowerCase().replace(' ', '_').replace('-', '_')) {
+        // O webhook usa snake_case ("soft_bounce") e a API de eventos camelCase
+        // ("softBounces", "loadedByProxy"): compara sem separadores nem maiúsculas.
+        return switch (evento.trim().toLowerCase().replaceAll("[\\s_-]", "")) {
             case "delivered" -> EstadoEntrega.ENTREGUE;
-            case "opened", "unique_opened", "first_opening", "proxy_open", "unique_proxy_open", "click", "clicks" ->
+            case "opened", "uniqueopened", "firstopening", "proxyopen", "uniqueproxyopen", "loadedbyproxy",
+                    "click", "clicks" ->
                     EstadoEntrega.ABERTO;
             case "deferred" -> EstadoEntrega.ADIADO;
-            case "soft_bounce", "soft_bounces" -> EstadoEntrega.DEVOLVIDO_TEMP;
-            case "hard_bounce", "hard_bounces" -> EstadoEntrega.DEVOLVIDO;
+            case "softbounce", "softbounces" -> EstadoEntrega.DEVOLVIDO_TEMP;
+            case "hardbounce", "hardbounces" -> EstadoEntrega.DEVOLVIDO;
             case "blocked" -> EstadoEntrega.BLOQUEADO;
-            case "invalid_email", "invalid" -> EstadoEntrega.INVALIDO;
+            case "invalidemail", "invalid" -> EstadoEntrega.INVALIDO;
             case "spam", "complaint" -> EstadoEntrega.SPAM;
             case "error" -> EstadoEntrega.ERRO;
             default -> null; // request (enviado), unsubscribed, ...

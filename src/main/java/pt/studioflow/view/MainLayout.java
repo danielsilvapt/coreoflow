@@ -144,6 +144,33 @@ public class MainLayout extends AppLayout {
                 return toggle;
         }
 
+        /**
+         * Atalho no cabeçalho para o kiosk de checkin (/checkin), só para ADMIN de
+         * estúdios que usam o checkin: módulo Presenças ativo e uma conta PRESENCA
+         * criada. Abre num separador novo (o kiosk não tem o menu da aplicação).
+         */
+        private Button criarBotaoCheckin(Studio studio, Authentication auth) {
+                if (studio == null || auth == null) return null;
+                boolean isAdmin = auth.getAuthorities().stream()
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                if (!isAdmin) return null;
+                try {
+                        if (!studio.hasModulo(pt.studioflow.model.StudioModulo.PRESENCAS)
+                                        || !userRepository.existsByStudioAndRole(studio, "PRESENCA")) {
+                                return null;
+                        }
+                } catch (RuntimeException e) {
+                        return null; // nunca partir o cabeçalho por causa do atalho
+                }
+                Button b = new Button("Check-in", VaadinIcon.CHECK_SQUARE_O.create());
+                b.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+                b.addClassName("cf-header-checkin");
+                b.getStyle().set("margin-right", "8px");
+                b.getElement().setAttribute("title", "Abrir o kiosk de check-in num novo separador");
+                b.addClickListener(e -> UI.getCurrent().getPage().open("checkin", "_blank"));
+                return b;
+        }
+
         private void createHeader() {
                 DrawerToggle toggle = new DrawerToggle();
 
@@ -233,6 +260,7 @@ public class MainLayout extends AppLayout {
                 }
 
                 HorizontalLayout rightLayout;
+                Button btnCheckin = criarBotaoCheckin(currentStudio, authForBell);
                 if (!isSuperAdmin && !isAlunoHeader) {
                         Icon bellIcon = VaadinIcon.BELL.create();
 
@@ -249,6 +277,9 @@ public class MainLayout extends AppLayout {
                         rightLayout = studioLogo != null
                                         ? new HorizontalLayout(darkModeToggle, studioLogo, userMenu)
                                         : new HorizontalLayout(darkModeToggle, userMenu);
+                }
+                if (btnCheckin != null) {
+                        rightLayout.addComponentAsFirst(btnCheckin);
                 }
                 rightLayout.setAlignItems(Alignment.CENTER);
                 rightLayout.setSpacing(false);

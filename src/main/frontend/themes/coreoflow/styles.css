@@ -495,6 +495,11 @@ html[theme~='dark'] .cf-header-logo { filter: brightness(0) invert(1) opacity(0.
   border-radius: var(--lumo-border-radius-s);
 }
 .cf-header-actions { gap: var(--lumo-space-s); }
+/* Atalho para o kiosk de checkin: em ecrãs estreitos fica só o ícone. */
+@media (max-width: 600px) {
+  .cf-header-checkin::part(label) { display: none; }
+  .cf-header-checkin { min-width: var(--lumo-size-s); padding: 0 var(--lumo-space-xs); }
+}
 
 /* Botões redondos do cabeçalho (modo escuro, notificações) */
 vaadin-button.cf-icon-btn {
