@@ -465,6 +465,8 @@ public class MainLayout extends AppLayout {
                                                 AulasExperimentaisView.class,
                                                 expPorRealizar > 0 ? String.valueOf(expPorRealizar) : null));
                         }
+                        if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.AULAS_AVULSO))
+                                tabs.add(criarTab("Aulas Avulsas", VaadinIcon.TICKET, "#E67E22", AulasAvulsasView.class, null));
 
                         // 1. Obter o utilizador logado (username)
                         String usernameLogado = com.vaadin.flow.server.VaadinServletRequest.getCurrent()
