@@ -239,10 +239,29 @@ public class PagamentoOnlineService {
 
     /** Mensalidades que o aluno pode pagar no portal: em aberto, com valor, até ao mês corrente. */
     public List<Mensalidade> mensalidadesPagaveis(List<Mensalidade> mensalidades) {
-        YearMonth atual = YearMonth.now();
+        return mensalidadesPagaveis(mensalidades, null);
+    }
+
+    /**
+     * Como {@link #mensalidadesPagaveis(List)}, mas num estúdio com o lembrete de
+     * mensalidade ligado também a do mês seguinte, a partir do dia do lembrete
+     * (para o link do email "mensalidade a pagamento" levar a algo que se pode pagar).
+     */
+    public List<Mensalidade> mensalidadesPagaveis(List<Mensalidade> mensalidades, pt.studioflow.model.Studio studio) {
+        return mensalidadesPagaveis(mensalidades, studio, java.time.LocalDate.now());
+    }
+
+    List<Mensalidade> mensalidadesPagaveis(List<Mensalidade> mensalidades, pt.studioflow.model.Studio studio,
+            java.time.LocalDate hoje) {
+        YearMonth atual = YearMonth.from(hoje);
+        if (studio != null && studio.isLembreteMensalidade()
+                && hoje.getDayOfMonth() >= LembreteMensalidadeService.diaDoLembrete(atual)) {
+            atual = atual.plusMonths(1);
+        }
+        final YearMonth limite = atual;
         return mensalidades.stream()
                 .filter(m -> m.getEstado() != EstadoMensalidade.PAGO && m.getValor() > 0)
-                .filter(m -> !YearMonth.of(m.getAno(), m.getMes()).isAfter(atual))
+                .filter(m -> !YearMonth.of(m.getAno(), m.getMes()).isAfter(limite))
                 .sorted(Comparator.comparing((Mensalidade m) -> YearMonth.of(m.getAno(), m.getMes())))
                 .toList();
     }
