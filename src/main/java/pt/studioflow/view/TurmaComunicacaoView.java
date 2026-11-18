@@ -31,6 +31,8 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.tabs.Tab;
+import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
@@ -41,17 +43,21 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.model.Aluno;
 import pt.studioflow.model.Professor;
+import pt.studioflow.model.RegistoEmail;
 import pt.studioflow.model.Turma;
 import pt.studioflow.model.User;
 import pt.studioflow.repository.AlunoRepository;
 import pt.studioflow.repository.ProfessorRepository;
+import pt.studioflow.repository.RegistoEmailRepository;
 import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.repository.UserRepository;
 import pt.studioflow.service.EmailService;
+import pt.studioflow.service.HistoricoComunicacaoService;
 import pt.studioflow.service.R2StorageService;
 import pt.studioflow.service.TurmaService;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 @PageTitle("Comunicação | CoreoFlow")
 @Route(value = "comunicacao", layout = MainLayout.class)
@@ -65,6 +71,8 @@ public class TurmaComunicacaoView extends VerticalLayout {
     private final UserRepository userRepository;
     private final AlunoRepository alunoRepository;
     private final R2StorageService storageService;
+    private final RegistoEmailRepository registoEmailRepository;
+    private final HistoricoComunicacaoService historicoService;
 
     // Limites dos anexos: os servidores SMTP recusam mensagens acima de ~25 MB
     // (alguns relays menos), e a codificação base64 aumenta o tamanho em ~33%.
@@ -72,6 +80,8 @@ public class TurmaComunicacaoView extends VerticalLayout {
     private static final int MAX_TAMANHO_ANEXOS_BYTES = 15 * 1024 * 1024;
 
     private final Div containerCards = new Div();
+    private final VerticalLayout painelEnviar = new VerticalLayout();
+    private HistoricoComunicacaoPanel painelHistorico;
 
     private final Set<Aluno> selecionados = new HashSet<>();
     private final List<Checkbox> listaCheckboxes = new ArrayList<>();
@@ -96,7 +106,9 @@ public class TurmaComunicacaoView extends VerticalLayout {
             ProfessorRepository professorRepository,
             UserRepository userRepository,
             AlunoRepository alunoRepository,
-            R2StorageService storageService) {
+            R2StorageService storageService,
+            RegistoEmailRepository registoEmailRepository,
+            HistoricoComunicacaoService historicoService) {
         this.turmaRepository = turmaRepository;
         this.turmaService = turmaService;
         this.emailService = emailService;
@@ -104,6 +116,8 @@ public class TurmaComunicacaoView extends VerticalLayout {
         this.userRepository = userRepository;
         this.alunoRepository = alunoRepository;
         this.storageService = storageService;
+        this.registoEmailRepository = registoEmailRepository;
+        this.historicoService = historicoService;
 
         setSizeFull();
         setPadding(false);
@@ -113,6 +127,10 @@ public class TurmaComunicacaoView extends VerticalLayout {
         H2 titulo = new H2("Centro de Comunicação");
         titulo.getStyle().set("margin-top", "0");
         add(titulo);
+
+        painelEnviar.setPadding(false);
+        painelEnviar.setSpacing(false);
+        painelEnviar.setWidthFull();
         configurarCabecalho();
 
         containerCards.getStyle()
@@ -121,7 +139,35 @@ public class TurmaComunicacaoView extends VerticalLayout {
                 .set("gap", "20px")
                 .set("width", "100%");
 
-        add(containerCards);
+        painelEnviar.add(containerCards);
+
+        // ADMIN e DELEG veem todas as comunicações do estúdio; um professor só as que ele enviou.
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean veTudo = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_DELEG"));
+        pt.studioflow.model.Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
+        painelHistorico = new HistoricoComunicacaoPanel(registoEmailRepository, historicoService,
+                studio != null ? studio.getId() : null, veTudo ? null : usernameSemEstudio(auth.getName()));
+        painelHistorico.setVisible(false);
+
+        Tab tabEnviar = new Tab(VaadinIcon.PAPERPLANE.create(), new Span("Enviar"));
+        Tab tabHistorico = new Tab(VaadinIcon.CLOCK.create(), new Span("Histórico"));
+        Tabs tabs = new Tabs(tabEnviar, tabHistorico);
+        tabs.addSelectedChangeListener(e -> {
+            boolean historico = e.getSelectedTab() == tabHistorico;
+            painelEnviar.setVisible(!historico);
+            painelHistorico.setVisible(historico);
+            if (historico) {
+                painelHistorico.recarregar();
+            }
+        });
+
+        add(tabs, painelEnviar, painelHistorico);
+        expand(painelHistorico);
+    }
+
+    private static String usernameSemEstudio(String principal) {
+        return principal != null && principal.contains(":") ? principal.split(":", 2)[1] : principal;
     }
 
 
@@ -162,7 +208,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
         toolbar.setAlignItems(Alignment.BASELINE);
         toolbar.setFlexGrow(1, turmaCombo);
 
-        add(toolbar, new Hr());
+        painelEnviar.add(toolbar, new Hr());
     }
 
     @Override
@@ -438,16 +484,32 @@ public class TurmaComunicacaoView extends VerticalLayout {
                 return;
             }
 
+            Professor profCc = ccProfessor.getValue() ? professorCorrespondente : null;
+            List<HistoricoComunicacaoService.Destinatario> destinatarios = new ArrayList<>();
+            RegistoEmail registo = novoRegisto(studioAtual, auth, firstNameLogado, assunto.getValue(),
+                    mensagem.getValue(), profCc, anexos.keySet(), destinatarios);
             try {
-                Professor profCc = ccProfessor.getValue() ? professorCorrespondente : null;
-                emailService.enviarEmailParaLista(studioAtual, profCc, emails, assunto.getValue(),
-                        mensagem.getValue(), new ArrayList<>(anexos.values()));
+                EmailService.ResultadoEnvio res = emailService.enviarEmailParaLista(studioAtual, profCc, emails,
+                        assunto.getValue(), mensagem.getValue(), new ArrayList<>(anexos.values()));
+                boolean enviado = res.enviado();
+                registo.setEstado(enviado ? RegistoEmail.Estado.ENVIADO : RegistoEmail.Estado.BLOQUEADO);
+                registo.setMessageId(RegistoEmail.normalizarMessageId(res.messageId()));
                 dialog.close();
-                Notification.show("E-mail enviado com sucesso para " + emails.size() + " alunos!")
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                if (enviado) {
+                    Notification.show("E-mail enviado com sucesso para " + emails.size() + " alunos!")
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                } else {
+                    Notification.show("O envio de e-mails está desativado para este estúdio — a mensagem não foi enviada.",
+                            5000, Notification.Position.MIDDLE)
+                            .addThemeVariants(NotificationVariant.LUMO_WARNING);
+                }
             } catch (Exception ex) {
+                registo.setEstado(RegistoEmail.Estado.FALHOU);
+                registo.setErro(truncar(mensagemErro(ex), 1990));
                 Notification.show("Erro ao enviar e-mail: " + ex.getMessage())
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            } finally {
+                historicoService.gravar(registo, destinatarios);
             }
         });
         enviar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -455,5 +517,59 @@ public class TurmaComunicacaoView extends VerticalLayout {
         dialog.add(content);
         dialog.getFooter().add(new Button("Cancelar", e -> dialog.close()), enviar);
         dialog.open();
+    }
+
+    /** Prepara o registo de histórico de um envio (o estado é preenchido depois de enviar). */
+    private RegistoEmail novoRegisto(pt.studioflow.model.Studio studio, Authentication auth, String nomeLogado,
+            String assunto, String mensagem, Professor profCc, Set<String> nomesAnexos,
+            List<HistoricoComunicacaoService.Destinatario> destinatarios) {
+        RegistoEmail r = new RegistoEmail();
+        r.setData(LocalDateTime.now());
+        r.setStudioId(studio != null ? studio.getId() : null);
+        r.setUtilizador(truncar(usernameSemEstudio(auth.getName()), 150));
+        r.setUtilizadorNome(truncar(nomeLogado, 150));
+        r.setAssunto(truncar(assunto, 500));
+        r.setMensagem(mensagem);
+        Turma turma = turmaCombo.getValue();
+        r.setTurma(truncar(isTodos(turma) ? "Todos os alunos" : turma.getDescricao(), 200));
+        r.setProfessorCopia(profCc != null ? truncar(profCc.getNome(), 150) : null);
+        r.setAnexos(nomesAnexos.isEmpty() ? null : truncar(String.join(", ", nomesAnexos), 1000));
+
+        List<Aluno> ordenados = selecionados.stream()
+                .sorted(java.util.Comparator.comparing((Aluno a) -> a.getNomeCompleto() != null ? a.getNomeCompleto() : "",
+                        String.CASE_INSENSITIVE_ORDER))
+                .toList();
+        List<String> sem = new ArrayList<>();
+        for (Aluno a : ordenados) {
+            if (a.getEmail() != null && !a.getEmail().isBlank()) {
+                destinatarios.add(new HistoricoComunicacaoService.Destinatario(a.getNomeCompleto(), a.getEmail()));
+            } else {
+                sem.add(a.getNomeCompleto());
+            }
+        }
+        r.setSemEmail(sem.isEmpty() ? null : String.join("\n", sem));
+        return r;
+    }
+
+    /** Mensagens da cadeia de causas (ex.: a resposta do servidor SMTP). */
+    private static String mensagemErro(Throwable ex) {
+        StringBuilder sb = new StringBuilder();
+        Set<Throwable> vistos = new HashSet<>();
+        Throwable t = ex;
+        while (t != null && vistos.add(t)) {
+            String m = t.getMessage();
+            if (m != null && !m.isBlank() && sb.indexOf(m) < 0) {
+                if (sb.length() > 0) {
+                    sb.append(" → ");
+                }
+                sb.append(m);
+            }
+            t = t.getCause();
+        }
+        return sb.length() > 0 ? sb.toString() : ex.getClass().getSimpleName();
+    }
+
+    private static String truncar(String s, int max) {
+        return s == null || s.length() <= max ? s : s.substring(0, max);
     }
 }
