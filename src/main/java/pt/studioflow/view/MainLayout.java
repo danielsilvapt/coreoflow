@@ -183,8 +183,11 @@ public class MainLayout extends AppLayout {
 
                 Image logo = new Image("images/logo2-coreoflow.png", "CoreoFlow");
                 logo.addClassName("cf-header-logo");
+                boolean presencaForLogo = authForLogo != null && authForLogo.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_PRESENCA"));
                 logo.addClickListener(e -> {
                         if (saForLogo) UI.getCurrent().navigate(SuperAdminDashboardView.class);
+                        else if (presencaForLogo) UI.getCurrent().navigate(CheckinKioskView.class);
                         else UI.getCurrent().navigate(DashboardView.class);
                 });
 
@@ -243,7 +246,7 @@ public class MainLayout extends AppLayout {
                 boolean isSuperAdmin = authForBell != null && authForBell.getAuthorities().stream()
                         .anyMatch(a -> a.getAuthority().equals("ROLE_SUPERADMIN"));
                 boolean isAlunoHeader = authForBell != null && authForBell.getAuthorities().stream()
-                        .anyMatch(a -> a.getAuthority().equals("ROLE_ALUNO"));
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_ALUNO") || a.getAuthority().equals("ROLE_PRESENCA"));
 
                 Button darkModeToggle = createDarkModeToggle();
 
@@ -256,7 +259,10 @@ public class MainLayout extends AppLayout {
                                         currentStudio.getNome() != null ? currentStudio.getNome() : "Estúdio");
                         studioLogo.addClassName("cf-studio-logo");
                         studioLogo.getElement().setAttribute("title", currentStudio.getNome());
-                        studioLogo.addClickListener(e -> UI.getCurrent().navigate(DashboardView.class));
+                        studioLogo.addClickListener(e -> {
+                                if (presencaForLogo) UI.getCurrent().navigate(CheckinKioskView.class);
+                                else UI.getCurrent().navigate(DashboardView.class);
+                        });
                 }
 
                 HorizontalLayout rightLayout;
@@ -366,6 +372,8 @@ public class MainLayout extends AppLayout {
                 boolean isProf = hasRole(auth, "ROLE_PROF");
                 boolean isDelegado = hasRole(auth, "ROLE_DELEG");
                 boolean isAluno = hasRole(auth, "ROLE_ALUNO");
+                // Conta PRESENCA (iPad do kiosk): só tem acesso ao /checkin.
+                boolean isPresenca = hasRole(auth, "ROLE_PRESENCA");
 
                 // Layout principal do Drawer
                 VerticalLayout drawerContent = new VerticalLayout();
@@ -425,6 +433,11 @@ public class MainLayout extends AppLayout {
                         tabs.add(criarTab("Previsão", VaadinIcon.TRENDING_UP, "#2E7D32", PrevisaoReceitaView.class, null));
                 }
 
+                // --- PRESENCA: só o kiosk de checkin ---
+                if (isPresenca) {
+                        tabs.add(criarTab("Checkin", VaadinIcon.CHECK_SQUARE_O, "#27AE60", CheckinKioskView.class, null));
+                }
+
                 // Helper: verifica módulo do estúdio atual
                 pt.studioflow.model.Studio studioParaModulos = pt.studioflow.config.TenantContext.getCurrentStudio();
 
@@ -436,7 +449,7 @@ public class MainLayout extends AppLayout {
                 }
 
                 // --- 1. PRINCIPAL (apenas não-SA) ---
-                if (!isAluno && !isDelegado && !isSA) {
+                if (!isAluno && !isDelegado && !isSA && !isPresenca) {
                         tabs.add(criarTab("Dashboard", VaadinIcon.CHART_GRID, "#4A90E2", DashboardView.class, null));
                         if (studioParaModulos == null || studioParaModulos.hasModulo(pt.studioflow.model.StudioModulo.MAPA_SALAS))
                                 tabs.add(criarTab("Mapa de Salas", VaadinIcon.TABLE, "#7B61FF", SalaScheduleView.class,
