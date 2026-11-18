@@ -20,6 +20,15 @@ public class Professor {
     @Column
     private String telefone;
 
+    /**
+     * Utilizador (login) deste professor — ligação explícita usada para saber
+     * que turmas/aulas/horas são "minhas". Null = professor sem conta.
+     * Nunca resolver isto pelo nome.
+     */
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", unique = true)
+    private User user;
+
     /** Valor pago por hora de aula regular (usado quando a remuneração efetiva é HORA). Default: 25€ */
     @Column(name = "valor_hora_aula", nullable = false)
     private double valorHoraAula = 25.0;
@@ -78,6 +87,9 @@ public class Professor {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 
     public String getTelefone() { return telefone; }
     public void setTelefone(String telefone) { this.telefone = telefone; }

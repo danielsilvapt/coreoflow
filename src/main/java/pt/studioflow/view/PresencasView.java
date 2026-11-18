@@ -88,6 +88,10 @@ public class PresencasView extends VerticalLayout {
     private Turma turmaSelecionada;
     private YearMonth mesSelecionado;
     private final Map<Long, Map<LocalDate, Boolean>> presencasCache = new HashMap<>();
+    /** Alunos que vieram a esta turma no mês com uma aula avulsa/pack (sem matrícula nela). */
+    private final Map<Long, Aluno> avulsosMes = new java.util.LinkedHashMap<>();
+    /** Nº de alunos avulsos presentes no dia mostrado nos cards. */
+    private int avulsosDia = 0;
     private Div chartContainer;
 
     // Modo "Marcar por dia": para uma turma específica, marca-se a presença de
@@ -316,6 +320,14 @@ public class PresencasView extends VerticalLayout {
                 s.addClassName("cf-tone-warning");
                 s.setText(s.getText() + " (Exp.)");
             }
+            if (ap.isAvulso()) {
+                Span tag = new Span("Avulsa");
+                tag.addClassNames("cf-pres-dia-tag", "cf-pres-avulsa-tag");
+                tag.getElement().setAttribute("title",
+                        "Veio com aula avulsa / pack (não está matriculado nesta turma)");
+                s.add(tag);
+                return s;
+            }
             DayOfWeek diaEscolhido = diaEscolhidoPorAluno.get(ap.getAluno().getId());
             if (diaEscolhido != null) {
                 Span tag = new Span("1x · " + traduzirDia(diaEscolhido));
@@ -343,6 +355,12 @@ public class PresencasView extends VerticalLayout {
 
             grid.addComponentColumn(ap -> {
                 Checkbox cb = new Checkbox(ap.getPresencas().getOrDefault(data, false));
+                if (ap.isAvulso()) {
+                    // O crédito já foi consumido no check-in; gere-se em Aulas Avulsas.
+                    cb.setReadOnly(true);
+                    cb.getElement().setAttribute("title", "Aula avulsa — registada no check-in");
+                    return cb;
+                }
                 cb.addValueChangeListener(ev -> {
                     ap.getPresencas().put(data, ev.getValue());
                     atualizarFeedbackVisual();
@@ -352,7 +370,7 @@ public class PresencasView extends VerticalLayout {
                     .setPartNameGenerator(item -> {
                         // Verde só nos dias em que o aluno vem (quem vai 1x só no dia escolhido)
                         if (temAula)
-                            return vemNoDia(item.getAluno(), dow) ? "dia-aula" : "dia-aula-nao-vem";
+                            return item.isAvulso() || vemNoDia(item.getAluno(), dow) ? "dia-aula" : "dia-aula-nao-vem";
                         if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY)
                             return "fim-de-semana";
                         return null;
@@ -374,6 +392,21 @@ public class PresencasView extends VerticalLayout {
                     }
                     return ap;
                 }).collect(Collectors.toList());
+
+        // Aulas avulsas: quem veio com crédito/pack sem estar matriculado na turma.
+        Set<Long> matriculados = lista.stream().map(ap -> ap.getAluno().getId()).collect(Collectors.toSet());
+        avulsosMes.values().stream()
+                .filter(a -> !matriculados.contains(a.getId()))
+                .sorted(Comparator.comparing(Aluno::getNomeCompleto, String.CASE_INSENSITIVE_ORDER))
+                .forEach(aluno -> {
+                    AlunoPresenca ap = new AlunoPresenca(aluno, true);
+                    for (int d = 1; d <= mesSelecionado.lengthOfMonth(); d++) {
+                        LocalDate dRef = mesSelecionado.atDay(d);
+                        ap.getPresencas().put(dRef,
+                                presencasCache.getOrDefault(aluno.getId(), Map.of()).getOrDefault(dRef, false));
+                    }
+                    lista.add(ap);
+                });
 
         grid.setItems(lista);
         atualizarContadoresCabecalho();
@@ -465,6 +498,7 @@ public class PresencasView extends VerticalLayout {
         cardsDiaContainer.removeAll();
         estadoDia.clear();
         totalAlunosDia = 0;
+        avulsosDia = 0;
         if (turmaSelecionada == null || diaPicker.getValue() == null) {
             atualizarContadorDia();
             return;
@@ -472,14 +506,23 @@ public class PresencasView extends VerticalLayout {
         LocalDate dia = diaPicker.getValue();
 
         Map<Long, Boolean> existentes = new HashMap<>();
-        presencaRepository.findByTurmaAndDataBetween(turmaSelecionada, dia, dia)
-                .forEach(p -> existentes.put(p.getAluno().getId(), p.isPresente()));
+        List<Presenca> doDia = presencaRepository.findByTurmaAndDataBetween(turmaSelecionada, dia, dia);
+        doDia.forEach(p -> existentes.put(p.getAluno().getId(), p.isPresente()));
 
         List<Aluno> alunos = turmaService.getAlunosDaTurma(turmaSelecionada).stream()
                 .sorted(Comparator.comparing(Aluno::getNomeCompleto, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toList());
 
-        if (alunos.isEmpty()) {
+        Set<Long> matriculados = alunos.stream().map(Aluno::getId).collect(Collectors.toSet());
+        List<Aluno> avulsos = doDia.stream()
+                .filter(p -> ehAvulsa(p) && p.isPresente() && !matriculados.contains(p.getAluno().getId()))
+                .map(Presenca::getAluno)
+                .collect(Collectors.toMap(Aluno::getId, a -> a, (a, b) -> a, java.util.LinkedHashMap::new))
+                .values().stream()
+                .sorted(Comparator.comparing(Aluno::getNomeCompleto, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+
+        if (alunos.isEmpty() && avulsos.isEmpty()) {
             Span vazio = new Span("Esta turma não tem alunos.");
             vazio.addClassName("cf-empty");
             cardsDiaContainer.add(vazio);
@@ -489,8 +532,36 @@ public class PresencasView extends VerticalLayout {
             estadoDia.put(aluno.getId(), existentes.getOrDefault(aluno.getId(), false));
             cardsDiaContainer.add(criarCardAlunoDia(aluno));
         }
+        for (Aluno aluno : avulsos) {
+            cardsDiaContainer.add(criarCardAvulsoDia(aluno));
+        }
         totalAlunosDia = alunos.size();
+        avulsosDia = avulsos.size();
         atualizarContadorDia();
+    }
+
+    /** Card só de leitura: aluno que veio com aula avulsa / pack (crédito já consumido). */
+    private Div criarCardAvulsoDia(Aluno aluno) {
+        Div card = new Div();
+        card.addClassNames("cf-pres-card", "cf-pres-card--presente", "cf-pres-card--avulsa");
+        card.getElement().setAttribute("title", "Aula avulsa / pack — registada no check-in");
+
+        Div avatar = new Div();
+        avatar.addClassName("cf-pres-avatar");
+        if (aluno.getFotoChave() != null && !aluno.getFotoChave().isBlank()) {
+            avatar.add(new Image(storageService.gerarUrlTemporario(aluno.getFotoChave(), Duration.ofHours(2)),
+                    "Foto de " + aluno.getNomeCompleto()));
+        } else {
+            avatar.add(new Icon(VaadinIcon.USER));
+        }
+        Span nome = new Span(formatarNomeCurto(aluno.getNomeCompleto()));
+        nome.addClassName("cf-pres-nome");
+        Span estado = new Span("✓ Presente");
+        estado.addClassName("cf-pres-estado");
+        Span tag = new Span("Aula avulsa");
+        tag.addClassName("cf-pres-aviso");
+        card.add(avatar, nome, estado, tag);
+        return card;
     }
 
     private Div criarCardAlunoDia(Aluno aluno) {
@@ -553,7 +624,8 @@ public class PresencasView extends VerticalLayout {
 
     private void atualizarContadorDia() {
         long presentes = estadoDia.values().stream().filter(Boolean::booleanValue).count();
-        contadorDia.setText(presentes + " / " + totalAlunosDia + " presentes");
+        contadorDia.setText(presentes + " / " + totalAlunosDia + " presentes"
+                + (avulsosDia > 0 ? " · +" + avulsosDia + " avulsa" + (avulsosDia > 1 ? "s" : "") : ""));
     }
 
     private void guardarPresencasDia() {
@@ -694,10 +766,20 @@ public class PresencasView extends VerticalLayout {
 
     private void carregarPresencasCache() {
         presencasCache.clear();
+        avulsosMes.clear();
         presencaRepository
                 .findByTurmaAndDataBetween(turmaSelecionada, mesSelecionado.atDay(1), mesSelecionado.atEndOfMonth())
-                .forEach(p -> presencasCache.computeIfAbsent(p.getAluno().getId(), k -> new HashMap<>())
-                        .put(p.getData(), p.isPresente()));
+                .forEach(p -> {
+                    presencasCache.computeIfAbsent(p.getAluno().getId(), k -> new HashMap<>())
+                            .put(p.getData(), p.isPresente());
+                    if (ehAvulsa(p) && p.isPresente())
+                        avulsosMes.putIfAbsent(p.getAluno().getId(), p.getAluno());
+                });
+    }
+
+    /** A presença consumiu um crédito de aula avulsa / pack (não vem da matrícula). */
+    private static boolean ehAvulsa(Presenca p) {
+        return p.getOrigem() == pt.studioflow.model.OrigemPresenca.CREDITO_AVULSO || p.getCompraCredito() != null;
     }
 
     private void guardarPresencas() {
@@ -707,7 +789,7 @@ public class PresencasView extends VerticalLayout {
             guardarPresencasDia();
             return;
         }
-        grid.getListDataView().getItems().forEach(ap -> {
+        grid.getListDataView().getItems().filter(ap -> !ap.isAvulso()).forEach(ap -> {
             ap.getPresencas().forEach((data, presente) -> {
                 Presenca p = presencaRepository.findByAlunoAndTurmaAndData(ap.getAluno(), turmaSelecionada, data)
                         .orElseGet(Presenca::new);
@@ -837,9 +919,20 @@ public class PresencasView extends VerticalLayout {
     public static class AlunoPresenca {
         private final Aluno aluno;
         private final Map<LocalDate, Boolean> presencas = new HashMap<>();
+        /** Linha de aluno que veio com aula avulsa/pack (só leitura, não se grava). */
+        private final boolean avulso;
 
         public AlunoPresenca(Aluno aluno) {
+            this(aluno, false);
+        }
+
+        public AlunoPresenca(Aluno aluno, boolean avulso) {
             this.aluno = aluno;
+            this.avulso = avulso;
+        }
+
+        public boolean isAvulso() {
+            return avulso;
         }
 
         public Aluno getAluno() {

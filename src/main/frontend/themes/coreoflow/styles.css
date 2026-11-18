@@ -1873,6 +1873,9 @@ vaadin-grid::part(dia-aula-nao-vem) {
   white-space: nowrap;
 }
 .cf-pres-card--nao-vem:not(.cf-pres-card--presente) { opacity: 0.55; }
+/* Aluno que veio com aula avulsa / pack (sem matrícula na turma) — só leitura */
+.cf-pres-avulsa-tag { background: var(--cf-info-bg); color: var(--cf-info-text); }
+.cf-pres-card--avulsa { cursor: default; border-style: dashed; }
 .cf-pres-aviso { font-size: var(--lumo-font-size-xs); color: var(--lumo-secondary-text-color); }
 html .chart-card {
   background: var(--cf-surface);

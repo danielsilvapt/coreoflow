@@ -61,6 +61,7 @@ public class NotificacoesView extends VerticalLayout {
     private final AlunoTurmaRepository alunoTurmaRepository;
     private final AuthService authService;
     private final CompraCreditoService compraCreditoService;
+    private final pt.studioflow.service.ProfessorTurmasService professorTurmasService;
 
     private final Div conteudo = new Div();
 
@@ -74,7 +75,9 @@ public class NotificacoesView extends VerticalLayout {
             TurmaRepository turmaRepository,
             AlunoTurmaRepository alunoTurmaRepository,
             AuthService authService,
-            CompraCreditoService compraCreditoService) {
+            CompraCreditoService compraCreditoService,
+            pt.studioflow.service.ProfessorTurmasService professorTurmasService) {
+        this.professorTurmasService = professorTurmasService;
         this.alunoRepository = alunoRepository;
         this.mensalidadeRepository = mensalidadeRepository;
         this.marcacaoSalaRepository = marcacaoSalaRepository;
@@ -119,28 +122,9 @@ public class NotificacoesView extends VerticalLayout {
     }
 
     private Optional<Professor> getProfessorLogado() {
-        // Procura só no estúdio atual e tolera duplicados: findByEmail/findByNome são
-        // globais e rebentam (IncorrectResultSizeDataAccessException) quando o mesmo
-        // professor existe em mais de um estúdio.
+        // Ligação explícita professor↔utilizador (professores.user_id), no estúdio atual.
         return authService.getCurrentUser()
-            .flatMap(u -> {
-                Studio studio = TenantContext.getCurrentStudio();
-                List<Professor> profs = studio != null
-                    ? professorRepository.findAllByStudio(studio)
-                    : professorRepository.findAll();
-                String email = u.getEmail() != null ? u.getEmail().trim() : "";
-                if (!email.isEmpty()) {
-                    Optional<Professor> byEmail = profs.stream()
-                        .filter(p -> p.getEmail() != null && p.getEmail().trim().equalsIgnoreCase(email))
-                        .findFirst();
-                    if (byEmail.isPresent()) return byEmail;
-                }
-                String nome = u.getFirstName() != null ? u.getFirstName().trim() : "";
-                if (nome.isEmpty()) return Optional.empty();
-                return profs.stream()
-                    .filter(p -> p.getNome() != null && p.getNome().trim().equalsIgnoreCase(nome))
-                    .findFirst();
-            });
+            .flatMap(u -> professorTurmasService.professorDe(u, TenantContext.getCurrentStudio()));
     }
 
     private void carregarNotificacoes() {

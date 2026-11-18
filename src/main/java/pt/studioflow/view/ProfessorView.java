@@ -27,7 +27,9 @@ import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Professor;
 import pt.studioflow.model.Studio;
+import pt.studioflow.model.User;
 import pt.studioflow.repository.ProfessorRepository;
+import pt.studioflow.repository.UserRepository;
 import pt.studioflow.repository.TurmaRepository;
 import pt.studioflow.service.RemuneracaoService;
 
@@ -39,10 +41,17 @@ public class ProfessorView extends VerticalLayout {
     private final ProfessorRepository professorRepository;
     private final RemuneracaoService remuneracaoService;
     private final TurmaRepository turmaRepository;
+    private final UserRepository userRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    /** Utilizadores do estúdio por id (para a coluna "Login" sem uma query por linha). */
+    private java.util.Map<Long, User> utilizadoresPorId = java.util.Map.of();
     private final Grid<Professor> grid = new Grid<>(Professor.class, false);
 
     public ProfessorView(ProfessorRepository professorRepository, RemuneracaoService remuneracaoService,
-                         TurmaRepository turmaRepository) {
+                         TurmaRepository turmaRepository, UserRepository userRepository,
+                         org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
         this.professorRepository = professorRepository;
         this.remuneracaoService = remuneracaoService;
         this.turmaRepository = turmaRepository;
@@ -129,6 +138,15 @@ public class ProfessorView extends VerticalLayout {
         grid.addColumn(Professor::getTelefone).setHeader("Telefone").setAutoWidth(true);
 
         grid.addComponentColumn(p -> {
+            User u = p.getUser() != null ? utilizadoresPorId.get(p.getUser().getId()) : null;
+            Span s = new Span(u != null ? u.getUsername() : "Sem conta");
+            s.getStyle().set("font-size", "0.85rem")
+                    .set("color", u != null ? "var(--cf-text)" : "var(--cf-text-tertiary)");
+            if (u == null) s.getStyle().set("font-style", "italic");
+            return s;
+        }).setHeader("Login").setAutoWidth(true);
+
+        grid.addComponentColumn(p -> {
             Studio studio = TenantContext.getCurrentStudio();
             boolean herdado = p.getTipoRemuneracao() == null || p.getTipoRemuneracao().isBlank();
             Span badge = new Span(remuneracaoService.descricaoEfetiva(p, studio));
@@ -149,7 +167,12 @@ public class ProfessorView extends VerticalLayout {
     private HorizontalLayout criarBotoesLinha(Professor professor) {
         Button editar = ViewUtils.botaoEditar(e -> abrirDialog(professor));
         Button remover = ViewUtils.botaoEliminar(e -> confirmarRemocao(professor));
-        return new HorizontalLayout(editar, remover);
+        if (professor.getUser() != null) return new HorizontalLayout(editar, remover);
+        Button criarLogin = new Button(VaadinIcon.KEY.create(), e -> abrirDialogCriarUtilizador(professor));
+        criarLogin.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        criarLogin.getElement().setProperty("title", "Criar utilizador (login) para este professor");
+        criarLogin.setAriaLabel("Criar utilizador");
+        return new HorizontalLayout(editar, criarLogin, remover);
     }
 
     // ---------- DIALOG ----------
@@ -171,6 +194,39 @@ public class ProfessorView extends VerticalLayout {
         email.setRequired(true);
         email.setPrefixComponent(VaadinIcon.ENVELOPE.create());
         email.setValue(professor.getEmail() != null ? professor.getEmail() : "");
+
+        // Ligação explícita ao utilizador (login) — é isto que define as "minhas turmas".
+        java.util.Set<Long> jaLigados = getProfessoresDoStudio().stream()
+                .filter(p -> !p.equals(professor) && (professor.getId() == null || !professor.getId().equals(p.getId())))
+                .map(Professor::getUser).filter(java.util.Objects::nonNull)
+                .map(User::getId).collect(java.util.stream.Collectors.toSet());
+        java.util.List<User> utilizadoresDisponiveis = getUtilizadoresDoStudio().stream()
+                .filter(u -> "PROF".equals(u.getRole()) || "ADMIN".equals(u.getRole()))
+                .filter(u -> !jaLigados.contains(u.getId()))
+                .sorted(java.util.Comparator.comparing(u -> u.getUsername().toLowerCase()))
+                .toList();
+        ComboBox<User> utilizador = new ComboBox<>("Utilizador (login)");
+        utilizador.setWidthFull();
+        utilizador.setClearButtonVisible(true);
+        utilizador.setPrefixComponent(VaadinIcon.KEY.create());
+        utilizador.setPlaceholder("Sem conta");
+        utilizador.setItems(utilizadoresDisponiveis);
+        utilizador.setItemLabelGenerator(u -> u.getUsername()
+                + (u.getFirstName() != null && !u.getFirstName().isBlank() ? " — " + u.getFirstName() : "")
+                + " (" + u.getRole() + ")");
+        utilizador.setHelperText("Conta com que este professor entra na app. Define as turmas, horas e marcações que vê como suas.");
+        User atual = utilizadorLigado(professor);
+        if (atual == null && professor.getEmail() != null && !professor.getEmail().isBlank()) {
+            // Sugestão: utilizador com o mesmo email (só pré-preenche; grava ao guardar).
+            atual = utilizadoresDisponiveis.stream()
+                    .filter(u -> u.getEmail() != null && u.getEmail().trim().equalsIgnoreCase(professor.getEmail().trim()))
+                    .findFirst().orElse(null);
+        }
+        if (atual != null) {
+            final Long idAtual = atual.getId();
+            utilizadoresDisponiveis.stream().filter(u -> u.getId().equals(idAtual)).findFirst()
+                    .ifPresent(utilizador::setValue);
+        }
 
         TextField telefone = new TextField("Telefone");
         telefone.setWidthFull();
@@ -245,7 +301,7 @@ public class ProfessorView extends VerticalLayout {
         tipoRemun.addValueChangeListener(e -> ajustar.run());
         ajustar.run();
 
-        FormLayout form = new FormLayout(nome, email, telefone);
+        FormLayout form = new FormLayout(nome, email, telefone, utilizador);
         form.setWidthFull();
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
@@ -258,6 +314,7 @@ public class ProfessorView extends VerticalLayout {
             professor.setNome(nome.getValue().trim());
             professor.setEmail(email.getValue().trim());
             professor.setTelefone(telefone.getValue().trim());
+            professor.setUser(utilizador.getValue());
             professor.setValorHoraAula(valorHora.getValue() != null ? valorHora.getValue() : 25.0);
             professor.setTipoRemuneracao(HERDAR.equals(tipoRemun.getValue()) ? null : tipoRemun.getValue());
             professor.setValorHoraEnsaio(valorEnsaio.getValue());
@@ -329,12 +386,147 @@ public class ProfessorView extends VerticalLayout {
     }
 
     // ---------- ATUALIZAR GRID ----------
+    private java.util.List<User> getUtilizadoresDoStudio() {
+        Studio studio = TenantContext.getCurrentStudio();
+        return studio != null ? userRepository.findAllByStudio(studio) : java.util.List.of();
+    }
+
+    /** Utilizador ligado ao professor (resolvido por id — Professor.user é LAZY). */
+    private User utilizadorLigado(Professor p) {
+        if (p == null || p.getUser() == null) return null;
+        Long id = p.getUser().getId();
+        return id == null ? null : userRepository.findById(id).orElse(null);
+    }
+
     private java.util.List<pt.studioflow.model.Professor> getProfessoresDoStudio() {
         pt.studioflow.model.Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
         return studio != null ? professorRepository.findAllByStudio(studio) : professorRepository.findAll();
     }
 
     private void atualizarGrid() {
+        utilizadoresPorId = getUtilizadoresDoStudio().stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, u -> u, (a, b) -> a));
         grid.setItems(getProfessoresDoStudio());
+    }
+
+    // ---------- CRIAR UTILIZADOR PARA O PROFESSOR ----------
+    /**
+     * Cria um utilizador PROF com os dados do professor e liga-o logo
+     * (professores.user_id) — evita ir a Utilizadores e depois voltar aqui.
+     * Se já existir um utilizador do estúdio com o mesmo email, propõe ligar a esse.
+     */
+    private void abrirDialogCriarUtilizador(Professor professor) {
+        Studio studio = TenantContext.getCurrentStudio();
+        if (studio == null) {
+            Notification.show("Seleciona um estúdio primeiro.", 3000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+        String emailProf = professor.getEmail() != null ? professor.getEmail().trim().toLowerCase() : "";
+        java.util.Set<Long> jaLigados = getProfessoresDoStudio().stream()
+                .map(Professor::getUser).filter(java.util.Objects::nonNull)
+                .map(User::getId).collect(java.util.stream.Collectors.toSet());
+        java.util.Optional<User> mesmoEmail = getUtilizadoresDoStudio().stream()
+                .filter(u -> u.getEmail() != null && u.getEmail().trim().equalsIgnoreCase(emailProf))
+                .filter(u -> !jaLigados.contains(u.getId()))
+                .findFirst();
+        if (!emailProf.isBlank() && mesmoEmail.isPresent()) {
+            User existente = mesmoEmail.get();
+            ConfirmDialog c = new ConfirmDialog();
+            c.setHeader("Já existe um utilizador com este email");
+            c.setText("O utilizador \"" + existente.getUsername() + "\" (" + existente.getRole()
+                    + ") já usa " + emailProf + ". Ligar este professor a esse utilizador?");
+            c.setCancelable(true);
+            c.setCancelText("Cancelar");
+            c.setConfirmText("Ligar");
+            c.addConfirmListener(ev -> {
+                professor.setUser(existente);
+                professorRepository.save(professor);
+                atualizarGrid();
+                Notification.show("✅ " + professor.getNome() + " ligado a " + existente.getUsername(),
+                        3000, Notification.Position.BOTTOM_CENTER).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            });
+            c.open();
+            return;
+        }
+
+        Dialog dialog = new Dialog();
+        dialog.setWidth("420px");
+        dialog.setMaxWidth("100%");
+        dialog.setHeaderTitle("🔑 Criar utilizador — " + professor.getNome());
+
+        String nomeProf = professor.getNome() != null ? professor.getNome().trim() : "";
+        String primeiro = nomeProf.isBlank() ? "" : nomeProf.split("\\s+")[0];
+        String sugestao = !emailProf.isBlank() ? emailProf.split("@")[0]
+                : java.text.Normalizer.normalize(primeiro, java.text.Normalizer.Form.NFD)
+                        .replaceAll("\\p{M}", "").toLowerCase();
+
+        TextField username = new TextField("Username");
+        username.setRequired(true);
+        username.setWidthFull();
+        username.setValue(sugestao);
+
+        TextField firstName = new TextField("Primeiro nome");
+        firstName.setWidthFull();
+        firstName.setValue(primeiro);
+
+        EmailField email = new EmailField("Email");
+        email.setRequired(true);
+        email.setWidthFull();
+        email.setValue(emailProf);
+
+        com.vaadin.flow.component.textfield.PasswordField password =
+                new com.vaadin.flow.component.textfield.PasswordField("Password");
+        password.setRequired(true);
+        password.setWidthFull();
+        password.setHelperText("Mínimo 6 caracteres. Comunica-a ao professor.");
+
+        Span perfil = new Span("Perfil: PROF");
+        perfil.getStyle().set("font-size", "12px").set("color", "var(--cf-text-tertiary)");
+
+        FormLayout form = new FormLayout(username, firstName, email, password, perfil);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
+
+        Button criar = new Button("Criar e ligar", e -> {
+            String user = username.getValue().trim();
+            String mail = email.getValue().trim().toLowerCase();
+            if (user.isEmpty() || mail.isEmpty() || password.isEmpty()) {
+                Notification.show("⚠️ Username, email e password são obrigatórios", 3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+            if (password.getValue().length() < 6) {
+                Notification.show("⚠️ A password tem de ter pelo menos 6 caracteres", 3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+            if (userRepository.findByUsernameAndStudio(user, studio).isPresent()) {
+                Notification.show("⚠️ Já existe o username \"" + user + "\" neste estúdio", 3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+            User novo = new User();
+            novo.setUsername(user);
+            novo.setFirstName(firstName.getValue().trim());
+            novo.setEmail(mail);
+            novo.setRole("PROF");
+            novo.setStudio(studio);
+            novo.setPassword(passwordEncoder.encode(password.getValue()));
+            novo = userRepository.save(novo);
+
+            professor.setUser(novo);
+            professorRepository.save(professor);
+            atualizarGrid();
+            dialog.close();
+            Notification.show("✅ Utilizador \"" + user + "\" criado e ligado a " + professor.getNome(),
+                    3000, Notification.Position.BOTTOM_CENTER).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        });
+        criar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        Button cancelar = new Button("Cancelar", e -> dialog.close());
+        cancelar.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+        dialog.add(form);
+        dialog.getFooter().add(cancelar, criar);
+        dialog.open();
     }
 }
