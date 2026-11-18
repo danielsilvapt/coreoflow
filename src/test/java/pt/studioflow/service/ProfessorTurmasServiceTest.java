@@ -203,15 +203,41 @@ class ProfessorTurmasServiceTest {
     }
 
     @Test
-    void fallbackPorNome_unico_resolve_eNuncaPorSubstring() {
+    void nomeUnico_jaNaoResolve_semLigacaoNemEmail() {
         Studio studio = novoStudio("Unico");
         Professor ana = novoProfessor(studio, "Ana Sousa", "a@x.pt");
-        novoProfessor(studio, "Mariana Oliveira", "m@x.pt");
-        Turma t = novaTurma(studio, "T", ana);
+        novaTurma(studio, "T", ana);
 
         autenticarComo(novoUser(studio, "ana.s", "", "Ana"));
 
+        assertThat(service.professorDoUtilizador(studio)).isEmpty();
+        assertThat(service.turmasDoUtilizador(studio)).isEmpty();
+    }
+
+    @Test
+    void ligacaoExplicita_resolveMesmoComEmailENomeDiferentes() {
+        Studio studio = novoStudio("FK");
+        Professor ana = novoProfessor(studio, "Ana Sousa", "ana.prof@x.pt");
+        Turma t = novaTurma(studio, "T", ana);
+        User u = novoUser(studio, "secretaria2", "outro@x.pt", "Joana");
+        ana.setUser(u);
+        professorRepository.save(ana);
+
+        autenticarComo(u);
+
         assertThat(service.turmasDoUtilizador(studio)).extracting(Turma::getId).containsExactly(t.getId());
+    }
+
+    @Test
+    void porEmail_gravaALigacao() {
+        Studio studio = novoStudio("Email liga");
+        Professor ana = novoProfessor(studio, "Ana Sousa", "ana@x.pt");
+        User u = novoUser(studio, "ana", "ANA@x.pt", "Ana");
+
+        autenticarComo(u);
+
+        assertThat(service.professorDoUtilizador(studio)).get().extracting(Professor::getId).isEqualTo(ana.getId());
+        assertThat(professorRepository.findByUser(u)).get().extracting(Professor::getId).isEqualTo(ana.getId());
     }
 
     @Test

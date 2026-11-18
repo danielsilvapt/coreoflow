@@ -73,6 +73,7 @@ public class TurmaComunicacaoView extends VerticalLayout {
     private final R2StorageService storageService;
     private final RegistoEmailRepository registoEmailRepository;
     private final HistoricoComunicacaoService historicoService;
+    private final pt.studioflow.service.ProfessorTurmasService professorTurmasService;
 
     // Limites dos anexos: os servidores SMTP recusam mensagens acima de ~25 MB
     // (alguns relays menos), e a codificação base64 aumenta o tamanho em ~33%.
@@ -108,7 +109,9 @@ public class TurmaComunicacaoView extends VerticalLayout {
             AlunoRepository alunoRepository,
             R2StorageService storageService,
             RegistoEmailRepository registoEmailRepository,
-            HistoricoComunicacaoService historicoService) {
+            HistoricoComunicacaoService historicoService,
+            pt.studioflow.service.ProfessorTurmasService professorTurmasService) {
+        this.professorTurmasService = professorTurmasService;
         this.turmaRepository = turmaRepository;
         this.turmaService = turmaService;
         this.emailService = emailService;
@@ -231,15 +234,8 @@ public class TurmaComunicacaoView extends VerticalLayout {
         if (isAdmin || isDelegado) {
             turmas = studio != null ? turmaRepository.findAllByStudio(studio) : turmaRepository.findAllComplete();
         } else {
-            // Regra: firstName do User logado == primeiro nome do Professor
-            String login = auth.getName();
-            String firstNameLogado = userRepository.findByPrincipalName(login).map(User::getFirstName).orElse("");
-
-            List<Professor> todosProfessores = studio != null ? professorRepository.findAllByStudio(studio) : professorRepository.findAll();
-            professorLogado = todosProfessores.stream()
-                    .filter(p -> p.getNome() != null && p.getNome().split(" ")[0].equalsIgnoreCase(firstNameLogado))
-                    .findFirst()
-                    .orElse(null);
+            // Ligação explícita professor↔utilizador (professores.user_id)
+            professorLogado = professorTurmasService.professorDoUtilizador(studio).orElse(null);
 
             if (professorLogado != null) {
                 turmas = turmaRepository.findByProfessorOrCoProfessor(professorLogado);
@@ -371,18 +367,12 @@ public class TurmaComunicacaoView extends VerticalLayout {
     // O professor da modalidade é o professor da turma selecionada; se a turma
     // não tiver professor associado, tenta-se o professor cujo primeiro nome
     // coincide com o utilizador com sessão iniciada.
-    private Professor resolverProfessorParaCc(String firstNameLogado) {
+    private Professor resolverProfessorParaCc(Professor professorDoLogin) {
         Turma turmaSelecionada = turmaCombo.getValue();
         if (turmaSelecionada != null && turmaSelecionada.getProfessor() != null) {
             return turmaSelecionada.getProfessor();
         }
-        pt.studioflow.model.Studio studio = pt.studioflow.config.TenantContext.getCurrentStudio();
-        List<Professor> todosProfessores = studio != null ? professorRepository.findAllByStudio(studio)
-                : professorRepository.findAll();
-        return todosProfessores.stream()
-                .filter(p -> p.getNome().split(" ")[0].equalsIgnoreCase(firstNameLogado))
-                .findFirst()
-                .orElse(null);
+        return professorDoLogin;
     }
 
     private void abrirModalEmail() {
@@ -411,17 +401,18 @@ public class TurmaComunicacaoView extends VerticalLayout {
         // Professor a colocar em Cc: primeiro o professor da turma selecionada
         // (professor da modalidade); só se a turma não tiver professor é que
         // recorremos ao professor cujo primeiro nome coincide com o login.
-        final Professor professorCorrespondente = resolverProfessorParaCc(firstNameLogado);
+        final Professor professorDoLogin = professorTurmasService
+                .professorDoUtilizador(pt.studioflow.config.TenantContext.getCurrentStudio()).orElse(null);
+        final Professor professorCorrespondente = resolverProfessorParaCc(professorDoLogin);
 
         // Assinatura: o nome do professor só assina quando é o próprio professor
         // da modalidade que está a compor o email. Para qualquer outro utilizador
         // (direção, secretaria, ...) a mensagem é assinada com o nome do estúdio.
         pt.studioflow.model.Studio studioAtual = pt.studioflow.config.TenantContext.getCurrentStudio();
         String nomeEstudio = studioAtual != null && studioAtual.getNome() != null ? studioAtual.getNome() : "";
-        boolean logadoEProfessor = professorCorrespondente != null
-                && professorCorrespondente.getNome() != null
-                && !firstNameLogado.isBlank()
-                && professorCorrespondente.getNome().split(" ")[0].equalsIgnoreCase(firstNameLogado);
+        boolean logadoEProfessor = professorCorrespondente != null && professorDoLogin != null
+                && professorCorrespondente.getId() != null
+                && professorCorrespondente.getId().equals(professorDoLogin.getId());
         String assinatura = logadoEProfessor ? professorCorrespondente.getNome() : nomeEstudio;
 
         mensagem.setValue("\n\n\n\n\nCumprimentos, \n\n" + assinatura);

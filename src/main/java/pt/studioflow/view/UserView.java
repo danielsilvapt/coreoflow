@@ -24,6 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import pt.studioflow.config.TenantContext;
 import pt.studioflow.model.Studio;
 import pt.studioflow.model.User;
+import pt.studioflow.repository.ProfessorRepository;
 import pt.studioflow.repository.StudioRepository;
 import pt.studioflow.repository.UserRepository;
 
@@ -37,14 +38,16 @@ public class UserView extends VerticalLayout {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final StudioRepository studioRepository;
+    private final ProfessorRepository professorRepository;
 
     private Grid<User> grid;
 
     public UserView(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                    StudioRepository studioRepository) {
+                    StudioRepository studioRepository, ProfessorRepository professorRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.studioRepository = studioRepository;
+        this.professorRepository = professorRepository;
 
         setSizeFull();
         setPadding(false);
@@ -90,6 +93,7 @@ public class UserView extends VerticalLayout {
                 confirmDialog.setCancelable(true);
                 confirmDialog.setCancelText("Cancelar");
                 confirmDialog.addConfirmListener(ev -> {
+                    professorRepository.desligarUtilizador(user);
                     userRepository.delete(user);
                     atualizarGrid();
                     Notification.show("Utilizador removido").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
