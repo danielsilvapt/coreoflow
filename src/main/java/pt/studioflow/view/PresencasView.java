@@ -66,7 +66,7 @@ import pt.studioflow.view.PresencasView.AlunoPresenca;
 
 @Route(value = "presencas", layout = MainLayout.class)
 @PageTitle("Folha de Presenças | CoreoFlow")
-@RolesAllowed({ "ADMIN", "PROF" })
+@RolesAllowed({ "ADMIN", "PROF", "PRESENCA" })
 @JavaScript("https://cdn.jsdelivr.net/npm/chart.js")
 public class PresencasView extends VerticalLayout {
 
