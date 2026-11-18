@@ -154,7 +154,7 @@ public class PortalAlunoView extends VerticalLayout implements BeforeEnterObserv
 
         // Estúdio com Mollie: pagar online as mensalidades em aberto até ao mês corrente
         List<Mensalidade> pagaveis = studio != null && studio.isMollieAtivo()
-                ? pagamentoOnlineService.mensalidadesPagaveis(mensalidades) : List.of();
+                ? pagamentoOnlineService.mensalidadesPagaveis(mensalidades, studio) : List.of();
         if (!pagaveis.isEmpty()) {
             add(criarCardPagamentoOnline(aluno, studio, pagaveis));
         }
