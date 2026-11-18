@@ -67,6 +67,12 @@ public class SecurityConfig extends VaadinWebSecurity {
         http.authorizeHttpRequests(auth ->
                 auth.requestMatchers(new AntPathRequestMatcher("/api/mollie/**")).permitAll());
 
+        // Webhook de eventos de entrega do Brevo (autenticado por token no próprio controller).
+        http.csrf(csrf -> csrf.ignoringRequestMatchers(new AntPathRequestMatcher("/api/brevo/**")));
+
+        http.authorizeHttpRequests(auth ->
+                auth.requestMatchers(new AntPathRequestMatcher("/api/brevo/**")).permitAll());
+
         super.configure(http);
 
         setLoginView(http, "login");

@@ -125,16 +125,24 @@ public class EmailService {
         public record AnexoEmail(String nome, String mimeType, byte[] dados) {
         }
 
-        public void enviarEmailParaLista(Studio studio, Professor professorCorrespondente, List<String> destinatarios,
-                        String assunto, String corpoMensagem)
-                        throws Exception {
-                enviarEmailParaLista(studio, professorCorrespondente, destinatarios, assunto, corpoMensagem, List.of());
+        /**
+         * Resultado de um envio para lista: {@code enviado = false} quando o envio de
+         * emails está desativado para o estúdio; {@code messageId} identifica o email
+         * nos eventos de entrega do Brevo.
+         */
+        public record ResultadoEnvio(boolean enviado, String messageId) {
         }
 
-        public void enviarEmailParaLista(Studio studio, Professor professorCorrespondente, List<String> destinatarios,
+        public ResultadoEnvio enviarEmailParaLista(Studio studio, Professor professorCorrespondente, List<String> destinatarios,
+                        String assunto, String corpoMensagem)
+                        throws Exception {
+                return enviarEmailParaLista(studio, professorCorrespondente, destinatarios, assunto, corpoMensagem, List.of());
+        }
+
+        public ResultadoEnvio enviarEmailParaLista(Studio studio, Professor professorCorrespondente, List<String> destinatarios,
                         String assunto, String corpoMensagem, List<AnexoEmail> anexos)
                         throws Exception {
-                if (envioBloqueado(studio)) return;
+                if (envioBloqueado(studio)) return new ResultadoEnvio(false, null);
                 MimeMessage mimeMessage = mailSender.createMimeMessage();
                 // Usamos o Helper para permitir HTML (assinatura com negrito, links, etc)
                 MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -170,7 +178,15 @@ public class EmailService {
                         }
                 }
 
+                // Message-ID próprio (o JavaMailSenderImpl preserva-o) para ligar os
+                // eventos de entrega do Brevo a este envio.
+                String dominio = mailFrom != null && mailFrom.contains("@")
+                                ? mailFrom.substring(mailFrom.indexOf('@') + 1)
+                                : "coreoflow.me";
+                mimeMessage.setHeader("Message-ID", "<" + java.util.UUID.randomUUID() + "@" + dominio + ">");
+
                 mailSender.send(mimeMessage);
+                return new ResultadoEnvio(true, mimeMessage.getMessageID());
         }
 
         @Async(AsyncEmailConfig.EMAIL_EXECUTOR)
