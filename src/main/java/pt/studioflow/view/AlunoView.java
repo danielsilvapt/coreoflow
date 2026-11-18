@@ -1,5 +1,6 @@
 package pt.studioflow.view;
 
+import java.io.ByteArrayInputStream;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.format.TextStyle; // ADICIONADO
@@ -25,6 +26,7 @@ import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.grid.HeaderRow;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
@@ -44,6 +46,7 @@ import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.StreamResource;
 
 import jakarta.annotation.security.RolesAllowed;
 import pt.studioflow.config.TenantContext;
@@ -113,7 +116,18 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
         });
         btnNovo.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        HorizontalLayout header = new HorizontalLayout(titulo, btnNovo);
+        Anchor exportarExcel = new Anchor(new StreamResource("Alunos.xlsx",
+                () -> new ByteArrayInputStream(gerarExcelAlunos())), "");
+        exportarExcel.getElement().setAttribute("download", true);
+        Button btnExcel = new Button("Exportar Excel", VaadinIcon.DOWNLOAD.create());
+        btnExcel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        btnExcel.getElement().setAttribute("title", "Exporta os alunos visíveis com os filtros atuais");
+        exportarExcel.add(btnExcel);
+
+        HorizontalLayout acoes = new HorizontalLayout(exportarExcel, btnNovo);
+        acoes.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
+
+        HorizontalLayout header = new HorizontalLayout(titulo, acoes);
         header.setWidthFull();
         header.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
         header.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
@@ -337,6 +351,42 @@ public class AlunoView extends VerticalLayout implements AfterNavigationObserver
             return matchNome && matchAtivo && matchTelemovel && matchEmail;
         });
         updateDashboard();
+    }
+
+    /** Excel com os alunos visíveis na grelha (respeita os filtros aplicados). */
+    private byte[] gerarExcelAlunos() {
+        List<Aluno> alunos = dataProvider == null ? List.of()
+                : dataProvider.getItems().stream()
+                        .filter(a -> dataProvider.getFilter() == null || dataProvider.getFilter().test(a))
+                        .sorted(Comparator.comparing(a -> a.getNomeCompleto() != null ? a.getNomeCompleto() : "",
+                                String.CASE_INSENSITIVE_ORDER))
+                        .collect(Collectors.toList());
+        String[] headers = { "Nome", "Data Nasc.", "NIF", "Nº Sócio", "Telemóvel", "Email", "Morada",
+                "Código Postal", "Localidade", "Turmas", "Seguro", "Estado" };
+        List<String[]> rows = alunos.stream().map(a -> new String[] {
+                texto(a.getNomeCompleto()),
+                pt.studioflow.util.DataUtil.formatar(a.getDataNascimento()),
+                texto(a.getNumeroContribuinte()),
+                a.getNumeroSocio() != null ? String.valueOf(a.getNumeroSocio()) : "",
+                texto(a.getTelemovel()),
+                texto(a.getEmail()),
+                texto(a.getMorada()),
+                texto(a.getCodigoPostal()),
+                texto(a.getLocalidade()),
+                a.getTurmas() == null ? "" : a.getTurmas().stream()
+                        .filter(at -> at.getTurma() != null)
+                        .map(at -> codigoOuDescricao(at.getTurma()) + (at.isPendente() ? " (pendente)" : ""))
+                        .sorted()
+                        .collect(Collectors.joining(", ")),
+                texto(a.getSeguroDesportivo()),
+                a.isAtivo() ? "Ativo" : "Não ativo" }).collect(Collectors.toList());
+        Studio studio = TenantContext.getCurrentStudio();
+        String titulo = "Alunos" + (studio != null ? " " + studio.getNome() : "");
+        return pt.studioflow.util.ExcelUtil.gerarTabela(titulo, new java.awt.Color(255, 140, 0), headers, rows);
+    }
+
+    private static String texto(String s) {
+        return s != null ? s.trim() : "";
     }
 
     private void updateDashboard() {
