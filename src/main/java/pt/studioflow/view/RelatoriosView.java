@@ -503,119 +503,8 @@ public class RelatoriosView extends VerticalLayout {
         }
 
         private StreamResource gerarExcelGenerico(String titulo, Color color, String[] h, List<String[]> rows) {
-                return new StreamResource(titulo.replace(" ", "_") + ".xlsx", () -> {
-                        try (Workbook workbook = new XSSFWorkbook();
-                                        ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-
-                                // Cria a folha com o nome do título (limitado a 31 caracteres exigidos pelo
-                                // Excel)
-                                String sheetName = titulo.length() > 30 ? titulo.substring(0, 30) : titulo;
-                                Sheet sheet = workbook.createSheet(sheetName);
-
-                                int currentRowNum = 0;
-
-                                // 1. Estilo do Título Principal
-                                Row titleRow = sheet.createRow(currentRowNum++);
-                                Cell titleCell = titleRow.createCell(0);
-                                titleCell.setCellValue(titulo);
-                                CellStyle titleStyle = workbook.createCellStyle();
-                                Font titleFont = workbook.createFont();
-                                titleFont.setFontName("Helvetica");
-                                titleFont.setFontHeightInPoints((short) 16);
-                                titleFont.setBold(true);
-                                titleStyle.setFont(titleFont);
-                                titleCell.setCellStyle(titleStyle);
-
-                                // Linha em branco de espaçamento (equivalente ao setSpacingAfter)
-                                currentRowNum++;
-
-                                // 2. Estilo do Cabeçalho (Header) com a cor dinâmica recebida por parâmetro
-                                Row headerRow = sheet.createRow(currentRowNum++);
-                                CellStyle headerStyle = workbook.createCellStyle();
-
-                                // Configura a cor de fundo personalizada do cabeçalho
-                                if (headerStyle instanceof org.apache.poi.xssf.usermodel.XSSFCellStyle) {
-                                        org.apache.poi.xssf.usermodel.XSSFCellStyle xssfHeaderStyle = (org.apache.poi.xssf.usermodel.XSSFCellStyle) headerStyle;
-                                        xssfHeaderStyle.setFillForegroundColor(new XSSFColor(color, null));
-                                        xssfHeaderStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-                                }
-
-                                // Fonte Branca e Negrito para o Cabeçalho
-                                Font headerFont = workbook.createFont();
-                                headerFont.setFontName("Helvetica");
-                                headerFont.setFontHeightInPoints((short) 10);
-                                headerFont.setBold(true);
-                                headerFont.setColor(IndexedColors.WHITE.getIndex());
-                                headerStyle.setFont(headerFont);
-
-                                // Borda fina para o cabeçalho
-                                headerStyle.setBorderBottom(BorderStyle.THIN);
-                                headerStyle.setBorderTop(BorderStyle.THIN);
-                                headerStyle.setBorderLeft(BorderStyle.THIN);
-                                headerStyle.setBorderRight(BorderStyle.THIN);
-
-                                // Escrever os cabeçalhos
-                                for (int i = 0; i < h.length; i++) {
-                                        Cell cell = headerRow.createCell(i);
-                                        cell.setCellValue(h[i]);
-                                        cell.setCellStyle(headerStyle);
-                                }
-
-                                // 3. Estilo das Linhas de Dados (Rows)
-                                CellStyle rowStyle = workbook.createCellStyle();
-                                Font rowFont = workbook.createFont();
-                                rowFont.setFontName("Helvetica");
-                                rowFont.setFontHeightInPoints((short) 9);
-                                rowStyle.setFont(rowFont);
-                                rowStyle.setBorderBottom(BorderStyle.THIN);
-                                rowStyle.setBorderTop(BorderStyle.THIN);
-                                rowStyle.setBorderLeft(BorderStyle.THIN);
-                                rowStyle.setBorderRight(BorderStyle.THIN);
-
-                                // Escrever os dados
-                                for (String[] r : rows) {
-                                        Row row = sheet.createRow(currentRowNum++);
-                                        for (int i = 0; i < r.length; i++) {
-                                                Cell cell = row.createCell(i);
-                                                cell.setCellValue(r[i] != null ? r[i] : "");
-                                                cell.setCellStyle(rowStyle);
-                                        }
-                                }
-
-                                // Linha em branco antes do rodapé
-                                currentRowNum++;
-
-                                // 4. Rodapé (Data de geração)
-                                Row footerRow = sheet.createRow(currentRowNum);
-                                Cell footerCell = footerRow.createCell(Math.max(0, h.length - 1)); // Alinha à direita
-                                                                                                   // na última coluna
-                                footerCell.setCellValue("Gerado em: " + LocalDate.now().format(fmt)); // Utiliza o seu
-                                                                                                      // 'fmt' existente
-
-                                CellStyle footerStyle = workbook.createCellStyle();
-                                Font footerFont = workbook.createFont();
-                                footerFont.setFontName("Helvetica");
-                                footerFont.setFontHeightInPoints((short) 8);
-                                footerFont.setItalic(true);
-                                footerFont.setColor(IndexedColors.GREY_50_PERCENT.getIndex());
-                                footerStyle.setFont(footerFont);
-                                footerStyle.setAlignment(HorizontalAlignment.RIGHT);
-                                footerCell.setCellStyle(footerStyle);
-
-                                // Auto-ajustar a largura das colunas conforme o conteúdo
-                                for (int i = 0; i < h.length; i++) {
-                                        sheet.autoSizeColumn(i);
-                                }
-
-                                // Escreve os bytes na memória
-                                workbook.write(baos);
-                                return new ByteArrayInputStream(baos.toByteArray());
-
-                        } catch (Exception e) {
-                                e.printStackTrace(); // Boa prática para conseguir debugar se algo falhar
-                                return null;
-                        }
-                });
+                return new StreamResource(titulo.replace(" ", "_") + ".xlsx",
+                                () -> new ByteArrayInputStream(pt.studioflow.util.ExcelUtil.gerarTabela(titulo, color, h, rows)));
         }
 
         // --- OUTROS MÉTODOS ---
@@ -1214,17 +1103,38 @@ public class RelatoriosView extends VerticalLayout {
         private void abrirRelatorioSeguros() {
                 pt.studioflow.model.Studio _sSeg = pt.studioflow.config.TenantContext.getCurrentStudio();
                 List<Aluno> seguros = (_sSeg != null ? alunoRepository.findAllByStudio(_sSeg) : alunoRepository.findAll()).stream()
-                                .filter(a -> a.isAtivo() && "Associação".equalsIgnoreCase(a.getSeguroDesportivo()))
+                                .filter(Aluno::isAtivo)
+                                .sorted(Comparator.comparing(a -> a.getNomeCompleto() != null ? a.getNomeCompleto() : "",
+                                                String.CASE_INSENSITIVE_ORDER))
                                 .collect(Collectors.toList());
                 Grid<Aluno> grid = new Grid<>();
                 grid.setItems(seguros);
-                grid.addColumn(Aluno::getNomeCompleto).setHeader("Nome");
-                List<String[]> rows = seguros.stream().map(a -> new String[] { a.getNomeCompleto(),
-                                a.getDataNascimento().format(fmt), a.getNumeroContribuinte(),
-                                String.valueOf(a.getNumeroSocio()) })
+                grid.addColumn(Aluno::getNomeCompleto).setHeader("Nome").setAutoWidth(true);
+                grid.addColumn(this::moradaCompleta).setHeader("Morada").setFlexGrow(1);
+                grid.addColumn(a -> valorOuTraco(a.getSeguroDesportivo())).setHeader("Seguro").setAutoWidth(true);
+                List<String[]> rows = seguros.stream().map(a -> new String[] { valorOuTraco(a.getNomeCompleto()),
+                                a.getDataNascimento() != null ? a.getDataNascimento().format(fmt) : "-",
+                                valorOuTraco(a.getNumeroContribuinte()),
+                                a.getNumeroSocio() != null ? String.valueOf(a.getNumeroSocio()) : "-",
+                                moradaCompleta(a),
+                                valorOuTraco(a.getSeguroDesportivo()) })
                                 .collect(Collectors.toList());
                 configurarDialogComGrid("Seguros " + (_sSeg != null ? _sSeg.getNome() : "do Estúdio"), grid, rows,
-                                new String[] { "Nome", "Data Nasc.", "NIF", "Nº Sócio" });
+                                new String[] { "Nome", "Data Nasc.", "NIF", "Nº Sócio", "Morada", "Seguro" });
+        }
+
+        private String moradaCompleta(Aluno a) {
+                String cpLocal = java.util.stream.Stream.of(a.getCodigoPostal(), a.getLocalidade())
+                                .filter(s -> s != null && !s.isBlank()).map(String::trim)
+                                .collect(Collectors.joining(" "));
+                String m = java.util.stream.Stream.of(a.getMorada(), cpLocal)
+                                .filter(s -> s != null && !s.isBlank()).map(String::trim)
+                                .collect(Collectors.joining(", "));
+                return m.isEmpty() ? "-" : m;
+        }
+
+        private String valorOuTraco(String s) {
+                return s != null && !s.isBlank() ? s : "-";
         }
 
         private List<Map<String, Object>> obterDadosDevedores() {
