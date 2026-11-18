@@ -483,6 +483,14 @@ public class StudioAdminView extends VerticalLayout {
         Checkbox isentarJaAlunos = new Checkbox("Isentar taxa de inscrição a quem já é aluno");
         isentarJaAlunos.setValue(studio.isIsentarTaxaAlunosExistentes());
 
+        Checkbox lembreteMensalidade = new Checkbox(
+                "Enviar aos alunos, no dia 30, o aviso da mensalidade do mês seguinte");
+        lembreteMensalidade.setValue(studio.isLembreteMensalidade());
+        lembreteMensalidade.getElement().setProperty("title",
+                "No dia 30 de cada mês (último dia em fevereiro), às 9h, envia a cada aluno com "
+                        + "mensalidade do mês seguinte por pagar um email com o valor e o link do portal "
+                        + "para pagar online. A partir desse dia o portal deixa pagar já essa mensalidade.");
+
         Checkbox ativo = new Checkbox("Estúdio ativo");
         ativo.setValue(studio.isAtivo());
 
@@ -728,7 +736,9 @@ public class StudioAdminView extends VerticalLayout {
                 secao("Modelo de preçário", "Como se calcula a mensalidade de cada aluno.",
                         modeloPrecario, grupoPadrao, grupoHorasSemana, grupoModalidades, meiaMensalidade),
                 secao("Vencimento", "Quando uma mensalidade passa a \"Em dívida\" e a multa aplicada.",
-                        grelha(diaLimitePagamento, multaAtraso))));
+                        grelha(diaLimitePagamento, multaAtraso)),
+                secao("Aviso de pagamento", "Email automático aos alunos com a mensalidade do mês seguinte.",
+                        lembreteMensalidade)));
 
         tabs.add(tab(VaadinIcon.TAGS, "Descontos"), painel(
                 secao("Descontos automáticos", "Aplicados ao gerar mensalidades e no resumo da inscrição.",
@@ -817,6 +827,7 @@ public class StudioAdminView extends VerticalLayout {
             }
             studio.setPrimeiraMensalidadeGratis(primeiraGratis.getValue());
             studio.setIsentarTaxaAlunosExistentes(isentarJaAlunos.getValue());
+            studio.setLembreteMensalidade(lembreteMensalidade.getValue());
             studio.setAtivo(ativo.getValue());
             studio.setEnviarEmails(Boolean.TRUE.equals(enviarEmails.getValue()));
 

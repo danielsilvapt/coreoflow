@@ -121,6 +121,16 @@ public class EmailService {
                 mailSender.send(mimeMessage);
         }
 
+        /**
+         * Lembrete "mensalidade a pagamento" (LembreteMensalidadeService): HTML com a
+         * assinatura do estúdio, remetente com o nome do estúdio e Reply-To para o seu
+         * email de contacto. Síncrono (corre na tarefa agendada) e lança em caso de falha.
+         */
+        public void enviarLembreteMensalidade(Studio studio, String para, String assunto, String corpoHtml)
+                        throws Exception {
+                enviarHtmlComAssinatura(para, studio, studio != null ? studio.getNome() : null, assunto, corpoHtml);
+        }
+
         /** Documento anexado a um email (nome do ficheiro, tipo MIME e conteúdo). */
         public record AnexoEmail(String nome, String mimeType, byte[] dados) {
         }

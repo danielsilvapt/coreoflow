@@ -276,6 +276,19 @@ public class Studio {
     @Column(name = "isentar_taxa_alunos_existentes")
     private Boolean isentarTaxaAlunosExistentes = false;
 
+    /**
+     * Lembrete automático no dia 30 (último dia em fevereiro) de que a mensalidade do
+     * mês seguinte está a pagamento, com link para o portal. Definido pelo SUPERADMIN;
+     * desligado por omissão. Com ele ligado, o portal deixa pagar a mensalidade do mês
+     * seguinte a partir desse dia.
+     */
+    @Column(name = "lembrete_mensalidade")
+    private Boolean lembreteMensalidade = false;
+
+    /** Último mês (yyyy-MM) cujo lembrete já foi enviado — evita envios repetidos. */
+    @Column(name = "lembrete_mensalidade_ultimo_mes", length = 7)
+    private String lembreteMensalidadeUltimoMes;
+
     /** Taxa cobrada ao renovar a matrícula num novo ano letivo. */
     @Column(name = "taxa_renovacao")
     private Double taxaRenovacao = 0.0;
@@ -520,6 +533,12 @@ public class Studio {
     public void setTaxaInscricao(Double v) { this.taxaInscricao = v; }
     public boolean isIsentarTaxaAlunosExistentes() { return Boolean.TRUE.equals(isentarTaxaAlunosExistentes); }
     public void setIsentarTaxaAlunosExistentes(Boolean v) { this.isentarTaxaAlunosExistentes = v; }
+
+    public boolean isLembreteMensalidade() { return Boolean.TRUE.equals(lembreteMensalidade); }
+    public void setLembreteMensalidade(Boolean v) { this.lembreteMensalidade = v; }
+
+    public String getLembreteMensalidadeUltimoMes() { return lembreteMensalidadeUltimoMes; }
+    public void setLembreteMensalidadeUltimoMes(String v) { this.lembreteMensalidadeUltimoMes = v; }
 
     public Double getTaxaRenovacao() { return taxaRenovacao; }
     public void setTaxaRenovacao(Double v) { this.taxaRenovacao = v; }
