@@ -30,6 +30,8 @@ public class AlertaAssiduidadeService {
     private JavaMailSender mailSender;
     @Autowired
     private EmailGate emailGate;
+    @Autowired
+    private AlertaFalhaEmailService alertaFalha;
 
     // Remetente verificado no Brevo — sem From o envio é rejeitado ("sender not valid").
     @Value("${app.mail.from:noreply@coreoflow.me}")
@@ -123,7 +125,15 @@ public class AlertaAssiduidadeService {
                     "<p style='margin-top: 20px; color: gray; font-size: 0.8em;'>Este é um lembrete automático do sistema de gestão CoreoFlow.</p>");
 
             helper.setText(html.toString(), true);
-            mailSender.send(message);
+            alertaFalha.marcar(message, professor.getStudio());
+            try {
+                mailSender.send(message);
+            } catch (RuntimeException e) {
+                alertaFalha.alertarFalhaEnvio(professor.getStudio() != null ? professor.getStudio().getId() : null,
+                        java.util.List.of(String.valueOf(professor.getEmail())), "CoreoFlow - Relatório Semanal de Ausências",
+                        e.getMessage());
+                throw e;
+            }
 
         } catch (Exception e) {
             // Exception (e não só MessagingException): uma MailException do SMTP não pode

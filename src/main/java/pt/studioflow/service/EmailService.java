@@ -56,6 +56,56 @@ public class EmailService {
                 return false;
         }
 
+        @Autowired
+        private AlertaFalhaEmailService alertaFalha;
+
+        /**
+         * Envia um email marcado com o estúdio (para os eventos de entrega do Brevo) e,
+         * se o servidor de email o recusar, avisa o estúdio antes de propagar o erro.
+         */
+        private void enviar(MimeMessage mensagem, Studio studio) {
+                alertaFalha.marcar(mensagem, studio);
+                try {
+                        mailSender.send(mensagem);
+                } catch (RuntimeException e) {
+                        alertaFalha.alertarFalhaEnvio(idDe(studio), destinatariosDe(mensagem), assuntoDe(mensagem),
+                                        e.getMessage());
+                        throw e;
+                }
+        }
+
+        private static Long idDe(Studio studio) {
+                try {
+                        return studio != null ? studio.getId() : null;
+                } catch (RuntimeException e) {
+                        return null;
+                }
+        }
+
+        private static List<String> destinatariosDe(MimeMessage m) {
+                List<String> lista = new ArrayList<>();
+                try {
+                        jakarta.mail.Address[] todos = m.getAllRecipients();
+                        if (todos != null) {
+                                for (jakarta.mail.Address a : todos) lista.add(a.toString());
+                        }
+                } catch (Exception e) {
+                        // ignora: o alerta segue sem a lista
+                }
+                if (lista.size() > 5) {
+                        return List.of(String.join(", ", lista.subList(0, 5)) + " e mais " + (lista.size() - 5));
+                }
+                return lista;
+        }
+
+        private static String assuntoDe(MimeMessage m) {
+                try {
+                        return m.getSubject();
+                } catch (Exception e) {
+                        return null;
+                }
+        }
+
         /** Estúdio do aluno, tolerando nulo. */
         private Studio studioDe(Aluno aluno) {
                 return aluno != null ? aluno.getStudio() : null;
@@ -97,7 +147,7 @@ public class EmailService {
                         helper.setTo(emailAdmin(studio));
                         helper.setSubject(assunto);
                         helper.setText(corpoHtml + assinatura.html(studio), true);
-                        mailSender.send(mimeMessage);
+                        enviar(mimeMessage, studio);
                 } catch (Exception ex) {
                         System.err.println("Falha ao enviar notificação interna \"" + assunto + "\": " + ex.getMessage());
                 }
@@ -118,7 +168,7 @@ public class EmailService {
                 if (replyTo != null && !replyTo.isBlank()) helper.setReplyTo(replyTo);
                 helper.setSubject(assunto);
                 helper.setText(corpoHtml + assinatura.html(studio), true);
-                mailSender.send(mimeMessage);
+                enviar(mimeMessage, studio);
         }
 
         /**
@@ -195,7 +245,7 @@ public class EmailService {
                                 : "coreoflow.me";
                 mimeMessage.setHeader("Message-ID", "<" + java.util.UUID.randomUUID() + "@" + dominio + ">");
 
-                mailSender.send(mimeMessage);
+                enviar(mimeMessage, studio);
                 return new ResultadoEnvio(true, mimeMessage.getMessageID());
         }
 
@@ -229,7 +279,7 @@ public class EmailService {
 
                         helper.setText(corpoMensagem + assinatura.html(studio), true);
 
-                        mailSender.send(mimeMessage);
+                        enviar(mimeMessage, studio);
 
                         System.out.println(
                                         "Email de aprovação enviado para " + destinatario + " - " + nomeProfessor
@@ -281,7 +331,7 @@ public class EmailService {
 
                         helper.setText(corpoMensagem + assinatura.html(studio), true);
 
-                        mailSender.send(mimeMessage);
+                        enviar(mimeMessage, studio);
 
                         System.out.println("Notificação de novo pedido enviada para o admin: " + nomeProfessor + " - "
                                         + sala);
@@ -323,7 +373,7 @@ public class EmailService {
 
                         helper.setText(corpoMensagem + assinatura.html(studio), true);
 
-                        mailSender.send(mimeMessage);
+                        enviar(mimeMessage, studio);
 
                         System.out.println(
                                         "Email de recusa enviado para " + destinatario + " - " + nomeProfessor + " - "
@@ -376,7 +426,7 @@ public class EmailService {
 
                         helper.setText(htmlContent, true); // O 'true' indica que é HTML
 
-                        mailSender.send(message);
+                        enviar(message, aluno.getStudio());
 
                 } catch (MessagingException e) {
                         // Log do erro (ex: Logger.error("Erro ao enviar email", e))
@@ -415,7 +465,7 @@ public class EmailService {
                                         "</div>";
 
                         helper.setText(htmlContent + assinatura.html(studioDe(aluno)), true);
-                        mailSender.send(message);
+                        enviar(message, studioDe(aluno));
 
                 } catch (Exception e) {
                         System.err.println("Erro ao notificar professor/competição: " + e.getMessage());
@@ -590,7 +640,7 @@ public class EmailService {
                                         + "</div>";
 
                         helper.setText(html + assinatura.html(studio), true);
-                        mailSender.send(mimeMessage);
+                        enviar(mimeMessage, studio);
                         System.out.println("Email de boas-vindas enviado para " + aluno.getEmail());
                 } catch (Exception ex) {
                         System.err.println("Falha ao enviar email de boas-vindas a " + aluno.getEmail() + ": "
@@ -825,7 +875,13 @@ public class EmailService {
                 message.setText(body);
                 message.setFrom(mailFrom); // Ou o e-mail configurado no teu mailSender
 
-                mailSender.send(message);
+                try {
+                        mailSender.send(message);
+                } catch (RuntimeException e) {
+                        alertaFalha.alertarFalhaEnvio(idDe(studioDaSessao()), List.of(String.valueOf(to)), subject,
+                                        e.getMessage());
+                        throw e;
+                }
         }
 
         @org.springframework.beans.factory.annotation.Value("${app.suporte.email:dfc.daniel@gmail.com}")
