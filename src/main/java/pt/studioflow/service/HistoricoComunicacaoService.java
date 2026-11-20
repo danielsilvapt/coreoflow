@@ -36,9 +36,11 @@ public class HistoricoComunicacaoService {
 
     private final RegistoEmailRepository registoRepo;
     private final RegistoEmailDestinatarioRepository destRepo;
+    private final AlertaFalhaEmailService alertaFalha;
 
     public HistoricoComunicacaoService(RegistoEmailRepository registoRepo,
-            RegistoEmailDestinatarioRepository destRepo) {
+            RegistoEmailDestinatarioRepository destRepo, AlertaFalhaEmailService alertaFalha) {
+        this.alertaFalha = alertaFalha;
         this.registoRepo = registoRepo;
         this.destRepo = destRepo;
     }
@@ -88,29 +90,51 @@ public class HistoricoComunicacaoService {
         }
         email = email.trim().toLowerCase();
         LocalDateTime quando = dataEvento(ev);
+        String assunto = texto(ev, "subject");
+        String motivo = texto(ev, "reason");
+        String marca = texto(ev, AlertaFalhaEmailService.CABECALHO);
+        if (marca == null) {
+            marca = texto(ev, AlertaFalhaEmailService.CABECALHO.toLowerCase());
+        }
+        if (AlertaFalhaEmailService.eAlerta(marca)) {
+            return false; // falha de um próprio alerta: não gera novo alerta
+        }
+        boolean alertar = AlertaFalhaEmailService.deveAlertar(novo, motivo);
 
-        Long registoId = localizarRegisto(texto(ev, "message-id"), email, texto(ev, "subject"), quando);
+        Long registoId = localizarRegisto(texto(ev, "message-id"), email, assunto, quando);
         if (registoId == null) {
+            // Email automático (não do Centro de Comunicação): o estúdio vem do cabeçalho.
+            Long studioId = AlertaFalhaEmailService.studioDoCabecalho(marca);
+            if (alertar && studioId != null) {
+                alertaFalha.alertarFalhaEntrega(studioId, email, assunto, novo, motivo);
+            }
             return false;
         }
 
         List<RegistoEmailDestinatario> linhas = destRepo.findByRegistoIdAndEmail(registoId, email);
         boolean alterou = false;
+        boolean passouAFalha = false;
         for (RegistoEmailDestinatario d : linhas) {
             if (novo == EstadoEntrega.ABERTO && d.getAbertoEm() == null) {
                 d.setAbertoEm(quando);
             }
             EstadoEntrega atual = d.getEstado() != null ? d.getEstado() : EstadoEntrega.PENDENTE;
             if (novo.getNivel() >= atual.getNivel() && novo != atual) {
+                if (!atual.isFalha()) {
+                    passouAFalha = true;
+                }
                 d.setEstado(novo);
                 d.setAtualizadoEm(quando);
-                String motivo = texto(ev, "reason");
                 if (motivo != null) {
                     d.setDetalhe(truncar(motivo, 1000));
                 }
                 alterou = true;
             }
             destRepo.save(d);
+        }
+        if (alertar && passouAFalha) {
+            Long studioId = registoRepo.findById(registoId).map(RegistoEmail::getStudioId).orElse(null);
+            alertaFalha.alertarFalhaEntrega(studioId, email, assunto, novo, motivo);
         }
         if (alterou) {
             atualizarContadores(registoId);

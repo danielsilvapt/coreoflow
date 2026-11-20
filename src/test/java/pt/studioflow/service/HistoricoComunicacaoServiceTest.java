@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
@@ -29,6 +30,8 @@ class HistoricoComunicacaoServiceTest {
     private HistoricoComunicacaoService service;
     @Autowired
     private RegistoEmailRepository registoRepo;
+    @MockBean
+    private AlertaFalhaEmailService alertaFalha;
 
     private final ObjectMapper om = new ObjectMapper();
 
@@ -78,6 +81,10 @@ class HistoricoComunicacaoServiceTest {
         assertThat(estadoDe(r, "maria@mail.com")).isEqualTo(EstadoEntrega.ABERTO);
         assertThat(estadoDe(r, "joao@mail.com")).isEqualTo(EstadoEntrega.DEVOLVIDO);
         assertThat(estadoDe(r, "rui@mail.com")).isEqualTo(EstadoEntrega.PENDENTE);
+        // Só a falha do João gera alerta ao estúdio (uma vez)
+        org.mockito.Mockito.verify(alertaFalha).alertarFalhaEntrega(7L, "joao@mail.com", null, EstadoEntrega.DEVOLVIDO,
+                "550 mailbox does not exist");
+        org.mockito.Mockito.verifyNoMoreInteractions(alertaFalha);
 
         RegistoEmail atualizado = registoRepo.findById(r.getId()).orElseThrow();
         assertThat(atualizado.getNumEntregues()).isEqualTo(1);

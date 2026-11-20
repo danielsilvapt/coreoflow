@@ -24,6 +24,7 @@ public class BirthdayNotificationService {
     private final AlunoRepository repository;
     private final JavaMailSender mailSender;
     private final EmailGate emailGate;
+    private final AlertaFalhaEmailService alertaFalha;
 
     @Value("${app.mail.from:noreply@coreoflow.me}")
     private String mailFrom;
@@ -31,7 +32,9 @@ public class BirthdayNotificationService {
     @Value("${app.base-url:https://app.coreoflow.me}")
     private String baseUrl;
 
-    public BirthdayNotificationService(AlunoRepository repository, JavaMailSender mailSender, EmailGate emailGate) {
+    public BirthdayNotificationService(AlunoRepository repository, JavaMailSender mailSender, EmailGate emailGate,
+            AlertaFalhaEmailService alertaFalha) {
+        this.alertaFalha = alertaFalha;
         this.repository = repository;
         this.mailSender = mailSender;
         this.emailGate = emailGate;
@@ -110,7 +113,14 @@ public class BirthdayNotificationService {
                 + "Mensagem automática · enviada através do <b>CoreoFlow</b></p>"
                 + "</div>";
         h.setText(html, true);
-        mailSender.send(msg);
+        alertaFalha.marcar(msg, studio);
+        try {
+            mailSender.send(msg);
+        } catch (RuntimeException e) {
+            alertaFalha.alertarFalhaEnvio(studio != null ? studio.getId() : null,
+                    java.util.List.of(String.valueOf(aluno.getEmail())), msg.getSubject(), e.getMessage());
+            throw e;
+        }
 
         System.out.println("Email de aniversário enviado a " + aluno.getNomeCompleto()
                 + " (" + nomeEstudio + ", CC " + cc.size() + " prof.)");
