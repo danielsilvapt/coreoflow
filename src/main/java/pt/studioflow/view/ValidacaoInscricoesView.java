@@ -351,6 +351,16 @@ public class ValidacaoInscricoesView extends VerticalLayout {
             content.add(createField("Problemas de saúde", "Nenhum"));
         }
 
+        if (aluno.getAutorizaCaptacaoImagens() != null) {
+            String ano = aluno.getAutorizacaoImagensAno() != null ? " (" + aluno.getAutorizacaoImagensAno() + ")" : "";
+            if (Boolean.TRUE.equals(aluno.getAutorizaCaptacaoImagens())) {
+                content.add(createField("Autorização de imagens" + ano, "Captação: autoriza · Divulgação (WhatsApp/redes sociais): "
+                        + (Boolean.TRUE.equals(aluno.getAutorizaDivulgacaoImagens()) ? "autoriza" : "NÃO autoriza")));
+            } else {
+                content.add(criarAviso(VaadinIcon.CAMERA, " NÃO autoriza a captação de imagens" + ano, "warning"));
+            }
+        }
+
         // O candidato pode ter-se enganado na turma: "Alterar turmas" reescreve a escolha
         // (texto de interesses) antes de ativar, e o resumo financeiro é recalculado.
         Button btnAlterarTurmas = new Button("Alterar turmas", VaadinIcon.EXCHANGE.create(),

@@ -188,6 +188,25 @@ public class Aluno {
     @Column(name = "problema_saude", length = 1000)
     private String problemaSaude;
 
+    /**
+     * Autorização de captação de imagens (fotos/vídeo) do aluno pelo estúdio, para registo das
+     * atividades e promoção do estúdio. Pergunta obrigatória nas fichas de inscrição e renovação.
+     * NULL = não respondido (fichas anteriores a este campo).
+     */
+    @Column(name = "autoriza_captacao_imagens")
+    private Boolean autorizaCaptacaoImagens;
+
+    /**
+     * Autorização de divulgação dessas imagens nos grupos privados de WhatsApp dos pais e nas
+     * redes sociais (Facebook/Instagram) do estúdio. Sempre false quando a captação não é autorizada.
+     */
+    @Column(name = "autoriza_divulgacao_imagens")
+    private Boolean autorizaDivulgacaoImagens;
+
+    /** Ano letivo a que a autorização de imagens se refere (ex.: "2026/2027"). */
+    @Column(name = "autorizacao_imagens_ano", length = 9)
+    private String autorizacaoImagensAno;
+
     @OneToMany(mappedBy = "aluno", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Presenca> presencas;
 
@@ -448,6 +467,15 @@ public class Aluno {
 
     public boolean isDescontoFamiliar() { return Boolean.TRUE.equals(descontoFamiliar); }
     public void setDescontoFamiliar(boolean descontoFamiliar) { this.descontoFamiliar = descontoFamiliar; }
+
+    public Boolean getAutorizaCaptacaoImagens() { return autorizaCaptacaoImagens; }
+    public void setAutorizaCaptacaoImagens(Boolean v) { this.autorizaCaptacaoImagens = v; }
+
+    public Boolean getAutorizaDivulgacaoImagens() { return autorizaDivulgacaoImagens; }
+    public void setAutorizaDivulgacaoImagens(Boolean v) { this.autorizaDivulgacaoImagens = v; }
+
+    public String getAutorizacaoImagensAno() { return autorizacaoImagensAno; }
+    public void setAutorizacaoImagensAno(String v) { this.autorizacaoImagensAno = v; }
 
     public Boolean getTemProblemaSaude() { return temProblemaSaude; }
     public void setTemProblemaSaude(Boolean temProblemaSaude) { this.temProblemaSaude = temProblemaSaude; }
