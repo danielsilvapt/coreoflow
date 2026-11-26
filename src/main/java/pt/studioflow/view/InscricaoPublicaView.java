@@ -320,6 +320,10 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         seccaoEncarregado.setSpacing(false);
         seccaoEncarregado.setVisible(false);
 
+        // --- 2.6 AUTORIZAÇÃO DE IMAGENS (obrigatória em todos os estúdios) ---
+        CamposAutorizacaoImagens camposImagens = new CamposAutorizacaoImagens(translationService, idiomaAtual,
+                studioAtual != null ? studioAtual.getNome() : null);
+
         // --- 3. SELEÇÃO DE TURMAS ---
         MultiSelectComboBox<Turma> turmasInteresse = new MultiSelectComboBox<>("Escolha as Turmas");
         turmasInteresse.setItems(turmasElegiveis(null));
@@ -382,6 +386,7 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
             boolean crianca = ev.getValue() != null
                     && java.time.Period.between(ev.getValue(), LocalDate.now()).getYears() < 18;
             seccaoEncarregado.setVisible(crianca);
+            camposImagens.setMenor(ev.getValue() == null || crianca);
 
             java.util.List<Turma> elegiveis = turmasElegiveis(dataNascimento.getValue());
             turmasInteresse.setItems(elegiveis);
@@ -469,6 +474,8 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
         CamposSaude camposSaude = new CamposSaude(translationService, idiomaAtual);
         camposSaude.bind(binder);
 
+        camposImagens.bind(binder);
+
         // --- 6. BOTÃO SUBMETER ---
         Button btnSubmeter = new Button("Finalizar Inscrição");
         btnSubmeter.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
@@ -490,11 +497,12 @@ public class InscricaoPublicaView extends VerticalLayout implements BeforeEnterO
             turmasInteresse.setLabel(translationService.t("inscricao.turmas", idiomaAtual));
             btnSubmeter.setText(translationService.t("inscricao.submeter", idiomaAtual));
             camposSaude.setIdioma(idiomaAtual);
+            camposImagens.setIdioma(idiomaAtual);
             traduzirJaAluno.run();
             traduzirFamiliar.run();
         });
 
-        VerticalLayout card = new VerticalLayout(header, layoutFoto, jaAluno, temFamiliar, form, seccaoEncarregado, camposSaude, turmasInteresse,
+        VerticalLayout card = new VerticalLayout(header, layoutFoto, jaAluno, temFamiliar, form, seccaoEncarregado, camposSaude, camposImagens, turmasInteresse,
                 containerFrequencias, resumoPagamento, btnSubmeter);
         card.setMaxWidth("850px");
         card.setWidth("100%");

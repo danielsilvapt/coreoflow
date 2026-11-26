@@ -84,6 +84,8 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
     // NULL em fichas antigas sem resposta, em vez de as gravar como "Não"
     private final RadioButtonGroup<Boolean> temProblemaSaude = new RadioButtonGroup<>("Problema de saúde?");
     private final TextArea problemaSaude = new TextArea("Qual?");
+    private final RadioButtonGroup<Boolean> autorizaCaptacaoImagens = new RadioButtonGroup<>("Autoriza captação de imagens?");
+    private final RadioButtonGroup<Boolean> autorizaDivulgacaoImagens = new RadioButtonGroup<>("Autoriza divulgação (WhatsApp / redes sociais)?");
 
     private final Checkbox socio = new Checkbox("Sócio");
     private final Checkbox descontoFamiliar = new Checkbox("Desconto de irmãos/familiares");
@@ -372,6 +374,17 @@ public class AlunoForm extends VerticalLayout implements HasUrlParameter<String>
         temProblemaSaude.addValueChangeListener(e -> problemaSaude.setVisible(Boolean.TRUE.equals(e.getValue())));
         f.add(temProblemaSaude, problemaSaude);
         f.setColspan(problemaSaude, 2);
+
+        for (RadioButtonGroup<Boolean> g : java.util.List.of(autorizaCaptacaoImagens, autorizaDivulgacaoImagens)) {
+            g.setItems(Boolean.TRUE, Boolean.FALSE);
+            g.setItemLabelGenerator(v -> Boolean.TRUE.equals(v) ? "Autoriza" : "Não autoriza");
+        }
+        autorizaCaptacaoImagens.addValueChangeListener(e -> {
+            boolean sim = Boolean.TRUE.equals(e.getValue());
+            autorizaDivulgacaoImagens.setEnabled(sim);
+            if (Boolean.FALSE.equals(e.getValue())) autorizaDivulgacaoImagens.setValue(false);
+        });
+        f.add(autorizaCaptacaoImagens, autorizaDivulgacaoImagens);
         return f;
     }
 

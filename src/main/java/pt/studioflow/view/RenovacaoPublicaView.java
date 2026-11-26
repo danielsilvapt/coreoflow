@@ -70,6 +70,7 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
     private boolean temFamiliarInscrito = false;
     private Idioma idiomaAtual = Idioma.PT;
     private CamposSaude camposSaude;
+    private CamposAutorizacaoImagens camposImagens;
 
     private final Map<Long, Select<String>> mapaFrequencias = new HashMap<>();
     private final VerticalLayout containerFrequencias = new VerticalLayout();
@@ -149,6 +150,9 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
                 subtitulo.setText(translationService.t("renovacao.subtitulo", idiomaAtual));
                 if (camposSaude != null) {
                     camposSaude.setIdioma(idiomaAtual);
+                }
+                if (camposImagens != null) {
+                    camposImagens.setIdioma(idiomaAtual);
                 }
             });
             header.add(seletorIdioma);
@@ -326,7 +330,11 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
         camposSaude = new CamposSaude(translationService, idiomaAtual);
         camposSaude.preencher(aluno);
 
-        card.add(saudacao, turmas, containerFrequencias, camposSaude, resumoPagamento, btnSubmeter);
+        camposImagens = new CamposAutorizacaoImagens(translationService, idiomaAtual, studioAtual.getNome());
+        camposImagens.setMenor(aluno.isCrianca());
+        camposImagens.preencher(aluno);
+
+        card.add(saudacao, turmas, containerFrequencias, camposSaude, camposImagens, resumoPagamento, btnSubmeter);
     }
 
     private void atualizarResumo(Aluno aluno, Set<Turma> selecionadas) {
@@ -387,6 +395,12 @@ public class RenovacaoPublicaView extends VerticalLayout implements BeforeEnterO
 
         if (!camposSaude.validarEAplicar(aluno)) {
             Notification.show(translationService.t("saude.obrigatorio", idiomaAtual))
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
+            return;
+        }
+
+        if (!camposImagens.validarEAplicar(aluno)) {
+            Notification.show(translationService.t("imagens.obrigatorio", idiomaAtual))
                     .addThemeVariants(NotificationVariant.LUMO_WARNING);
             return;
         }

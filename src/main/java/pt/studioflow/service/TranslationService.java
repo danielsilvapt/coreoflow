@@ -65,7 +65,36 @@ public class TranslationService {
         add("saude.obrigatorio", "Indica se o aluno tem algum problema de saúde.",
                 "Please indicate whether the student has any health condition.",
                 "Indique si l'élève a un problème de santé.");
-        add("saude.indicaQual", "Indica qual o problema de saúde.", "Please specify the health condition.",
+        // Autorização de imagens (inscrição e renovação)
+        add("imagens.titulo", "Autorização de imagens", "Image authorisation", "Autorisation d'images");
+        add("imagens.finalidade",
+                "Todas as imagens têm por fim elaborar um registo ao longo do ano das atividades e promover o ",
+                "All images are intended to record the year's activities and to promote ",
+                "Toutes les images ont pour but de garder une trace des activités de l'année et de promouvoir ");
+        add("imagens.captacao", "Captação de imagens pelo ", "Capture of images by ", "Prise d'images par ");
+        add("imagens.captacaoMenor", ", nas quais possa estar envolvido o meu educando, no ano letivo ",
+                ", in which my child may appear, during the school year ",
+                ", sur lesquelles mon enfant peut apparaître, pendant l'année scolaire ");
+        add("imagens.captacaoAdulto", ", nas quais eu possa estar envolvido(a), no ano letivo ",
+                ", in which I may appear, during the school year ",
+                ", sur lesquelles je peux apparaître, pendant l'année scolaire ");
+        add("imagens.divulgacao",
+                "Divulgação dessas imagens: 1) nos grupos privados de WhatsApp onde todos os pais estão envolvidos;"
+                        + " 2) nas redes sociais (Facebook / Instagram) do ",
+                "Sharing of those images: 1) in the private WhatsApp groups with all the parents;"
+                        + " 2) on the social media (Facebook / Instagram) of ",
+                "Diffusion de ces images : 1) dans les groupes WhatsApp privés réunissant tous les parents ;"
+                        + " 2) sur les réseaux sociaux (Facebook / Instagram) de ");
+        add("imagens.autorizo", "Autorizo", "I authorise", "J'autorise");
+        add("imagens.naoAutorizo", "Não autorizo", "I do not authorise", "Je n'autorise pas");
+        add("imagens.obrigatorio", "Indica se autoriza a captação de imagens.",
+                "Please indicate whether you authorise image capture.",
+                "Indiquez si vous autorisez la prise d'images.");
+        add("imagens.divulgacaoObrigatorio", "Indica se autoriza a divulgação das imagens.",
+                "Please indicate whether you authorise sharing the images.",
+                "Indiquez si vous autorisez la diffusion des images.");
+
+        add("saude.indicaQual","Indica qual o problema de saúde.", "Please specify the health condition.",
                 "Indique le problème de santé.");
 
         // Renovação de Matrícula
