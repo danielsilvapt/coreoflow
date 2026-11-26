@@ -599,7 +599,7 @@ public class StudioAdminView extends VerticalLayout {
             cb.setClearButtonVisible(true);
             cb.setWidthFull();
         }
-        vendusMetodo.setHelperText("Vazio = método predefinido do Vendus. Sugestão: criar no Vendus um método \"Mollie\".");
+        vendusMetodo.setHelperText("Vazio = um método com \"Mollie\"/\"online\" no nome, senão o primeiro eletrónico (ex.: Multibanco).");
         vendusCaixa.setHelperText("Vazio = caixa associada à chave API.");
         if (studio.getVendusMetodoPagamentoId() != null) {
             var o = new pt.studioflow.service.VendusApiService.Opcao(studio.getVendusMetodoPagamentoId(), "Guardado");
