@@ -460,6 +460,27 @@ public class VendusApiService {
                 .map(m -> new Opcao(texto(m.get("id")), nomeDe(m))).toList();
     }
 
+    /**
+     * Método de pagamento a usar quando o estúdio não escolheu nenhum: um ativo com "Mollie" ou
+     * "online" no nome; senão o primeiro ativo que não seja dinheiro (NU), conta corrente (DNP)
+     * nem compensação de saldos (CS) — um pagamento Mollie é sempre eletrónico.
+     */
+    String metodoPagamentoPredefinido(String apiKey) {
+        List<Map<String, Object>> ativos = getLista(apiKey, "documents/paymentmethods/", Map.of("per_page", "100"))
+                .stream().filter(m -> !"off".equals(texto(m.get("status")))).toList();
+        java.util.Optional<Map<String, Object>> escolhido = ativos.stream()
+                .filter(m -> { String t = String.valueOf(m.get("title")).toLowerCase();
+                               return t.contains("mollie") || t.contains("online"); })
+                .findFirst();
+        if (escolhido.isEmpty()) {
+            escolhido = ativos.stream()
+                    .filter(m -> !List.of("NU", "DNP", "CS").contains(texto(m.get("type"))))
+                    .findFirst();
+        }
+        return escolhido.map(m -> texto(m.get("id"))).orElseThrow(() -> new VendusException(
+                "Não há método de pagamento eletrónico ativo no Vendus: escolhe um no superadmin."));
+    }
+
     /** Caixas (registers) da conta Vendus. */
     public List<Opcao> listarCaixas(String apiKey) {
         return getLista(apiKey, "registers/", Map.of("per_page", "100")).stream()
@@ -529,7 +550,7 @@ public class VendusApiService {
 
     /**
      * Emite uma Fatura-Recibo (FR) já paga, com uma linha de serviço. Taxa/isenção nulas usam a
-     * predefinida da conta Vendus; método de pagamento/caixa nulos usam os predefinidos.
+     * predefinida da conta Vendus; caixa nula usa a da chave API; método nulo → {@link #metodoPagamentoPredefinido}.
      */
     public Documento emitirFaturaRecibo(String apiKey, String clienteId, String titulo, java.math.BigDecimal valor,
             String metodoPagamentoId, String registerId, String taxa, String isencao, String referencia,
@@ -546,8 +567,12 @@ public class VendusApiService {
             if ("ISE".equals(taxa) && isencao != null && !isencao.isBlank()) item.put("tax_exemption", isencao);
         }
 
+        // O Vendus exige o id do método em cada pagamento (erro P004 sem ele): sem método
+        // configurado no estúdio, escolhe-se um da conta.
+        String metodo = metodoPagamentoId != null && !metodoPagamentoId.isBlank()
+                ? metodoPagamentoId : metodoPagamentoPredefinido(apiKey);
         Map<String, Object> pagamento = new java.util.LinkedHashMap<>();
-        if (metodoPagamentoId != null && !metodoPagamentoId.isBlank()) pagamento.put("id", metodoPagamentoId);
+        pagamento.put("id", metodo);
         pagamento.put("amount", preco);
 
         Map<String, Object> corpo = new java.util.LinkedHashMap<>();
