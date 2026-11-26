@@ -69,7 +69,7 @@ class LembreteMensalidadeServiceTest {
 
     @Test
     void portalDeixaPagarMesSeguinteSoComLembreteLigadoEAPartirDoDia30() {
-        PagamentoOnlineService svc = new PagamentoOnlineService(null, null, null, null, null);
+        PagamentoOnlineService svc = new PagamentoOnlineService(null, null, null, null, null, null);
         Aluno a = aluno(1, "Ana", "a@a.pt", true);
         List<Mensalidade> ms = List.of(
                 mens(a, 2026, Month.NOVEMBER, 40, EstadoMensalidade.FATURADO),

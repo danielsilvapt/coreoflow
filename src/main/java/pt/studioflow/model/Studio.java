@@ -350,6 +350,38 @@ public class Studio {
     @Column(name = "vendus_api_key")
     private String vendusApiKey;
 
+    /**
+     * Ligação Mollie → Vendus: quando um pagamento online (Mollie) fica confirmado, emite
+     * logo uma Fatura-Recibo no Vendus (criando o cliente se não existir) e o Vendus envia-a
+     * por email. Desligado por omissão; requer {@link #vendusApiKey}.
+     */
+    @Column(name = "vendus_recibo_mollie")
+    private Boolean vendusReciboMollie = false;
+
+    /** Quando a ligação foi ativada: só se emitem recibos de pagamentos confirmados a partir daqui. */
+    @Column(name = "vendus_recibo_desde")
+    private java.time.LocalDateTime vendusReciboDesde;
+
+    /** ID do método de pagamento Vendus a usar no recibo (ex.: "Mollie"/"Pagamento online"). Nulo = predefinido. */
+    @Column(name = "vendus_metodo_pagamento_id", length = 30)
+    private String vendusMetodoPagamentoId;
+
+    /** ID da caixa (register) Vendus onde são emitidos os documentos. Nulo = a da chave API. */
+    @Column(name = "vendus_register_id", length = 30)
+    private String vendusRegisterId;
+
+    /** Taxa de IVA das linhas (NOR/INT/RED/ISE). Nulo = a predefinida da conta Vendus. */
+    @Column(name = "vendus_taxa", length = 5)
+    private String vendusTaxa;
+
+    /** Código de isenção de IVA (ex.: M07, M10) quando {@link #vendusTaxa} = ISE. */
+    @Column(name = "vendus_isencao", length = 5)
+    private String vendusIsencao;
+
+    /** Modo de testes do Vendus: documentos sem validade fiscal (para validar a ligação). */
+    @Column(name = "vendus_modo_testes")
+    private Boolean vendusModoTestes = false;
+
     /** Chave API Mollie para pagamentos online (inscrições, renovações, mensalidades, aulas avulso). Nulo = Mollie desligado, cai em "pagar no estúdio". */
     @Column(name = "mollie_api_key")
     private String mollieApiKey;
@@ -596,6 +628,26 @@ public class Studio {
 
     public String getVendusApiKey() { return vendusApiKey; }
     public void setVendusApiKey(String vendusApiKey) { this.vendusApiKey = vendusApiKey; }
+
+    public boolean isVendusReciboMollie() { return Boolean.TRUE.equals(vendusReciboMollie); }
+    public void setVendusReciboMollie(boolean v) { this.vendusReciboMollie = v; }
+    /** Ligação Mollie → Vendus ativa e com chave Vendus (e programa de faturação Vendus). */
+    public boolean isVendusReciboMollieAtivo() {
+        return isVendusReciboMollie() && vendusApiKey != null && !vendusApiKey.isBlank()
+                && !isProgramaFaturacaoTocOnline();
+    }
+    public java.time.LocalDateTime getVendusReciboDesde() { return vendusReciboDesde; }
+    public void setVendusReciboDesde(java.time.LocalDateTime v) { this.vendusReciboDesde = v; }
+    public String getVendusMetodoPagamentoId() { return vendusMetodoPagamentoId; }
+    public void setVendusMetodoPagamentoId(String v) { this.vendusMetodoPagamentoId = v; }
+    public String getVendusRegisterId() { return vendusRegisterId; }
+    public void setVendusRegisterId(String v) { this.vendusRegisterId = v; }
+    public String getVendusTaxa() { return vendusTaxa; }
+    public void setVendusTaxa(String v) { this.vendusTaxa = v; }
+    public String getVendusIsencao() { return vendusIsencao; }
+    public void setVendusIsencao(String v) { this.vendusIsencao = v; }
+    public boolean isVendusModoTestes() { return Boolean.TRUE.equals(vendusModoTestes); }
+    public void setVendusModoTestes(boolean v) { this.vendusModoTestes = v; }
 
     public String getMollieApiKey() { return mollieApiKey; }
     public void setMollieApiKey(String mollieApiKey) { this.mollieApiKey = mollieApiKey; }

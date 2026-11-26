@@ -64,14 +64,17 @@ public class StudioAdminView extends VerticalLayout {
     private final LogoUploadService logoUploadService;
     private final TocOnlineApiService tocOnlineApiService;
     private final StudioRemocaoService studioRemocaoService;
+    private final pt.studioflow.service.VendusApiService vendusApiService;
     private final Grid<Studio> grid = new Grid<>(Studio.class, false);
 
     public StudioAdminView(StudioService studioService, LogoUploadService logoUploadService,
-            TocOnlineApiService tocOnlineApiService, StudioRemocaoService studioRemocaoService) {
+            TocOnlineApiService tocOnlineApiService, StudioRemocaoService studioRemocaoService,
+            pt.studioflow.service.VendusApiService vendusApiService) {
         this.studioService = studioService;
         this.logoUploadService = logoUploadService;
         this.tocOnlineApiService = tocOnlineApiService;
         this.studioRemocaoService = studioRemocaoService;
+        this.vendusApiService = vendusApiService;
         setSizeFull();
         setPadding(false);
         addClassName("cf-page");
@@ -583,10 +586,91 @@ public class StudioAdminView extends VerticalLayout {
         tocSecao.setSpacing(true);
         tocSecao.setVisible("TOCONLINE".equals(programaFaturacao.getValue()));
 
+        // --- Ligação Mollie → Vendus (recibo automático) ---
+        Checkbox vendusRecibo = new Checkbox(
+                "Emitir Fatura-Recibo no Vendus assim que um pagamento Mollie é confirmado (enviada por email ao cliente)");
+        vendusRecibo.setValue(studio.isVendusReciboMollie());
+
+        ComboBox<pt.studioflow.service.VendusApiService.Opcao> vendusMetodo =
+                new ComboBox<>("Método de pagamento no recibo");
+        ComboBox<pt.studioflow.service.VendusApiService.Opcao> vendusCaixa = new ComboBox<>("Caixa (register)");
+        for (var cb : java.util.List.of(vendusMetodo, vendusCaixa)) {
+            cb.setItemLabelGenerator(o -> o.nome() + " (" + o.id() + ")");
+            cb.setClearButtonVisible(true);
+            cb.setWidthFull();
+        }
+        vendusMetodo.setHelperText("Vazio = método predefinido do Vendus. Sugestão: criar no Vendus um método \"Mollie\".");
+        vendusCaixa.setHelperText("Vazio = caixa associada à chave API.");
+        if (studio.getVendusMetodoPagamentoId() != null) {
+            var o = new pt.studioflow.service.VendusApiService.Opcao(studio.getVendusMetodoPagamentoId(), "Guardado");
+            vendusMetodo.setItems(o);
+            vendusMetodo.setValue(o);
+        }
+        if (studio.getVendusRegisterId() != null) {
+            var o = new pt.studioflow.service.VendusApiService.Opcao(studio.getVendusRegisterId(), "Guardada");
+            vendusCaixa.setItems(o);
+            vendusCaixa.setValue(o);
+        }
+
+        Button vendusCarregar = new Button("Carregar do Vendus", VaadinIcon.REFRESH.create(), e -> {
+            String key = vendusApiKey.getValue() != null ? vendusApiKey.getValue().trim() : "";
+            if (key.isBlank()) {
+                Notification.show("Preenche primeiro a chave API Vendus.", 4000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_WARNING);
+                return;
+            }
+            try {
+                var metodos = vendusApiService.listarMetodosPagamento(key);
+                var caixas = vendusApiService.listarCaixas(key);
+                String metodoAtual = vendusMetodo.getValue() != null ? vendusMetodo.getValue().id() : null;
+                String caixaAtual = vendusCaixa.getValue() != null ? vendusCaixa.getValue().id() : null;
+                vendusMetodo.setItems(metodos);
+                vendusCaixa.setItems(caixas);
+                metodos.stream().filter(o -> o.id().equals(metodoAtual)).findFirst().ifPresent(vendusMetodo::setValue);
+                caixas.stream().filter(o -> o.id().equals(caixaAtual)).findFirst().ifPresent(vendusCaixa::setValue);
+                Notification.show("Ligação OK: " + metodos.size() + " métodos de pagamento, " + caixas.size()
+                        + " caixas.", 4000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (Exception ex) {
+                Notification.show("Erro: " + ex.getMessage(), 6000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+
+        ComboBox<String> vendusTaxa = new ComboBox<>("IVA das linhas");
+        vendusTaxa.setItems("", "NOR", "INT", "RED", "ISE");
+        vendusTaxa.setItemLabelGenerator(t -> switch (t) {
+            case "NOR" -> "Taxa normal";
+            case "INT" -> "Taxa intermédia";
+            case "RED" -> "Taxa reduzida";
+            case "ISE" -> "Isento";
+            default -> "Predefinida da conta Vendus";
+        });
+        vendusTaxa.setValue(studio.getVendusTaxa() != null ? studio.getVendusTaxa() : "");
+        vendusTaxa.setWidthFull();
+        TextField vendusIsencao = new TextField("Código de isenção");
+        vendusIsencao.setValue(studio.getVendusIsencao() != null ? studio.getVendusIsencao() : "");
+        vendusIsencao.setHelperText("Ex.: M07 (art. 9.º CIVA), M10 (regime de isenção).");
+        vendusIsencao.setVisible("ISE".equals(vendusTaxa.getValue()));
+        vendusTaxa.addValueChangeListener(e -> vendusIsencao.setVisible("ISE".equals(e.getValue())));
+
+        Checkbox vendusTestes = new Checkbox("Modo de testes (documentos sem validade fiscal)");
+        vendusTestes.setValue(studio.isVendusModoTestes());
+
+        VerticalLayout vendusReciboDetalhes = new VerticalLayout(
+                grelha(vendusMetodo, vendusCaixa, vendusTaxa, vendusIsencao), vendusCarregar, vendusTestes);
+        vendusReciboDetalhes.setPadding(false);
+        vendusReciboDetalhes.setVisible(vendusRecibo.getValue());
+        vendusRecibo.addValueChangeListener(e -> vendusReciboDetalhes.setVisible(e.getValue()));
+        VerticalLayout vendusReciboSecao = new VerticalLayout(vendusRecibo, vendusReciboDetalhes);
+        vendusReciboSecao.setPadding(false);
+        vendusReciboSecao.setVisible(!"TOCONLINE".equals(programaFaturacao.getValue()));
+
         vendusApiKey.setVisible(!"TOCONLINE".equals(programaFaturacao.getValue()));
         programaFaturacao.addValueChangeListener(e -> {
             tocSecao.setVisible("TOCONLINE".equals(programaFaturacao.getValue()));
             vendusApiKey.setVisible(!"TOCONLINE".equals(programaFaturacao.getValue()));
+            vendusReciboSecao.setVisible(!"TOCONLINE".equals(programaFaturacao.getValue()));
         });
 
         // --- Remuneração de professores ---
@@ -755,7 +839,10 @@ public class StudioAdminView extends VerticalLayout {
         tabs.add(tab(VaadinIcon.INVOICE, "Faturação & Pagamentos"), painel(
                 secao("Faturação", null, faturacaoAuto, grelha(programaFaturacao, vendusApiKey), tocSecao),
                 secao("Pagamentos online", "Mollie: inscrições, renovações, mensalidades no portal e aulas avulso.",
-                        mollieApiKey)));
+                        mollieApiKey),
+                secao("Recibo automático (Mollie → Vendus)",
+                        "Cria o cliente no Vendus se não existir e emite a Fatura-Recibo de cada pagamento online confirmado.",
+                        vendusReciboSecao)));
 
         tabs.add(tab(VaadinIcon.ACADEMY_CAP, "Professores"), painel(
                 secao("Remuneração", "Valores por defeito do estúdio. Cada professor pode sobrepô-los na página Professores.",
@@ -833,6 +920,18 @@ public class StudioAdminView extends VerticalLayout {
 
             // Faturação
             studio.setFaturacaoAutomatica(faturacaoAuto.getValue() ? true : false);
+            if (vendusRecibo.getValue() && !studio.isVendusReciboMollie()) {
+                // Só se emitem recibos de pagamentos confirmados a partir de agora (nunca retroativos).
+                studio.setVendusReciboDesde(java.time.LocalDateTime.now());
+            }
+            studio.setVendusReciboMollie(vendusRecibo.getValue());
+            studio.setVendusMetodoPagamentoId(vendusMetodo.getValue() != null ? vendusMetodo.getValue().id() : null);
+            studio.setVendusRegisterId(vendusCaixa.getValue() != null ? vendusCaixa.getValue().id() : null);
+            studio.setVendusTaxa(vendusTaxa.getValue() == null || vendusTaxa.getValue().isBlank()
+                    ? null : vendusTaxa.getValue());
+            studio.setVendusIsencao("ISE".equals(vendusTaxa.getValue()) && !vendusIsencao.getValue().isBlank()
+                    ? vendusIsencao.getValue().trim().toUpperCase() : null);
+            studio.setVendusModoTestes(vendusTestes.getValue());
             studio.setProgramaFaturacao(programaFaturacao.getValue());
             studio.setTocOnlineClientId(tocClientId.getValue().trim());
             studio.setTocOnlineClientSecret(tocClientSecret.getValue().trim());
