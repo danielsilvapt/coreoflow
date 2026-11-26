@@ -63,6 +63,20 @@ class VendusReciboTest {
     }
 
     @Test
+    void testarLigacaoUsaWsEMostraErroDeChaveInvalida() {
+        server.expect(requestTo(WS + "registers/?per_page=100"))
+                .andExpect(header("Authorization", "Basic a2V5Og=="))
+                .andRespond(withStatus(HttpStatus.UNAUTHORIZED)
+                        .body("{\"errors\":[{\"code\":\"A001\",\"message\":\"AUTH\"}]}")
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        String r = vendus.testarLigacao(" key ");
+
+        assertThat(r).startsWith("Falha na API").contains("AUTH (A001)");
+        server.verify();
+    }
+
+    @Test
     void clienteExistenteNaoEDuplicadoMasPassaATerEmail() {
         server.expect(requestTo(WS + "clients/?fiscal_id=123456789"))
                 .andRespond(withSuccess("[{\"id\":\"77\",\"fiscal_id\":\"123456789\",\"email\":\"\",\"send_email\":\"no\"}]",
