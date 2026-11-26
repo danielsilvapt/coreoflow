@@ -33,6 +33,10 @@ public interface CompraCreditoRepository extends JpaRepository<CompraCredito, Lo
 
     List<CompraCredito> findByStudio(Studio studio);
 
+    /** Compras pagas no Mollie ainda sem recibo Vendus (ReciboVendusService). */
+    List<CompraCredito> findByEstadoPagamentoAndMolliePaymentIdIsNotNullAndVendusDocumentoIsNullAndDataCompraAfter(
+            pt.studioflow.model.EstadoPagamentoCredito estado, java.time.LocalDateTime desde);
+
     @Transactional
     void deleteByAluno(Aluno aluno);
 

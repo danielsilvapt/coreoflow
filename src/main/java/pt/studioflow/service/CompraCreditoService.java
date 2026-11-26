@@ -25,13 +25,16 @@ public class CompraCreditoService {
     private final MollieApiService mollieApiService;
     private final EmailService emailService;
     private final StudioRepository studioRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventos;
 
     public CompraCreditoService(CompraCreditoRepository compraCreditoRepository,
-            MollieApiService mollieApiService, EmailService emailService, StudioRepository studioRepository) {
+            MollieApiService mollieApiService, EmailService emailService, StudioRepository studioRepository,
+            org.springframework.context.ApplicationEventPublisher eventos) {
         this.compraCreditoRepository = compraCreditoRepository;
         this.mollieApiService = mollieApiService;
         this.emailService = emailService;
         this.studioRepository = studioRepository;
+        this.eventos = eventos;
     }
 
     public static class ResultadoCompra {
@@ -98,9 +101,15 @@ public class CompraCreditoService {
     @Transactional
     public void confirmarPagamentoMollie(String molliePaymentId) {
         compraCreditoRepository.findByMolliePaymentId(molliePaymentId).ifPresent(compra -> {
+            EstadoPagamentoCredito anterior = compra.getEstadoPagamento();
             EstadoPagamentoCredito estado = mollieApiService.verificarEstado(compra.getStudio(), molliePaymentId);
             compra.setEstadoPagamento(estado);
             compraCreditoRepository.save(compra);
+            if (estado == EstadoPagamentoCredito.PAGO && anterior != EstadoPagamentoCredito.PAGO) {
+                // Recibo no Vendus (se o estúdio tiver a ligação Mollie → Vendus ativa), após o commit.
+                eventos.publishEvent(new ReciboVendusService.PagamentoConfirmado(
+                        ReciboVendusService.Origem.COMPRA_CREDITO, compra.getId()));
+            }
         });
     }
 

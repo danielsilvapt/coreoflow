@@ -24,6 +24,10 @@ public interface PagamentoOnlineRepository extends JpaRepository<PagamentoOnline
     List<PagamentoOnline> findByEstadoAndMolliePaymentIdIsNotNullAndDataCriacaoAfter(
             EstadoPagamentoCredito estado, LocalDateTime desde);
 
+    /** Pagos ainda sem recibo Vendus (ReciboVendusService). */
+    List<PagamentoOnline> findByEstadoAndVendusDocumentoIsNullAndDataPagamentoAfter(
+            EstadoPagamentoCredito estado, LocalDateTime desde);
+
     @Transactional
     void deleteByAluno(Aluno aluno);
 }

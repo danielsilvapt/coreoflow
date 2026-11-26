@@ -112,4 +112,23 @@ public class PagamentoOnline {
 
     public boolean isAplicado() { return aplicado; }
     public void setAplicado(boolean aplicado) { this.aplicado = aplicado; }
+
+    // --- Recibo Vendus (ligação Mollie → Vendus, ver ReciboVendusService) ---
+    /** Número do documento Vendus emitido (ex.: "FR 01P2026/12"). Nulo = ainda não emitido. */
+    @Column(name = "vendus_documento", length = 60)
+    private String vendusDocumento;
+
+    /** Última falha ao emitir no Vendus (mostrada ao estúdio); nulo quando correu bem. */
+    @Column(name = "vendus_erro", length = 1000)
+    private String vendusErro;
+
+    @Column(name = "vendus_tentativas")
+    private Integer vendusTentativas;
+
+    public String getVendusDocumento() { return vendusDocumento; }
+    public void setVendusDocumento(String v) { this.vendusDocumento = v; }
+    public String getVendusErro() { return vendusErro; }
+    public void setVendusErro(String v) { this.vendusErro = v; }
+    public int getVendusTentativas() { return vendusTentativas == null ? 0 : vendusTentativas; }
+    public void setVendusTentativas(int v) { this.vendusTentativas = v; }
 }
