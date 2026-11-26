@@ -129,14 +129,32 @@ class VendusReciboTest {
 
     @Test
     void semTaxaConfiguradaUsaAPredefinidaDaConta() {
+        // Métodos como os do Studyo Nazaré: sem "Mollie" → primeiro eletrónico (Multibanco).
+        server.expect(requestTo(WS + "documents/paymentmethods/?per_page=100"))
+                .andRespond(withSuccess("[{\"id\":1,\"title\":\"Dinheiro\",\"type\":\"NU\",\"status\":\"on\"},"
+                        + "{\"id\":2,\"title\":\"Multibanco\",\"type\":\"CD\",\"status\":\"on\"},"
+                        + "{\"id\":3,\"title\":\"Conta Corrente\",\"type\":\"DNP\",\"status\":\"on\"}]",
+                        MediaType.APPLICATION_JSON));
         server.expect(requestTo(WS + "documents/"))
                 .andExpect(jsonPath("$.items[0].tax_id").doesNotExist())
                 .andExpect(jsonPath("$.register_id").doesNotExist())
-                .andExpect(jsonPath("$.payments[0].id").doesNotExist())
+                .andExpect(jsonPath("$.payments[0].id").value("2"))
                 .andExpect(jsonPath("$.mode").value("normal"))
                 .andRespond(withSuccess("{\"id\":\"1\",\"number\":\"FR 1\"}", MediaType.APPLICATION_JSON));
 
         vendus.emitirFaturaRecibo("key", "1", "X", new BigDecimal("10.5"), null, null, null, null, "CF-CC-1", false);
+        server.verify();
+    }
+
+    @Test
+    void metodoPredefinidoPrefereMollieEIgnoraInativos() {
+        server.expect(requestTo(WS + "documents/paymentmethods/?per_page=100"))
+                .andRespond(withSuccess("[{\"id\":2,\"title\":\"Multibanco\",\"type\":\"CD\",\"status\":\"on\"},"
+                        + "{\"id\":8,\"title\":\"Mollie\",\"type\":\"CD\",\"status\":\"off\"},"
+                        + "{\"id\":9,\"title\":\"Pagamento Online (Mollie)\",\"type\":\"CD\",\"status\":\"on\"}]",
+                        MediaType.APPLICATION_JSON));
+
+        assertThat(vendus.metodoPagamentoPredefinido("key")).isEqualTo("9");
         server.verify();
     }
 
