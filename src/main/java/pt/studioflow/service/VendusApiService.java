@@ -31,21 +31,11 @@ public class VendusApiService {
      * @param getApiKey() chave da API do studio (pt.studioflow.model.Studio.getVendusApiKey())
      */
     public String testarLigacao(String apiKey) {
+        // Usa a API /ws/v1.1/ (a mesma do recibo). O /api/v1.1/ responde 200 vazio a qualquer
+        // chave, mesmo inválida, por isso não serve para testar.
         try {
-
-            RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.setBasicAuth(apiKey, "");
-
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-
-            ResponseEntity<String> response = restTemplate.exchange(
-                    BASE_URL + "documents?per_page=1",
-                    HttpMethod.GET,
-                    entity,
-                    String.class);
-
-            return "Ligação OK: " + response.getStatusCode();
+            int caixas = listarCaixas(apiKey.trim()).size();
+            return "Ligação OK: " + caixas + " caixa(s) disponíveis.";
         } catch (Exception e) {
             return "Falha na API: " + e.getMessage();
         }
