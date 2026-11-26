@@ -374,4 +374,204 @@ public class VendusApiService {
         }
     }
 
+    // =====================================================================
+    // API v1.1 com chave explícita (usada fora de um pedido do estúdio, ex.:
+    // webhook do Mollie, onde não há TenantContext). Ver ReciboVendusService.
+    // =====================================================================
+
+    private static final String WS = "https://www.vendus.pt/ws/v1.1/";
+    final RestTemplate rest = new RestTemplate(); // package-private: testes (MockRestServiceServer)
+
+    /** Opção de uma lista do Vendus (método de pagamento, caixa). */
+    public record Opcao(String id, String nome) {}
+
+    /** Dados de faturação do cliente (aluno ou encarregado de educação). */
+    public record DadosCliente(String nif, String nome, String email, String morada, String codigoPostal,
+            String localidade, String referenciaExterna) {}
+
+    /** Documento emitido. */
+    public record Documento(String id, String numero) {}
+
+    /** Erro devolvido pela API Vendus, já com a mensagem legível. */
+    public static class VendusException extends RuntimeException {
+        public VendusException(String msg) { super(msg); }
+    }
+
+    private HttpHeaders headers(String apiKey) {
+        HttpHeaders h = new HttpHeaders();
+        h.setBasicAuth(apiKey, "");
+        h.setContentType(MediaType.APPLICATION_JSON);
+        h.setAccept(List.of(MediaType.APPLICATION_JSON));
+        return h;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> getLista(String apiKey, String caminho, Map<String, String> params) {
+        org.springframework.web.util.UriComponentsBuilder b =
+                org.springframework.web.util.UriComponentsBuilder.fromHttpUrl(WS + caminho);
+        params.forEach(b::queryParam);
+        try {
+            ResponseEntity<List> r = rest.exchange(b.encode().build().toUri(), HttpMethod.GET,
+                    new HttpEntity<>(headers(apiKey)), List.class);
+            return r.getBody() != null ? (List<Map<String, Object>>) r.getBody() : List.of();
+        } catch (HttpClientErrorException.NotFound e) {
+            return List.of(); // o Vendus responde 404 "No data" a uma pesquisa sem resultados
+        } catch (HttpClientErrorException e) {
+            throw new VendusException(mensagemErro(e));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> enviar(String apiKey, HttpMethod metodo, String caminho, Map<String, Object> corpo) {
+        try {
+            ResponseEntity<Map> r = rest.exchange(WS + caminho, metodo, new HttpEntity<>(corpo, headers(apiKey)),
+                    Map.class);
+            return r.getBody() != null ? (Map<String, Object>) r.getBody() : Map.of();
+        } catch (HttpClientErrorException e) {
+            throw new VendusException(mensagemErro(e));
+        }
+    }
+
+    /** "errors":[{"code":"A001","message":"AUTH"}] → "AUTH (A001)"; senão o corpo/estado. */
+    private static String mensagemErro(HttpClientErrorException e) {
+        String corpo = e.getResponseBodyAsString();
+        try {
+            Map<?, ?> m = new com.fasterxml.jackson.databind.ObjectMapper().readValue(corpo, Map.class);
+            if (m.get("errors") instanceof List<?> erros && !erros.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                for (Object o : erros) {
+                    if (o instanceof Map<?, ?> er) {
+                        if (sb.length() > 0) sb.append("; ");
+                        sb.append(er.get("message"));
+                        if (er.get("code") != null) sb.append(" (").append(er.get("code")).append(")");
+                    }
+                }
+                return "Vendus " + e.getStatusCode().value() + ": " + sb;
+            }
+        } catch (Exception ignorado) {
+            // corpo não é JSON
+        }
+        return "Vendus " + e.getStatusCode().value() + ": "
+                + (corpo == null || corpo.isBlank() ? e.getStatusText() : corpo);
+    }
+
+    private static String texto(Object o) {
+        return o == null ? null : String.valueOf(o);
+    }
+
+    private static String nomeDe(Map<String, Object> m) {
+        Object n = m.get("title") != null ? m.get("title") : m.get("name");
+        return n != null ? String.valueOf(n) : String.valueOf(m.get("id"));
+    }
+
+    /** Métodos de pagamento configurados na conta Vendus. */
+    public List<Opcao> listarMetodosPagamento(String apiKey) {
+        return getLista(apiKey, "documents/paymentmethods/", Map.of("per_page", "100")).stream()
+                .map(m -> new Opcao(texto(m.get("id")), nomeDe(m))).toList();
+    }
+
+    /** Caixas (registers) da conta Vendus. */
+    public List<Opcao> listarCaixas(String apiKey) {
+        return getLista(apiKey, "registers/", Map.of("per_page", "100")).stream()
+                .map(m -> new Opcao(texto(m.get("id")), nomeDe(m))).toList();
+    }
+
+    /** NIF português válido (9 dígitos, sem o "consumidor final" 999999990, que o Vendus não aceita). */
+    public static String nifValido(String nif) {
+        if (nif == null) return null;
+        String limpo = nif.replaceAll("[^0-9]", "");
+        return limpo.length() == 9 && !"999999990".equals(limpo) ? limpo : null;
+    }
+
+    /**
+     * Devolve o ID do cliente Vendus, criando-o se não existir. Procura primeiro pelo NIF
+     * (o mesmo encarregado com vários educandos é um só cliente) e, sem NIF, pela referência
+     * externa do CoreoFlow. Garante que o cliente tem o email e o envio de faturas ligado,
+     * para o Vendus enviar o recibo.
+     */
+    public String obterOuCriarCliente(String apiKey, DadosCliente c) {
+        String nif = nifValido(c.nif());
+        List<Map<String, Object>> encontrados = nif != null
+                ? getLista(apiKey, "clients/", Map.of("fiscal_id", nif))
+                : getLista(apiKey, "clients/", Map.of("external_reference", c.referenciaExterna()));
+        // A pesquisa pode ser aproximada: confirma-se o campo exato.
+        Map<String, Object> cliente = encontrados.stream()
+                .filter(m -> nif != null ? nif.equals(texto(m.get("fiscal_id")))
+                        : c.referenciaExterna().equals(texto(m.get("external_reference"))))
+                .findFirst().orElse(null);
+        boolean temEmail = c.email() != null && !c.email().isBlank();
+
+        if (cliente == null) {
+            Map<String, Object> corpo = new java.util.LinkedHashMap<>();
+            if (nif != null) corpo.put("fiscal_id", nif);
+            corpo.put("name", c.nome());
+            if (c.morada() != null && !c.morada().isBlank()) corpo.put("address", c.morada());
+            if (c.codigoPostal() != null && !c.codigoPostal().isBlank()) corpo.put("postalcode", c.codigoPostal());
+            if (c.localidade() != null && !c.localidade().isBlank()) corpo.put("city", c.localidade());
+            if (temEmail) {
+                corpo.put("email", c.email());
+                corpo.put("send_email", "yes");
+            }
+            corpo.put("country", "PT");
+            corpo.put("external_reference", c.referenciaExterna());
+            String id = texto(enviar(apiKey, HttpMethod.POST, "clients/", corpo).get("id"));
+            if (id == null) throw new VendusException("Vendus não devolveu o ID do cliente criado.");
+            return id;
+        }
+
+        String id = texto(cliente.get("id"));
+        if (temEmail && (!c.email().equalsIgnoreCase(String.valueOf(cliente.get("email")))
+                || !"yes".equals(texto(cliente.get("send_email"))))) {
+            enviar(apiKey, HttpMethod.PATCH, "clients/" + id, Map.of("email", c.email(), "send_email", "yes"));
+        }
+        return id;
+    }
+
+    /** Documento já emitido com esta referência externa (evita duplicados em repetições). */
+    public java.util.Optional<Documento> documentoPorReferencia(String apiKey, String referencia, boolean testes) {
+        return getLista(apiKey, "documents/", Map.of("external_reference", referencia,
+                        "mode", testes ? "tests" : "normal")).stream()
+                .filter(m -> referencia.equals(texto(m.get("external_reference"))))
+                .filter(m -> !"A".equals(texto(m.get("status")))) // anulados não contam
+                .map(m -> new Documento(texto(m.get("id")), texto(m.get("number"))))
+                .findFirst();
+    }
+
+    /**
+     * Emite uma Fatura-Recibo (FR) já paga, com uma linha de serviço. Taxa/isenção nulas usam a
+     * predefinida da conta Vendus; método de pagamento/caixa nulos usam os predefinidos.
+     */
+    public Documento emitirFaturaRecibo(String apiKey, String clienteId, String titulo, java.math.BigDecimal valor,
+            String metodoPagamentoId, String registerId, String taxa, String isencao, String referencia,
+            boolean testes) {
+        String preco = valor.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+        Map<String, Object> item = new java.util.LinkedHashMap<>();
+        item.put("reference", "COREOFLOW-SERV");
+        item.put("title", titulo.length() > 150 ? titulo.substring(0, 150) : titulo);
+        item.put("qty", 1);
+        item.put("gross_price", preco);
+        item.put("type_id", "S");
+        if (taxa != null && !taxa.isBlank()) {
+            item.put("tax_id", taxa);
+            if ("ISE".equals(taxa) && isencao != null && !isencao.isBlank()) item.put("tax_exemption", isencao);
+        }
+
+        Map<String, Object> pagamento = new java.util.LinkedHashMap<>();
+        if (metodoPagamentoId != null && !metodoPagamentoId.isBlank()) pagamento.put("id", metodoPagamentoId);
+        pagamento.put("amount", preco);
+
+        Map<String, Object> corpo = new java.util.LinkedHashMap<>();
+        corpo.put("type", "FR");
+        corpo.put("mode", testes ? "tests" : "normal");
+        if (registerId != null && !registerId.isBlank()) corpo.put("register_id", registerId);
+        corpo.put("client", Map.of("id", clienteId));
+        corpo.put("items", List.of(item));
+        corpo.put("payments", List.of(pagamento));
+        corpo.put("external_reference", referencia);
+
+        Map<String, Object> r = enviar(apiKey, HttpMethod.POST, "documents/", corpo);
+        String numero = texto(r.get("number"));
+        if (numero == null) throw new VendusException("Vendus não devolveu o número do documento.");
+        return new Documento(texto(r.get("id")), numero);
+    }
 }

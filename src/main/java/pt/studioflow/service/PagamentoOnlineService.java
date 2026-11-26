@@ -46,10 +46,13 @@ public class PagamentoOnlineService {
     private final StudioRepository studioRepository;
     private final MollieApiService mollieApiService;
     private final MensalidadeConfig mensalidadeConfig;
+    private final org.springframework.context.ApplicationEventPublisher eventos;
 
     public PagamentoOnlineService(PagamentoOnlineRepository pagamentoOnlineRepository,
             MensalidadeRepository mensalidadeRepository, StudioRepository studioRepository,
-            MollieApiService mollieApiService, MensalidadeConfig mensalidadeConfig) {
+            MollieApiService mollieApiService, MensalidadeConfig mensalidadeConfig,
+            org.springframework.context.ApplicationEventPublisher eventos) {
+        this.eventos = eventos;
         this.pagamentoOnlineRepository = pagamentoOnlineRepository;
         this.mensalidadeRepository = mensalidadeRepository;
         this.studioRepository = studioRepository;
@@ -180,6 +183,9 @@ public class PagamentoOnlineService {
                 // O pedido já foi aceite antes de o pagamento ficar confirmado.
                 aplicarAoPrimeiroMes(pagamento);
             }
+            // Recibo no Vendus (se o estúdio tiver a ligação Mollie → Vendus ativa), após o commit.
+            eventos.publishEvent(new ReciboVendusService.PagamentoConfirmado(
+                    ReciboVendusService.Origem.PAGAMENTO_ONLINE, pagamento.getId()));
         }
         pagamentoOnlineRepository.save(pagamento);
     }
